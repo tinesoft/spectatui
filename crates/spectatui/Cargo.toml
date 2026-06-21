@@ -1,0 +1,16 @@
+[package]
+name = "spectatui"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+spectatui-core = { path = "../spectatui-core" }
+ratatui = "0.29"
+crossterm = { version = "0.28", features = ["event-stream"] }
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3"
+clap = { version = "4", features = ["derive"] }
+directories = "6"
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

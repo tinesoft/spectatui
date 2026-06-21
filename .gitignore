@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+target/
+
+# Nx
+.nx/installation
+.nx/cache
+.nx/workspace-data
+.nx/self-healing
+.nx/migrate-runs
+.nx/polygraph
+
+# Claude Code
+.claude/worktrees
+.claude/settings.local.json
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+.venv/
+
+# Temp
+/tmp
+
+# Specify
+.specify/**/.cache/

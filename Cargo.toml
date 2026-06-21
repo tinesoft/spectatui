@@ -1,0 +1,9 @@
+[workspace]
+resolver = '2'
+members = [
+    'crates/spectatui-core',
+    'crates/spectatui',
+]
+
+[profile.release]
+lto = true

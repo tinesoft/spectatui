@@ -1,0 +1,17 @@
+[package]
+name = "spectatui-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+thiserror = "2"
+anyhow = "1"
+tokio = { version = "1", features = ["process", "sync", "rt", "io-util", "macros"] }
+notify = "7"
+notify-debouncer-mini = "0.5"
+
+[dev-dependencies]
+tempfile = "3"

@@ -1,0 +1,17 @@
+{
+  "name": "spectatui",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "nx run-many -t build",
+    "test": "nx run-many -t test",
+    "lint": "nx run-many -t lint",
+    "reset": "nx reset && rm -rf dist",
+    "release": "nx release",
+    "release:first": "nx release --first-release",
+    "release:dry": "nx release --dry-run"
+  },
+  "devDependencies": {
+    "@monodon/rust": "^3.0.0"
+  }
+}

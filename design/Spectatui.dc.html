@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<template id="__bundler_thumbnail" data-bg-color="#070708">
+  <svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+    <rect x="0" y="0" width="1200" height="800" fill="#070708"/>
+    <rect x="210" y="170" width="780" height="460" rx="22" fill="#16161b" stroke="#2c2c35" stroke-width="3"/>
+    <rect x="210" y="170" width="780" height="62" rx="22" fill="#0b0b0e"/>
+    <text x="250" y="212" font-family="'JetBrains Mono',monospace" font-size="34" font-weight="700" fill="#93a4ff">spectatui</text>
+    <rect x="250" y="280" width="150" height="44" rx="10" fill="#123a1d"/>
+    <text x="270" y="311" font-family="'JetBrains Mono',monospace" font-size="26" fill="#90d890">impl</text>
+    <rect x="250" y="346" width="150" height="44" rx="10" fill="#42330c"/>
+    <text x="272" y="377" font-family="'JetBrains Mono',monospace" font-size="26" fill="#f0c879">plan</text>
+    <rect x="250" y="412" width="150" height="44" rx="10" fill="#10314f"/>
+    <text x="272" y="443" font-family="'JetBrains Mono',monospace" font-size="26" fill="#86b8ec">task</text>
+    <rect x="460" y="282" width="500" height="14" rx="7" fill="#2c2c35"/>
+    <rect x="460" y="322" width="420" height="14" rx="7" fill="#2c2c35"/>
+    <rect x="460" y="362" width="470" height="14" rx="7" fill="#2c2c35"/>
+    <circle cx="468" cy="430" r="9" fill="#90d890"/>
+    <text x="492" y="440" font-family="'JetBrains Mono',monospace" font-size="24" fill="#84d48f">running</text>
+    <rect x="250" y="556" width="690" height="38" rx="10" fill="#1c1c23"/>
+    <circle cx="276" cy="575" r="7" fill="#93a4ff"/>
+    <text x="296" y="584" font-family="'JetBrains Mono',monospace" font-size="22" fill="#8b8b95">8 integrations · 4 extensions · 2 workflows</text>
+  </svg>
+</template>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#070708;overflow:hidden;}
+  *{box-sizing:border-box;}
+  .term-row{white-space:pre;font-variant-ligatures:none;}
+</style>
+</helmet>
+<div class="term-wrap" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#070708;overflow:hidden;font-family:'JetBrains Mono',ui-monospace,monospace;">
+  {{ screenEl }}
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const COLS = 132, ROWS = 40;
+
+const THEMES = {
+  dark: {
+    bg:'#101013', panel:'#16161b', panelAlt:'#1c1c23', fg:'#d7d7dc', dim:'#8b8b95', faint:'#5b5b65',
+    border:'#2c2c35', sel:'#23232e', selFg:'#f0f0f5', good:'#84d48f', warn:'#e3b673', bad:'#ef8c7d', info:'#7cc2e8',
+    headerBg:'#0b0b0e', chipBg:'#1f1f27',
+  },
+  light: {
+    bg:'#f4f1ea', panel:'#fbf9f4', panelAlt:'#efece4', fg:'#2c2a26', dim:'#76726a', faint:'#a8a397',
+    border:'#ddd8cc', sel:'#e8e3d6', selFg:'#1b1a17', good:'#2f8a3f', warn:'#a9701a', bad:'#cb5341', info:'#2f76a8',
+    headerBg:'#ebe7dd', chipBg:'#ece8de',
+  },
+};
+const ACCENTS = {
+  indigo: { dark:'#93a4ff', light:'#5159d4' },
+  teal:   { dark:'#5fd6bf', light:'#1c9685' },
+  amber:  { dark:'#e6b552', light:'#b07414' },
+};
+const STAGE = {
+  cons:{d:['#7fd8c2','#0f3a32'], l:['#0b6052','#cfeee6']},
+  spec:{d:['#f0a47c','#43210f'], l:['#a5512b','#f6ddcf']},
+  clar:{d:['#e8a6c5','#3d1b2d'], l:['#9c3a68','#f4d9e6']},
+  plan:{d:['#f0c879','#42330c'], l:['#8a6310','#f3e7c4']},
+  task:{d:['#86b8ec','#10314f'], l:['#2d6ba3','#d6e7f6']},
+  anly:{d:['#c4a7f0','#2c1f47'], l:['#5d3aa0','#e7ddf6']},
+  impl:{d:['#90d890','#123a1d'], l:['#2f8a3f','#d4eed9']},
+};
+const STAGE_ORDER = ['cons','spec','clar','plan','task','anly','impl'];
+
+const FEATURES = [
+  {id:'001-taskify', branch:'001-create-taskify', stage:'impl', running:true,  done:6, total:8, note:'tasks 9/14 complete', tasksDone:9, tasksTotal:14, agent:'claude-code'},
+  {id:'002-notify',  branch:'002-notifications', stage:'plan', running:false, note:'plan.md ready · awaiting /tasks', agent:'copilot-cli'},
+  {id:'003-auth',    branch:'003-auth-oauth',    stage:'spec', running:false, note:'spec.md drafted · needs /clarify', agent:'claude-code'},
+  {id:'004-search',  branch:'004-search-index',  stage:'task', running:true,  note:'tasks 2/19 complete', tasksDone:2, tasksTotal:19, agent:'gemini-cli'},
+  {id:'005-export',  branch:'005-csv-export',    stage:'clar', running:false, note:'3 clarifications resolved', agent:'cursor-cli'},
+  {id:'006-webhooks',branch:'006-webhooks',      stage:'anly', running:false, note:'analysis report clean', agent:'codex-cli'},
+];
+
+const INTEGRATIONS = [
+  {key:'claude',     name:'Claude Code',  installed:true,  isDefault:true,  ver:'2.1.0', cliReq:true,  desc:'Anthropic Claude Code CLI agent. Installs speckit-* skills under .claude/skills/.'},
+  {key:'copilot',    name:'GitHub Copilot',installed:true, isDefault:false, ver:'0.4.2', cliReq:true,  desc:'GitHub Copilot CLI agent integration.'},
+  {key:'gemini',     name:'Gemini CLI',   installed:true,  isDefault:false, ver:'1.0.0', cliReq:true,  desc:'Google Gemini CLI agent integration.'},
+  {key:'cursor',     name:'Cursor',       installed:true,  isDefault:false, ver:'0.9.1', cliReq:false, desc:'Cursor IDE agent integration. IDE-based, no CLI tool required.'},
+  {key:'codex',      name:'OpenAI Codex', installed:true,  isDefault:false, ver:'0.6.0', cliReq:true,  desc:'OpenAI Codex CLI agent integration.'},
+  {key:'windsurf',   name:'Windsurf',     installed:true,  isDefault:false, ver:'0.5.4', cliReq:false, desc:'Windsurf IDE agent integration.'},
+  {key:'qwen',       name:'Qwen Code',    installed:false, isDefault:false, ver:null,    cliReq:true,  desc:'Qwen Code CLI agent. Available in the catalog.'},
+  {key:'opencode',   name:'OpenCode',     installed:false, isDefault:false, ver:null,    cliReq:true,  desc:'OpenCode terminal agent. Available in the catalog.'},
+  {key:'zed',        name:'Zed',          installed:false, isDefault:false, ver:null,    cliReq:false, desc:'Zed editor agent integration. IDE-based.'},
+  {key:'roo',        name:'Roo Code',     installed:false, isDefault:false, ver:null,    cliReq:false, desc:'Roo Code agent. Available in the catalog.'},
+];
+
+const WORKFLOWS = [
+  {id:'speckit',      name:'Full SDD Cycle', ver:'1.0.0', src:'bundled',          installed:true, desc:'Runs specify → plan → tasks → implement with review gates.', lastRun:'2 runs · last ✓ today'},
+  {id:'quick-spec',   name:'Quick Spec',     ver:'0.3.0', src:'catalog · community', installed:true, desc:'Specify + clarify only — stops before planning for fast iteration.', lastRun:'no runs yet'},
+  {id:'review-gate',  name:'Review Gate',    ver:'1.1.0', src:'catalog · community', installed:false, desc:'Adds an explicit human-approval gate between plan and tasks.', lastRun:null},
+  {id:'ci-implement', name:'CI Implement',   ver:'0.7.2', src:'catalog · community', installed:false, desc:'Headless implement pipeline for CI — no interactive review gates.', lastRun:null},
+];
+
+const EXTENSIONS = [
+  {id:'gherkin-specs',      ver:'1.4.0', status:'enabled',  prio:80, cmds:6, src:'catalog · community', by:'speckit-community', desc:'Adds Given/When/Then scenario blocks to spec.md and a /speckit.scenarios command.'},
+  {id:'openapi-contracts',  ver:'0.9.2', status:'enabled',  prio:70, cmds:4, src:'catalog · community', by:'apiworks',          desc:'Generates OpenAPI 3.1 contracts into contracts/ during /speckit.plan.'},
+  {id:'adr-templates',      ver:'2.1.0', status:'enabled',  prio:60, cmds:3, src:'catalog · official',   by:'speckit',           desc:'Architecture Decision Records scaffolding wired into the plan phase.'},
+  {id:'security-checklist', ver:'1.0.5', status:'disabled', prio:40, cmds:5, src:'catalog · community', by:'redteam-labs',      desc:'OWASP-aligned checklist injected by /speckit.checklist. Currently disabled.'},
+  {id:'mermaid-diagrams',   ver:'0.6.0', status:'available',prio:null,cmds:2, src:'catalog · community', by:'diagrammer',        desc:'Render data-model.md relationships as Mermaid ER diagrams.'},
+  {id:'threat-model',       ver:'1.2.0', status:'available',prio:null,cmds:7, src:'catalog · community', by:'redteam-labs',      desc:'STRIDE threat-modeling pass with a /speckit.threats command.'},
+];
+const PRESETS = [
+  {id:'enterprise',   ver:'3.0.0', status:'enabled',  prio:90, cmds:8, src:'catalog · official',  by:'speckit',     desc:'Formal terminology, compliance sections, sign-off blocks across all templates.'},
+  {id:'concise',      ver:'1.1.0', status:'enabled',  prio:50, cmds:4, src:'catalog · community', by:'speckit-community', desc:'Trims boilerplate; terse headings; bullet-first spec/plan format.'},
+  {id:'startup-lean', ver:'0.8.0', status:'disabled', prio:30, cmds:5, src:'catalog · community', by:'yc-tools',    desc:'Lightweight one-pager spec format. Currently disabled.'},
+  {id:'academic',     ver:'1.0.0', status:'available',prio:null,cmds:6, src:'catalog · community', by:'lab-research',desc:'Citation blocks, hypothesis/method framing for research-driven specs.'},
+];
+
+const AGENT_SCRIPT = [
+  [['● ','good'],['Read ','fg'],['specs/001-taskify/tasks.md','info']],
+  [['  ','fg'],['parsed 14 tasks · 9 complete · 2 [P] parallel','dim']],
+  [['● ','good'],['Edit ','fg'],['src/board/dragHandlers.ts','info'],[' (+42 -8)','dim']],
+  [['  ','fg'],['wired pointer-down → reorder; persist order to localStorage','dim']],
+  [['● ','good'],['Bash ','fg'],['npm test -- board','info']],
+  [['  ','fg'],['✓ 18 passed','good'],['  (board.spec.ts)','dim']],
+  [['● ','good'],['Edit ','fg'],['src/board/Column.tsx','info'],[' (+11 -3)','dim']],
+  [['  ','fg'],['T012 wire drag handlers — marking complete','dim']],
+  [['⏵ ','warn'],['implementing T013: drop-zone highlight…','fg']],
+];
+
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.state = {
+      theme:'dark', accent:'indigo', layout:'overview',
+      screen:'dashboard', focus:0, feat:0,
+      extTab:'extensions', extSel:0, extScroll:0,
+      specTab:'spec', scroll:0,
+      popup:null, palQuery:'', palSel:0, cliLines:[], cliStatus:'pending', cliCmd:'',
+      tailN:4, leSel:0, intSel:0, wfSel:0,
+      paneCfg:[
+        {kind:'features', label:'Feature list',   visible:true,  size:2},
+        {kind:'workflow', label:'Workflow',       visible:true,  size:1},
+        {kind:'agent',    label:'Agent output',   visible:true,  size:2},
+        {kind:'spec',     label:'Spec browser',   visible:false, size:2},
+        {kind:'const',    label:'Constitution',   visible:false, size:2},
+        {kind:'ext',      label:'Extensions',     visible:false, size:2},
+      ],
+    };
+    this.buf = null; this.fs = 13; this.cellW = 8; this.cellH = 15;
+    this.click = [];
+    this.tailIdx = 5;
+  }
+
+  componentDidMount(){
+    this._key = (e)=>this.onKey(e);
+    this._rsz = ()=>{ this.fit(); this.forceUpdate(); };
+    this._clk = (e)=>this.onClick(e);
+    window.addEventListener('keydown', this._key);
+    window.addEventListener('resize', this._rsz);
+    window.addEventListener('mousedown', this._clk);
+    this.fit();
+    if(document.fonts && document.fonts.ready){ document.fonts.ready.then(()=>{ this.fit(); this.forceUpdate(); }); }
+    this._tail = setInterval(()=>{
+      const f = FEATURES[this.state.feat];
+      this.tailIdx = (this.tailIdx + 1) % AGENT_SCRIPT.length;
+      this.forceUpdate();
+    }, 1300);
+    this._anim = setInterval(()=>{
+      if(this.state.screen==='attach' || (this.state.popup&&this.state.popup.kind==='cli')) this.forceUpdate();
+    }, 140);
+    this.forceUpdate();
+  }
+  componentWillUnmount(){
+    window.removeEventListener('keydown', this._key);
+    window.removeEventListener('resize', this._rsz);
+    window.removeEventListener('mousedown', this._clk);
+    clearInterval(this._tail);
+    clearInterval(this._cliTimer);
+    clearInterval(this._anim);
+  }
+
+  fit(){
+    const W = window.innerWidth, H = window.innerHeight;
+    let fs = Math.min(W/(COLS*0.6018), H/(ROWS*1.16));
+    fs = Math.max(6, Math.floor(fs*100)/100);
+    this.fs = fs; this.cellH = fs*1.16;
+    const cv = (this._cv = this._cv || document.createElement('canvas')).getContext('2d');
+    cv.font = `${fs}px "JetBrains Mono", monospace`;
+    this.cellW = cv.measureText('M').width || fs*0.6018;
+  }
+
+  // ---- theme helpers ----
+  T(){ return THEMES[this.state.theme]; }
+  C(k){
+    if(k && k[0]==='#') return k;
+    if(k==='accent') return ACCENTS[this.state.accent][this.state.theme];
+    return this.T()[k] || this.T().fg;
+  }
+  stageCol(stage){ const s=STAGE[stage]; return this.state.theme==='dark'? s.d : s.l; }
+
+  // ---- buffer primitives ----
+  newBuf(){
+    const bg=this.C('bg'), fg=this.C('fg');
+    const b=new Array(ROWS);
+    for(let y=0;y<ROWS;y++){ const r=new Array(COLS); for(let x=0;x<COLS;x++) r[x]={ch:' ',fg,bg:null,bold:false}; b[y]=r; }
+    return b;
+  }
+  put(x,y,ch,fg,bg,bold){ if(x<0||x>=COLS||y<0||y>=ROWS)return; const cl=this.clipR; if(cl&&(x<cl.x||x>=cl.x+cl.w||y<cl.y||y>=cl.y+cl.h))return; const c=this.buf[y][x]; c.ch=ch; c.fg=fg||this.C('fg'); c.bg=(bg===undefined)?c.bg:bg; c.bold=!!bold; }
+  text(x,y,str,fg,bg,bold){ str=String(str); for(let i=0;i<str.length;i++) this.put(x+i,y,str[i],fg,bg,bold); }
+  fill(x,y,w,h,bg){ const cl=this.clipR; for(let j=0;j<h;j++) for(let i=0;i<w;i++){ const px=x+i,py=y+j; if(cl&&(px<cl.x||px>=cl.x+cl.w||py<cl.y||py>=cl.y+cl.h))continue; const c=this.buf[py]&&this.buf[py][px]; if(c){c.ch=' ';c.bg=bg;} } }
+  hline(x,y,w,fg){ for(let i=0;i<w;i++) this.put(x+i,y,'─',fg); }
+  box(x,y,w,h,title,fg,opts){
+    opts=opts||{}; const tfg=opts.titleFg||fg;
+    const tl=opts.sharp?'┌':'╭', tr=opts.sharp?'┐':'╮', bl=opts.sharp?'└':'╰', br=opts.sharp?'┘':'╯';
+    this.put(x,y,tl,fg); this.put(x+w-1,y,tr,fg);
+    this.put(x,y+h-1,bl,fg); this.put(x+w-1,y+h-1,br,fg);
+    for(let i=1;i<w-1;i++){ this.put(x+i,y,'─',fg); this.put(x+i,y+h-1,'─',fg); }
+    for(let j=1;j<h-1;j++){ this.put(x,y+j,'│',fg); this.put(x+w-1,y+j,'│',fg); }
+    if(title){ this.put(x+2,y,'┤',fg); this.text(x+3,y,' '+title+' ',tfg,null,!!opts.bold); const end=x+3+title.length+2; this.put(end,y,'├',fg); }
+  }
+  clip(s,w){ s=String(s); return s.length>w ? (w<=1?s.slice(0,w):s.slice(0,w-1)+'…') : s; }
+  reg(x,y,w,h,fn){ this.click.push({x,y,w,h,fn}); }
+
+  // ---- compose ----
+  compose(){
+    this.buf = this.newBuf(); this.click=[];
+    const C=k=>this.C(k);
+    const s=this.state.screen;
+    if(s==='attach'){ this.drawAttach(); if(this.state.popup) this.drawPopup(); return this.toEl(); }
+    this.drawHeader();
+    const rect={x:1,y:2,w:COLS-2,h:34};
+    if(s==='dashboard') this.drawDashboard(rect);
+    else if(s==='extensions') this.drawExtManager(rect, true, false);
+    else if(s==='spec') this.drawSpecScreen(rect);
+    else if(s==='constitution') this.drawConstitution(rect, true);
+    else if(s==='settings') this.drawSettings(rect);
+    else if(s==='layouteditor') this.drawLayoutEditor(rect);
+    this.drawKeyhint();
+    this.drawStatusBar();
+    if(this.state.popup) this.drawPopup();
+    return this.toEl();
+  }
+
+  drawHeader(){
+    const C=k=>this.C(k);
+    this.fill(0,0,COLS,1,C('headerBg'));
+    this.text(2,0,'spectatui',C('accent'),C('headerBg'),true);
+    this.text(11,0,'›',C('faint'),C('headerBg'));
+    this.text(13,0,'taskify',C('fg'),C('headerBg'));
+    this.text(21,0,'~/code/taskify',C('dim'),C('headerBg'));
+    const scr={dashboard:'Dashboard',extensions:'Extensions & Presets',spec:'Spec Browser',constitution:'Constitution',settings:'Settings',layouteditor:'Layout Editor'}[this.state.screen];
+    const right=`${scr}   ${this.state.theme==='dark'?'◖ dark':'◗ light'}  ◆ ${this.state.accent}`;
+    this.text(COLS-2-right.length,0,right,C('dim'),C('headerBg'));
+  }
+
+  drawKeyhint(){
+    const C=k=>this.C(k); const y=37;
+    let hints;
+    const p=this.state.popup;
+    if(p && p.kind==='palette') hints=[['↑↓','navigate'],['enter','run'],['esc','close'],['type','filter']];
+    else if(p && p.kind==='confirm') hints=[['enter','run command'],['esc','cancel'],['f','toggle --force']];
+    else if(p && p.kind==='cli') hints=[['esc','close & refresh']];
+    else if(p && p.kind==='integrations') hints=[['↑↓','select'],['i','install'],['x','uninstall'],['d','use default'],['s','switch'],['g','upgrade'],['esc','close']];
+    else if(p && p.kind==='workflows') hints=[['↑↓','select'],['r','run'],['R','resume'],['s','status'],['a','add'],['esc','close']];
+    else if(p && p.kind==='features') hints=[['↑↓','select'],['enter','jump to feature'],['esc','close']];
+    else if(p) hints=[['↑↓','navigate'],['enter','select'],['esc','close']];
+    else if(this.state.screen==='extensions') hints=[['tab','ext/presets'],['↑↓','select'],['a','add'],['x','remove'],['e/d','enable'],['/','search'],['esc','back']];
+    else if(this.state.screen==='spec') hints=[['tab','switch doc'],['↑↓','scroll'],['esc','back']];
+    else if(this.state.screen==='layouteditor') hints=[['↑↓','select pane'],['space','show/hide'],['< >','reorder'],['+ -','resize'],['enter','apply'],['esc','back']];
+    else if(this.state.screen==='constitution'||this.state.screen==='settings') hints=[['↑↓','navigate'],['enter','toggle'],['esc','back']];
+    else hints=[['tab','focus'],['↑↓','select'],['enter','open'],['1·2·3','layout'],['t','theme'],[':','commands'],['?','help'],['q','quit']];
+    let x=2;
+    for(const [k,d] of hints){
+      this.text(x,y,k,C('accent'),null,true); x+=k.length+1;
+      this.text(x,y,d,C('dim')); x+=d.length;
+      this.text(x,y,'  ·  ',C('faint')); x+=5;
+    }
+  }
+
+  drawStatusBar(){
+    const C=k=>this.C(k); const y=38;
+    this.fill(0,y,COLS,1,C('panel'));
+    const en=arr=>arr.filter(e=>e.status!=='available').length;
+    const stats=[
+      ['◈', INTEGRATIONS.filter(i=>i.installed).length,'integrations','i',()=>this.openPopup('integrations')],
+      ['❖', FEATURES.length,'features','f',()=>this.openPopup('features')],
+      ['◰', en(EXTENSIONS),'extensions','e',()=>this.openPopup('extensions')],
+      ['≣', en(PRESETS),'presets','p',()=>this.openPopup('presets')],
+      ['◷', WORKFLOWS.filter(w=>w.installed).length,'workflows','w',()=>this.openPopup('workflows')],
+    ];
+    let x=2;
+    for(const [ic,n,label,key,fn] of stats){
+      const w=String(`${ic} ${n} ${label} ${key}`).length;
+      this.reg(x,y,w+1,1,fn);
+      this.text(x,y,ic,C('accent'),C('panel')); x+=2;
+      this.text(x,y,String(n),C('fg'),C('panel'),true); x+=String(n).length+1;
+      this.text(x,y,label,C('dim'),C('panel')); x+=label.length+1;
+      this.text(x,y,key,C('faint'),C('panel')); x+=key.length+3;
+    }
+    const right='⚙ Settings s';
+    const rx=COLS-2-right.length;
+    this.reg(rx,y,right.length,1,()=>this.go('settings'));
+    this.text(rx,y,'⚙',C('accent'),C('panel'),true);
+    this.text(rx+2,y,'Settings',C('dim'),C('panel'));
+    this.text(rx+11,y,'s',C('faint'),C('panel'));
+  }
+
+  // ---- dashboard ----
+  paneLabel(kind){ return {features:'Feature list',workflow:'Workflow',agent:'Agent output',spec:'Spec browser',const:'Constitution',ext:'Extensions'}[kind]||kind; }
+  panesForCustom(r){
+    const vis=this.state.paneCfg.filter(p=>p.visible);
+    if(!vis.length) return [];
+    if(vis.length===1) return [{kind:vis[0].kind, r:{x:r.x,y:r.y,w:r.w,h:r.h}}];
+    const sw=Math.min(38,Math.floor(r.w*0.32));
+    const out=[{kind:vis[0].kind, r:{x:r.x,y:r.y,w:sw,h:r.h}}];
+    const rest=vis.slice(1);
+    const minOf=k=>({workflow:11,agent:8,features:8,spec:8,const:8,ext:9}[k]||7);
+    const mins=rest.map(p=>minOf(p.kind));
+    const minSum=mins.reduce((a,b)=>a+b,0);
+    const tot=rest.reduce((a,p)=>a+p.size,0)||1;
+    let heights;
+    if(minSum<=r.h){
+      const extra=r.h-minSum;
+      heights=rest.map((p,i)=>mins[i]+Math.floor(extra*p.size/tot));
+      const used=heights.reduce((a,b)=>a+b,0); heights[heights.length-1]+=r.h-used;
+    } else {
+      heights=rest.map(p=>Math.max(3,Math.round(r.h*p.size/tot)));
+    }
+    let y=r.y;
+    rest.forEach((p,i)=>{ out.push({kind:p.kind, r:{x:r.x+sw+1,y,w:r.w-sw-1,h:heights[i]}}); y+=heights[i]; });
+    return out;
+  }
+  panesFor(){
+    const r={x:1,y:2,w:COLS-2,h:34};
+    if(this.state.layout==='custom') return this.panesForCustom(r);
+    if(this.state.layout==='overview'){
+      const sw=38;
+      return [
+        {kind:'features', r:{x:r.x,y:r.y,w:sw,h:r.h}},
+        {kind:'workflow', r:{x:r.x+sw+1,y:r.y,w:r.w-sw-1,h:13}},
+        {kind:'agent', r:{x:r.x+sw+1,y:r.y+13,w:r.w-sw-1,h:r.h-13}},
+      ];
+    }
+    if(this.state.layout==='coding'){
+      const sw=Math.floor(r.w/2);
+      return [
+        {kind:'spec', r:{x:r.x,y:r.y,w:sw,h:r.h}},
+        {kind:'agent', r:{x:r.x+sw+1,y:r.y,w:r.w-sw-1,h:r.h}},
+      ];
+    }
+    // audit
+    const sw=Math.floor(r.w*0.54);
+    return [
+      {kind:'ext', r:{x:r.x,y:r.y,w:sw,h:r.h}},
+      {kind:'const', r:{x:r.x+sw+1,y:r.y,w:r.w-sw-1,h:r.h}},
+    ];
+  }
+  drawDashboard(rect){
+    const panes=this.panesFor();
+    panes.forEach((p,i)=>{
+      const f=(i===this.state.focus);
+      this.reg(p.r.x,p.r.y,p.r.w,p.r.h,()=>{ this.setState({focus:i}); });
+      this.clipR=p.r;
+      if(p.kind==='features') this.drawFeatureList(p.r,f);
+      else if(p.kind==='workflow') this.drawWorkflow(p.r,f);
+      else if(p.kind==='agent') this.drawAgent(p.r,f);
+      else if(p.kind==='spec') this.drawDocPane(p.r,f);
+      else if(p.kind==='ext') this.drawExtManager(p.r,f,true);
+      else if(p.kind==='const') this.drawConstitution(p.r,f);
+      this.clipR=null;
+    });
+  }
+
+  badge(x,y,stage,big){
+    const [fg,bg]=this.stageCol(stage);
+    const lbl=' '+stage+' ';
+    this.text(x,y,lbl,fg,bg,!!big);
+    return lbl.length;
+  }
+
+  drawFeatureList(r,focused){
+    const C=k=>this.C(k);
+    const bc=focused?C('accent'):C('border');
+    this.box(r.x,r.y,r.w,r.h,'Features',bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    let y=r.y+2;
+    FEATURES.forEach((f,i)=>{
+      const sel=(i===this.state.feat);
+      const rowY=y;
+      this.reg(r.x+1,rowY,r.w-2,2,()=>this.setState({feat:i}));
+      if(sel){ this.fill(r.x+1,rowY,r.w-2,2,C('sel')); this.put(r.x+1,rowY,'▌',C('accent'),C('sel')); this.put(r.x+1,rowY+1,'▌',C('accent'),C('sel')); }
+      const bg=sel?C('sel'):null;
+      let bx=r.x+3;
+      const [sfg,sbg]=this.stageCol(f.stage);
+      this.text(bx,rowY,' '+f.stage+' ',sfg,sbg,true);
+      bx+=f.stage.length+3;
+      this.text(bx,rowY,this.clip(f.id,r.w-(bx-r.x)-4),sel?C('selFg'):C('fg'),bg,sel);
+      const dot=f.running?'●':'○';
+      this.put(r.x+r.w-3,rowY,dot,f.running?C('good'):C('faint'),bg);
+      this.text(r.x+3,rowY+1,this.clip(f.note,r.w-6),C('dim'),bg);
+      y+=2;
+    });
+    y+=0;
+    this.text(r.x+3,r.y+r.h-2,'+ new feature  ',C('faint'));
+    this.text(r.x+18,r.y+r.h-2,'[n]',C('accent'),null,true);
+  }
+
+  stepState(f,stage){
+    const fi=STAGE_ORDER.indexOf(f.stage), si=STAGE_ORDER.indexOf(stage);
+    if(si<fi) return 'done'; if(si===fi) return 'cur'; return 'pend';
+  }
+  drawWorkflow(r,focused){
+    const C=k=>this.C(k);
+    const f=FEATURES[this.state.feat];
+    const bc=focused?C('accent'):C('border');
+    this.box(r.x,r.y,r.w,r.h,'Workflow · '+f.id,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    let x=r.x+3, y=r.y+2;
+    STAGE_ORDER.forEach((st,i)=>{
+      const ss=this.stepState(f,st);
+      if(ss==='done'){ const bg=this.state.theme==='dark'?'#16271b':'#dcefdf'; this.text(x,y,' '+st+' ',C('good'),bg); }
+      else if(ss==='cur'){ const [sfg,sbg]=this.stageCol(st); this.text(x,y,' '+st+' ',sfg,sbg,true); }
+      else { this.text(x,y,' '+st+' ',C('faint'),null); }
+      x+=st.length+2;
+      if(i<STAGE_ORDER.length-1){ this.text(x,y,'─►',C('faint')); x+=3; }
+    });
+    // progress — height-aware: only draw lines that fit above the bottom border
+    const py=r.y+4;
+    const bottom=r.y+r.h-1;            // bottom border row
+    const fits= py2=> py2<bottom;
+    if(fits(py)){
+      this.text(r.x+3,py,'Current stage:',C('dim'));
+      const [cfg,cbg]=this.stageCol(f.stage);
+      this.text(r.x+18,py,' '+f.stage+' ',cfg,cbg,true);
+      this.text(r.x+18+f.stage.length+3,py,({impl:'implement',anly:'analyze',task:'tasks',plan:'plan',clar:'clarify',spec:'specify',cons:'constitution'})[f.stage],C('fg'));
+    }
+    if(fits(py+2)){
+      if(f.tasksTotal){
+        const pct=f.tasksDone/f.tasksTotal;
+        const bw=Math.min(r.w-26,40);
+        const fillN=Math.round(pct*bw);
+        this.text(r.x+3,py+2,'Tasks',C('dim'));
+        this.text(r.x+10,py+2,'['+'█'.repeat(fillN)+'░'.repeat(bw-fillN)+']',C('accent'));
+        this.text(r.x+10+bw+3,py+2,`${f.tasksDone}/${f.tasksTotal}  ${Math.round(pct*100)}%`,C('fg'),null,true);
+      } else {
+        this.text(r.x+3,py+2,f.note,C('dim'));
+      }
+    }
+    if(fits(py+4)){
+      this.text(r.x+3,py+4,'branch  ',C('dim'));
+      this.text(r.x+11,py+4,f.branch,C('info'));
+    }
+    if(r.h>=6) this.text(r.x+3,r.y+r.h-2,'[enter] open spec   [s] sessions',C('faint'));
+  }
+
+  agentTail(){
+    const out=[]; const n=6;
+    for(let i=0;i<n;i++){ out.push(AGENT_SCRIPT[(this.tailIdx-(n-1)+i+AGENT_SCRIPT.length*2)%AGENT_SCRIPT.length]); }
+    return out;
+  }
+  drawAgent(r,focused){
+    const C=k=>this.C(k);
+    const f=FEATURES[this.state.feat];
+    const bc=focused?C('accent'):C('border');
+    this.box(r.x,r.y,r.w,r.h,'Agent · '+f.agent,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    const dot=f.running?'●':'○';
+    const stxt=f.running?'running':'idle';
+    this.put(r.x+r.w-2-stxt.length-2,r.y,dot,f.running?C('good'):C('faint'));
+    this.text(r.x+r.w-2-stxt.length,r.y,stxt,f.running?C('good'):C('dim'));
+    let y=r.y+2;
+    const cap=r.y+r.h-3;              // last content row before the hint + border
+    if(f.running){
+      const lines=this.agentTail();
+      lines.forEach(parts=>{
+        if(y>cap) return;
+        let x=r.x+2;
+        parts.forEach(([t,col])=>{ this.text(x,y,t,C(col)); x+=t.length; });
+        y++;
+      });
+      if(y+1<=cap){
+        this.text(r.x+2,y+1,'▏',C('accent'));
+        this.text(r.x+3,y+1,' tmux pane %3 · '+f.branch,C('faint'));
+      }
+    } else {
+      this.text(r.x+2,y,'No active session for this feature.',C('dim'));
+      this.text(r.x+2,y+2,'Press ',C('faint')); this.text(r.x+8,y+2,'[enter]',C('accent'),null,true); this.text(r.x+16,y+2,' to start a coding-agent session.',C('faint'));
+    }
+    this.text(r.x+2,r.y+r.h-2,'[a] attach   [r] refresh tail   [k] kill',C('faint'));
+  }
+
+  // ---- documents ----
+  SPEC_DOC(){
+    return {
+      spec:[
+        ['h1','Feature Specification: Taskify'],
+        ['meta','specs/001-taskify/spec.md · branch 001-create-taskify'],
+        ['blank'],
+        ['h2','Overview'],
+        ['p','A lightweight Kanban board for small teams. Users create projects, add cards, and drag them across columns. Real-time presence shows who is viewing each board.'],
+        ['blank'],
+        ['h2','User Scenarios'],
+        ['li','A user creates a project and is taken to an empty board with three default columns.'],
+        ['li','A user drags a card from "To Do" to "In Progress"; the new order persists across reloads.'],
+        ['li','Two users on the same board see each other\'s cursors and card moves within 500ms.'],
+        ['blank'],
+        ['h2','Clarifications'],
+        ['li','Q: Max cards per column? → A: Soft cap 200, warn beyond.'],
+        ['li','Q: Offline edits? → A: Out of scope for v1.'],
+        ['blank'],
+        ['h2','Requirements'],
+        ['li','MUST persist board state to the backing store on every mutation.'],
+        ['li','MUST support keyboard reordering for accessibility.'],
+        ['li','SHOULD degrade gracefully when the realtime channel drops.'],
+      ],
+      plan:[
+        ['h1','Implementation Plan: Taskify'],
+        ['meta','specs/001-taskify/plan.md'],
+        ['blank'],
+        ['h2','Technical Context'],
+        ['li','Language: TypeScript 5.4 · React 19'],
+        ['li','Storage: SQLite (dev) → Postgres (prod) via Drizzle'],
+        ['li','Realtime: WebSocket channel per board'],
+        ['blank'],
+        ['h2','Constitution Check'],
+        ['li','✓ Library-first: board logic extracted to @taskify/core'],
+        ['li','✓ Test-first: contract tests precede implementation'],
+        ['li','✓ Observability: structured logs on every mutation'],
+        ['blank'],
+        ['h2','Project Structure'],
+        ['code','src/board/   src/realtime/   src/storage/'],
+        ['code','tests/contract/   tests/integration/'],
+      ],
+      research:[
+        ['h1','Research: Taskify'],
+        ['meta','specs/001-taskify/research.md'],
+        ['blank'],
+        ['h2','Drag & Drop'],
+        ['p','Evaluated dnd-kit vs native Pointer Events. Decision: native pointer events with a thin reorder helper — fewer deps, full keyboard control.'],
+        ['blank'],
+        ['h2','Realtime Transport'],
+        ['p','WebSocket chosen over SSE for bidirectional cursor presence. Fallback to polling every 3s when the socket is unavailable.'],
+      ],
+    };
+  }
+  TASKS(){
+    return [
+      ['phase','Phase 1 · Setup'],
+      ['task',true,false,'T001','Scaffold project structure and tooling'],
+      ['task',true,false,'T002','Configure Drizzle + SQLite dev store'],
+      ['phase','Phase 2 · Contract Tests (US1)'],
+      ['task',true,true,'T003','Contract test: POST /projects'],
+      ['task',true,true,'T004','Contract test: POST /cards'],
+      ['task',true,true,'T005','Contract test: PATCH /cards/:id/order'],
+      ['phase','Phase 3 · Core Implementation'],
+      ['task',true,false,'T006','Board model + storage adapter'],
+      ['task',true,false,'T007','Card CRUD endpoints'],
+      ['task',true,true,'T008','Column reorder endpoint'],
+      ['task',true,false,'T009','Realtime channel scaffolding'],
+      ['task',false,false,'T010','Cursor presence broadcast'],
+      ['task',false,false,'T011','Drag-and-drop UI in Column.tsx'],
+      ['task',false,true,'T012','Wire drag handlers + persist order'],
+      ['task',false,true,'T013','Drop-zone highlight states'],
+      ['task',false,false,'T014','Integration test: full reorder flow'],
+    ];
+  }
+  CONSTITUTION(){
+    return [
+      ['h1','Taskify Constitution'],
+      ['meta','.specify/memory/constitution.md · ratified 2025-09-12 · v1.2.0'],
+      ['blank'],
+      ['h2','I. Library-First'],
+      ['p','Every feature starts as a standalone library with a clear contract. Apps are thin shells over libraries. No business logic lives in route handlers.'],
+      ['blank'],
+      ['h2','II. CLI Interface'],
+      ['p','Each library exposes its capabilities over a text-in/text-out CLI. Human-readable by default, --json for machines.'],
+      ['blank'],
+      ['h2','III. Test-First (NON-NEGOTIABLE)'],
+      ['p','TDD is mandatory. Tests are written, approved, and observed to fail before any implementation. Red → Green → Refactor.'],
+      ['blank'],
+      ['h2','IV. Integration Testing'],
+      ['p','Contract tests gate every inter-service boundary. Schema changes require a new contract test in the same change.'],
+      ['blank'],
+      ['h2','V. Observability'],
+      ['p','Structured logging on every state mutation. Errors carry context. No silent failures.'],
+      ['blank'],
+      ['h2','Governance'],
+      ['p','This constitution supersedes all other practices. Amendments require documentation, approval, and a migration note.'],
+    ];
+  }
+
+  drawDoc(r,lines,scroll,focused,title){
+    const C=k=>this.C(k);
+    const bc=focused?C('accent'):C('border');
+    this.box(r.x,r.y,r.w,r.h,title,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    const innerW=r.w-4, innerH=r.h-3;
+    // flatten with wrapping into render rows
+    const rows=[];
+    for(const ln of lines){
+      const k=ln[0];
+      if(k==='blank'){ rows.push([['',null]]); continue; }
+      if(k==='h1'){ rows.push([[ln[1],'fg',true,'accent']]); continue; }
+      if(k==='h2'){ rows.push([['▍ ','accent'],[ln[1],'fg',true]]); continue; }
+      if(k==='meta'){ rows.push([[this.clip(ln[1],innerW),'faint']]); continue; }
+      if(k==='code'){ rows.push([['  '+this.clip(ln[1],innerW-2),'info']]); continue; }
+      if(k==='li'){
+        const wrapped=this.wrap(ln[1],innerW-3);
+        wrapped.forEach((w,i)=>{ rows.push(i===0?[['  • ','accent'],[w,'fg']]:[['    ','fg'],[w,'fg']]); });
+        continue;
+      }
+      // p
+      const wrapped=this.wrap(ln[1],innerW);
+      wrapped.forEach(w=>rows.push([[w,'dim']]));
+    }
+    const maxScroll=Math.max(0,rows.length-innerH);
+    const sc=Math.min(scroll,maxScroll);
+    for(let i=0;i<innerH;i++){
+      const row=rows[i+sc]; if(!row)break;
+      let x=r.x+2; const y=r.y+2+i;
+      row.forEach(seg=>{ const [t,col,bold]=seg; this.text(x,y,t,col? (col[0]==='#'?col:C(col)):C('fg'),null,!!bold); x+=String(t).length; });
+    }
+    // scrollbar
+    if(rows.length>innerH){
+      const trackH=innerH; const thumb=Math.max(1,Math.round(trackH*innerH/rows.length));
+      const tpos=Math.round((trackH-thumb)*(sc/maxScroll));
+      for(let i=0;i<trackH;i++) this.put(r.x+r.w-2,r.y+2+i, (i>=tpos&&i<tpos+thumb)?'┃':'│', (i>=tpos&&i<tpos+thumb)?C('accent'):C('border'));
+    }
+    return maxScroll;
+  }
+  drawTasks(r,scroll,focused){
+    const C=k=>this.C(k);
+    const bc=focused?C('accent'):C('border');
+    const tasks=this.TASKS();
+    const done=tasks.filter(t=>t[0]==='task'&&t[1]).length, total=tasks.filter(t=>t[0]==='task').length;
+    this.box(r.x,r.y,r.w,r.h,`tasks.md · ${done}/${total}`,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    const innerH=r.h-3;
+    const rows=tasks;
+    const maxScroll=Math.max(0,rows.length-innerH);
+    const sc=Math.min(scroll,maxScroll);
+    for(let i=0;i<innerH;i++){
+      const t=rows[i+sc]; if(!t)break; const y=r.y+2+i;
+      if(t[0]==='phase'){ this.text(r.x+2,y,'▍ ',C('accent')); this.text(r.x+4,y,t[1],C('fg'),null,true); continue; }
+      const [_,checked,par,id,label]=t;
+      let x=r.x+3;
+      this.text(x,y,checked?'[✓]':'[ ]',checked?C('good'):C('faint'),null,true); x+=4;
+      this.text(x,y,id,checked?C('dim'):C('info')); x+=id.length+1;
+      if(par){ this.text(x,y,'[P]',C('warn'),null,true); x+=4; }
+      this.text(x,y,this.clip(label,r.w-(x-r.x)-3),checked?C('dim'):C('fg')); 
+    }
+    return maxScroll;
+  }
+  wrap(s,w){
+    s=String(s); const words=s.split(' '); const out=[]; let cur='';
+    for(const wd of words){ if((cur+(cur?' ':'')+wd).length>w){ if(cur)out.push(cur); cur=wd; } else cur+=(cur?' ':'')+wd; }
+    if(cur)out.push(cur); return out.length?out:[''];
+  }
+
+  drawDocPane(r,focused){ // for coding layout: spec.md
+    this._specMax=this.drawDoc(r,this.SPEC_DOC().spec,this.state.scroll,focused,'spec.md · 001-taskify');
+  }
+  drawSpecScreen(rect){
+    const C=k=>this.C(k);
+    const sw=30;
+    // mini feature sidebar
+    this.box(rect.x,rect.y,sw,rect.h,'Features',C('border'),{titleFg:C('fg')});
+    FEATURES.forEach((f,i)=>{
+      const y=rect.y+2+i; const sel=(i===this.state.feat);
+      if(sel){ this.fill(rect.x+1,y,sw-2,1,C('sel')); this.put(rect.x+1,y,'▌',C('accent'),C('sel')); }
+      const [sfg,sbg]=this.stageCol(f.stage);
+      this.text(rect.x+3,y,' '+f.stage+' ',sfg,sbg,true);
+      this.text(rect.x+3+f.stage.length+3,y,this.clip(f.id,sw-12),sel?C('selFg'):C('fg'),sel?C('sel'):null,sel);
+      this.reg(rect.x+1,y,sw-2,1,()=>this.setState({feat:i,scroll:0}));
+    });
+    // tabs
+    const dx=rect.x+sw+1, dw=rect.w-sw-1;
+    const tabs=[['spec','spec.md'],['plan','plan.md'],['tasks','tasks.md'],['research','research.md']];
+    let tx=dx+1;
+    tabs.forEach(([k,lbl])=>{
+      const act=this.state.specTab===k;
+      this.text(tx,rect.y,' '+lbl+' ',act?C('accent'):C('dim'),act?C('panelAlt'):null,act);
+      this.reg(tx,rect.y,lbl.length+2,1,()=>this.setState({specTab:k,scroll:0}));
+      tx+=lbl.length+3;
+    });
+    const dr={x:dx,y:rect.y+1,w:dw,h:rect.h-1};
+    if(this.state.specTab==='tasks') this._specMax=this.drawTasks(dr,this.state.scroll,true);
+    else this._specMax=this.drawDoc(dr,this.SPEC_DOC()[this.state.specTab],this.state.scroll,true, this.state.specTab+'.md · '+FEATURES[this.state.feat].id);
+  }
+  drawConstitution(r,focused){
+    this._constMax=this.drawDoc(r,this.CONSTITUTION(),this.state.scroll,focused,'constitution.md');
+  }
+
+  // ---- extensions / presets manager ----
+  curExtList(){ return this.state.extTab==='extensions'?EXTENSIONS:PRESETS; }
+  statusIcon(st){ return st==='enabled'?'●':st==='disabled'?'◐':'○'; }
+  statusCol(st){ return st==='enabled'?this.C('good'):st==='disabled'?this.C('warn'):this.C('faint'); }
+  drawExtManager(r,focused,compact,single){
+    const C=k=>this.C(k);
+    const bc=focused?C('accent'):C('border');
+    const title= single ? (this.state.extTab==='extensions'?'Extensions':'Presets') : 'Extensions & Presets';
+    this.box(r.x,r.y,r.w,r.h,title,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
+    let top;
+    if(single){
+      top=r.y+3;
+    } else {
+      // tabs
+      let tx=r.x+2;
+      [['extensions','Extensions'],['presets','Presets']].forEach(([k,lbl])=>{
+        const act=this.state.extTab===k;
+        const n=(k==='extensions'?EXTENSIONS:PRESETS).length;
+        const t=` ${lbl} ${n} `;
+        this.text(tx,r.y+1,t,act?C('accent'):C('dim'),act?C('panelAlt'):null,act);
+        this.reg(tx,r.y+1,t.length,1,()=>this.setState({extTab:k,extSel:0}));
+        tx+=t.length+1;
+      });
+      top=r.y+3;
+    }
+    const list=this.curExtList();
+    const listW=compact?r.w-2:Math.floor(r.w*0.46);
+    // list
+    list.forEach((e,i)=>{
+      const y=top+i; if(y>=r.y+r.h-2)return;
+      const sel=(i===this.state.extSel);
+      if(sel){ this.fill(r.x+1,y,listW-1,1,C('sel')); this.put(r.x+1,y,'▌',C('accent'),C('sel')); }
+      const bg=sel?C('sel'):null;
+      this.put(r.x+3,y,this.statusIcon(e.status),this.statusCol(e.status),bg);
+      this.text(r.x+5,y,this.clip(e.id,listW-22),sel?C('selFg'):C('fg'),bg,sel);
+      const pr=e.prio!=null?('p'+e.prio):'—';
+      this.text(r.x+listW-16,y,pr,C('dim'),bg);
+      this.text(r.x+listW-10,y,'v'+e.ver,C('faint'),bg);
+      this.reg(r.x+1,y,listW-1,1,()=>this.setState({extSel:i}));
+    });
+    // detail
+    if(!compact){
+      const dx=r.x+listW+1, dw=r.w-listW-2;
+      for(let j=r.y+1;j<r.y+r.h-1;j++) this.put(dx-1,j,'│',C('border'));
+      const e=list[this.state.extSel];
+      let y=r.y+3;
+      this.text(dx+1,y,this.clip(e.id,dw-2),C('fg'),null,true); 
+      this.text(dx+1+e.id.length+1,y,'v'+e.ver,C('dim'));
+      y+=2;
+      const [icon,col]=[this.statusIcon(e.status),this.statusCol(e.status)];
+      this.put(dx+1,y,icon,col); this.text(dx+3,y,e.status,col,null,true);
+      this.text(dx+3+e.status.length+2,y,e.prio!=null?('priority '+e.prio):'not installed',C('dim'));
+      y+=1;
+      this.text(dx+1,y,'by '+e.by+'  ·  '+e.src,C('dim')); y+=1;
+      this.text(dx+1,y,(this.state.extTab==='extensions'?e.cmds+' commands':e.cmds+' templates'),C('info')); y+=2;
+      this.wrap(e.desc,dw-2).forEach(w=>{ this.text(dx+1,y,w,C('fg')); y+=1; });
+      y+=1;
+      // actions
+      this.text(dx+1,y,'Actions',C('dim'),null,true); y+=1;
+      const acts=[];
+      if(e.status==='available') acts.push(['a','add','add']);
+      else {
+        acts.push(['x','remove','remove']);
+        acts.push([e.status==='enabled'?'d':'e', e.status==='enabled'?'disable':'enable', e.status==='enabled'?'disable':'enable']);
+        acts.push(['p','set-priority','set-priority']);
+        if(this.state.extTab==='extensions') acts.push(['u','update','update']);
+      }
+      if(this.state.extTab==='presets'&&e.status!=='available') acts.push(['r','resolve','resolve']);
+      acts.forEach(([key,lbl])=>{ this.text(dx+1,y,'['+key+'] ',C('accent'),null,true); this.text(dx+5,y,lbl,C('fg')); y+=1; });
+    }
+    this.text(r.x+2,r.y+r.h-2,compact?'[enter] manage':'[/] search catalog   [c] catalog list',C('faint'));
+  }
+
+  // ---- popups ----
+  openPopup(kind){
+    if(kind==='extensions'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'extensions', extSel:0}); return; }
+    if(kind==='presets'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'presets', extSel:0}); return; }
+    this.setState({popup:{kind}, palSel:0, intSel:0, wfSel:0});
+  }
+  go(screen){ this.setState({screen, popup:null, focus:0, scroll:0}); }
+
+  centeredBox(w,h,title){
+    const C=k=>this.C(k);
+    const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
+    // dim backdrop
+    for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; if(this.state.theme==='dark'){ c.fg=this.dimHex(c.fg,0.45);} else {c.fg=this.dimHex(c.fg,0.55);} }
+    this.fill(x,y,w,h,C('panel'));
+    this.box(x,y,w,h,title,C('accent'),{titleFg:C('accent'),bold:true});
+    return {x,y,w,h};
+  }
+  dimHex(hex,f){ if(!hex||hex[0]!=='#')return hex; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); const bg=this.state.theme==='dark'?16:244; const m=v=>Math.round(v*(1-f)+bg*f); return '#'+[m(r),m(g),m(b)].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+
+  drawPopup(){
+    const C=k=>this.C(k); const p=this.state.popup;
+    if(p.kind==='integrations'){
+      const w=Math.min(98,COLS-6), h=Math.min(INTEGRATIONS.length+6,ROWS-4);
+      const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
+      for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
+      this.fill(x,y,w,h,C('panel'));
+      this.box(x,y,w,h,'AI Integrations',C('accent'),{titleFg:C('accent'),bold:true});
+      const listW=Math.floor(w*0.42), top=y+2;
+      INTEGRATIONS.forEach((it,i)=>{
+        const ry=top+i; if(ry>=y+h-2)return;
+        const sel=(i===this.state.intSel);
+        if(sel){ this.fill(x+1,ry,listW-1,1,C('sel')); this.put(x+1,ry,'▌',C('accent'),C('sel')); }
+        const bg=sel?C('sel'):null;
+        this.put(x+3,ry,it.installed?'●':'○',it.installed?C('good'):C('faint'),bg);
+        this.text(x+5,ry,this.clip(it.name,listW-20),sel?C('selFg'):(it.installed?C('fg'):C('dim')),bg,sel);
+        if(it.isDefault){ this.text(x+listW-13,ry,'★ default',C('accent'),bg); }
+        else { this.text(x+listW-11,ry,it.installed?('v'+it.ver):'available',it.installed?C('faint'):C('warn'),bg); }
+        this.reg(x+1,ry,listW-1,1,()=>this.setState({intSel:i}));
+      });
+      const dx=x+listW+1, dw=w-listW-2;
+      for(let j=y+1;j<y+h-1;j++) this.put(dx-1,j,'│',C('border'));
+      const it=INTEGRATIONS[this.state.intSel]; let dyy=top;
+      this.text(dx+1,dyy,this.clip(it.name,dw-14),C('fg'),null,true);
+      this.text(dx+1+it.name.length+1,dyy,it.installed?('v'+it.ver):'',C('dim'));
+      if(it.isDefault) this.text(dx+dw-9,dyy,'★ default',C('accent'),null,true);
+      dyy+=2;
+      this.put(dx+1,dyy,it.installed?'●':'○',it.installed?C('good'):C('faint'));
+      this.text(dx+3,dyy,it.installed?'installed':'not installed',it.installed?C('good'):C('warn'),null,true);
+      this.text(dx+3+(it.installed?9:13)+2,dyy,it.cliReq?'· CLI tool required':'· IDE-based',C('dim'));
+      dyy+=2;
+      this.wrap(it.desc,dw-2).forEach(wl=>{ this.text(dx+1,dyy,wl,C('fg')); dyy+=1; });
+      dyy+=1;
+      this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
+      let acts;
+      if(!it.installed) acts=[['i','install'],['s','switch to this']];
+      else if(it.isDefault) acts=[['x','uninstall'],['g','upgrade']];
+      else acts=[['d','use as default'],['x','uninstall'],['g','upgrade']];
+      acts.forEach(([key,lbl])=>{ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; });
+      this.text(x+3,y+h-2,'specify integration · status --json drift-check · esc close',C('faint'));
+    }
+    else if(p.kind==='features'){
+      const w=58,h=FEATURES.length*2+5; const b=this.centeredBox(w,h,'Features');
+      let y=b.y+2;
+      FEATURES.forEach((f,i)=>{
+        this.put(b.x+3,y,f.running?'●':'○',f.running?C('good'):C('faint'));
+        const [sfg,sbg]=this.stageCol(f.stage);
+        this.text(b.x+5,y,' '+f.stage+' ',sfg,sbg,true);
+        this.text(b.x+5+f.stage.length+3,y,f.id,C('fg'),null,true);
+        this.text(b.x+w-12,y,f.running?'running':'idle',f.running?C('good'):C('dim'));
+        this.text(b.x+7,y+1,f.note,C('dim'));
+        this.reg(b.x+1,y,w-2,2,()=>this.setState({feat:i,popup:null,screen:'dashboard'}));
+        y+=2;
+      });
+      this.text(b.x+3,b.y+h-2,'[enter] jump to feature',C('faint'));
+    }
+    else if(p.kind==='workflows'){
+      const w=Math.min(100,COLS-6), h=Math.min(ROWS-4,17);
+      const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
+      for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
+      this.fill(x,y,w,h,C('panel'));
+      this.box(x,y,w,h,'Automation Workflows · specify workflow',C('accent'),{titleFg:C('accent'),bold:true});
+      const listW=Math.floor(w*0.44), top=y+2;
+      WORKFLOWS.forEach((wf,i)=>{
+        const ry=top+i; if(ry>=y+h-2)return;
+        const sel=(i===this.state.wfSel);
+        if(sel){ this.fill(x+1,ry,listW-1,1,C('sel')); this.put(x+1,ry,'▌',C('accent'),C('sel')); }
+        const bg=sel?C('sel'):null;
+        this.put(x+3,ry,wf.installed?'●':'○',wf.installed?C('good'):C('faint'),bg);
+        this.text(x+5,ry,this.clip(wf.name,listW-20),sel?C('selFg'):(wf.installed?C('fg'):C('dim')),bg,sel);
+        this.text(x+listW-13,ry,wf.installed?('v'+wf.ver):'available',wf.installed?C('faint'):C('warn'),bg);
+        this.reg(x+1,ry,listW-1,1,()=>this.setState({wfSel:i}));
+      });
+      const dx=x+listW+1, dw=w-listW-2;
+      for(let j=y+1;j<y+h-1;j++) this.put(dx-1,j,'│',C('border'));
+      const wf=WORKFLOWS[this.state.wfSel]; let dyy=top;
+      this.text(dx+1,dyy,this.clip(wf.name,dw-12),C('fg'),null,true);
+      this.text(dx+1+wf.name.length+1,dyy,'v'+wf.ver,C('dim'));
+      dyy+=2;
+      this.put(dx+1,dyy,wf.installed?'●':'○',wf.installed?C('good'):C('faint'));
+      this.text(dx+3,dyy,wf.installed?'installed':'not installed',wf.installed?C('good'):C('warn'),null,true);
+      this.text(dx+3+(wf.installed?9:13)+2,dyy,'· '+wf.src,C('dim'));
+      dyy+=1;
+      if(wf.lastRun){ this.text(dx+1,dyy,wf.lastRun,C('info')); dyy+=1; }
+      dyy+=1;
+      this.wrap(wf.desc,dw-2).forEach(wl=>{ if(dyy<y+h-6){ this.text(dx+1,dyy,wl,C('fg')); dyy+=1; } });
+      dyy+=1;
+      this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
+      const acts = wf.installed ? [['r','run'],['R','resume last run'],['s','status / run history'],['x','remove']] : [['a','add'],['i','info']];
+      acts.forEach(([key,lbl])=>{ if(dyy<y+h-1){ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; } });
+      this.text(x+3,y+h-2,'run executes the full lifecycle as a tracked job · esc close',C('faint'));
+    }
+    else if(p.kind==='extPresets'){
+      const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
+      const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
+      for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
+      this.fill(x,y,w,h,C('panel'));
+      this.drawExtManager({x,y,w,h},true,false,!!p.single);
+    }
+    else if(p.kind==='palette'){
+      const cmds=this.paletteCmds();
+      const w=64,h=Math.min(cmds.length+6,ROWS-4); const b=this.centeredBox(w,h,'Command Palette');
+      this.text(b.x+3,b.y+2,'›',C('accent'),null,true);
+      this.text(b.x+5,b.y+2,this.state.palQuery||'type to filter…',this.state.palQuery?C('fg'):C('faint'),null,true);
+      this.hline(b.x+2,b.y+3,w-4,C('border'));
+      const vis=h-6;
+      cmds.slice(0,vis).forEach((cmd,i)=>{
+        const y=b.y+4+i; const sel=(i===this.state.palSel);
+        if(sel){ this.fill(b.x+1,y,w-2,1,C('sel')); this.put(b.x+1,y,'▌',C('accent'),C('sel')); }
+        this.text(b.x+3,y,cmd.label,sel?C('selFg'):C('fg'),sel?C('sel'):null,sel);
+        if(cmd.hint)this.text(b.x+w-3-cmd.hint.length,y,cmd.hint,C('faint'),sel?C('sel'):null);
+        this.reg(b.x+1,y,w-2,1,()=>{ this.setState({palSel:i}); cmd.run(); });
+      });
+    }
+    else if(p.kind==='confirm'){
+      const w=72,h=11; const b=this.centeredBox(w,h,'Confirm action');
+      this.text(b.x+3,b.y+2,'Spectatui will run this command:',C('fg'));
+      this.fill(b.x+3,b.y+4,w-6,1,C('panelAlt'));
+      this.text(b.x+4,b.y+4,'$ ',C('good'));
+      this.text(b.x+6,b.y+4,this.state.cliCmd,C('fg'),C('panelAlt'),true);
+      this.text(b.x+3,b.y+6,'The CLI runs its own confirmation & config backup.',C('dim'));
+      this.text(b.x+3,b.y+7,p.force?'--force ON · prompts skipped':'--force off · CLI prompts preserved',p.force?C('warn'):C('dim'));
+      this.text(b.x+3,b.y+9,'[enter] ',C('accent'),null,true); this.text(b.x+11,b.y+9,'run',C('fg'));
+      this.text(b.x+18,b.y+9,'[f] ',C('accent'),null,true); this.text(b.x+22,b.y+9,'toggle --force',C('fg'));
+      this.text(b.x+39,b.y+9,'[esc] ',C('accent'),null,true); this.text(b.x+45,b.y+9,'cancel',C('fg'));
+    }
+    else if(p.kind==='cli'){
+      const w=84,h=20; const b=this.centeredBox(w,h,'CLI Output · specify');
+      this.text(b.x+3,b.y+2,'$ ',C('good')); this.text(b.x+5,b.y+2,this.state.cliCmd,C('fg'),null,true);
+      let y=b.y+4;
+      this.state.cliLines.slice(-(h-7)).forEach(l=>{ this.text(b.x+3,y,this.clip(l.t,w-6),C(l.c||'dim')); y++; });
+      const st=this.state.cliStatus;
+      const sy=b.y+h-2;
+      if(st==='running'){ const sp='⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏'[Math.floor(Date.now()/100)%10]; this.text(b.x+3,sy,sp+' running…',C('warn')); }
+      else if(st==='ok'){ this.text(b.x+3,sy,'✓ succeeded · list refreshed   [esc] close',C('good')); }
+      else if(st==='fail'){ this.text(b.x+3,sy,'✗ failed   [esc] close',C('bad')); }
+    }
+    else if(p.kind==='help'){
+      const w=70,h=24; const b=this.centeredBox(w,h,'Keybindings');
+      const groups=[
+        ['Navigation',[['tab / shift-tab','cycle pane focus'],['↑ ↓  / j k','move selection · scroll'],['enter','open / activate'],['esc','back / close popup'],['q','quit']]],
+        ['Screens',[[': ','command palette'],['e','extensions & presets'],['i / w / p','status-bar popups'],['1 · 2 · 3','dashboard layout preset']]],
+        ['Appearance',[['t','cycle theme (dark/light)'],['T','cycle accent palette']]],
+      ];
+      let y=b.y+2;
+      groups.forEach(([g,rows])=>{ this.text(b.x+3,y,'▍ '+g,C('accent'),null,true); y++; rows.forEach(([k,d])=>{ this.text(b.x+5,y,k,C('fg'),null,true); this.text(b.x+24,y,d,C('dim')); y++; }); y++; });
+    }
+    else if(p.kind==='quit'){
+      const w=44,h=7; const b=this.centeredBox(w,h,'Quit Spectatui?');
+      this.text(b.x+3,b.y+2,'Sessions keep running in tmux.',C('dim'));
+      this.text(b.x+3,b.y+4,'[q] ',C('accent'),null,true); this.text(b.x+7,b.y+4,'quit',C('fg'));
+      this.text(b.x+14,b.y+4,'[esc] ',C('accent'),null,true); this.text(b.x+20,b.y+4,'stay',C('fg'));
+    }
+  }
+
+  paletteCmds(){
+    const all=[
+      {label:'Go to Dashboard', hint:'d', run:()=>this.go('dashboard')},
+      {label:'Manage Extensions', hint:'e', run:()=>this.openPopup('extensions')},
+      {label:'Manage Presets', hint:'p', run:()=>this.openPopup('presets')},
+      {label:'Go to Spec Browser', hint:'s', run:()=>this.go('spec')},
+      {label:'Go to Constitution', hint:'c', run:()=>this.go('constitution')},
+      {label:'Open Settings', hint:'⚙', run:()=>this.go('settings')},
+      {label:'Layout: Overview', hint:'1', run:()=>this.setState({layout:'overview',screen:'dashboard',popup:null,focus:0})},
+      {label:'Layout: Coding', hint:'2', run:()=>this.setState({layout:'coding',screen:'dashboard',popup:null,focus:0})},
+      {label:'Layout: Audit', hint:'3', run:()=>this.setState({layout:'audit',screen:'dashboard',popup:null,focus:0})},
+      {label:'Layout: Custom (edited)', hint:'4', run:()=>this.setState({layout:'custom',screen:'dashboard',popup:null,focus:0})},
+      {label:'Customize panes (layout editor)', run:()=>this.go('layouteditor')},
+      {label:'Attach agent session', hint:'a', run:()=>this.setState({screen:'attach',popup:null})},
+      {label:'Toggle theme (dark / light)', hint:'t', run:()=>{this.toggleTheme();this.setState({popup:null});}},
+      {label:'Cycle accent palette', hint:'T', run:()=>{this.cycleAccent();this.setState({popup:null});}},
+      {label:'Manage Integrations', hint:'i', run:()=>this.openPopup('integrations')},
+      {label:'Manage Automation Workflows', hint:'w', run:()=>this.openPopup('workflows')},
+      {label:'Show Features', hint:'f', run:()=>this.openPopup('features')},
+      {label:'Search extension catalog', run:()=>this.go('extensions')},
+    ];
+    const q=this.state.palQuery.toLowerCase();
+    return q? all.filter(c=>c.label.toLowerCase().includes(q)) : all;
+  }
+
+  // ---- settings ----
+  settingsRows(){
+    return [
+      {k:'Theme', v:this.state.theme, opts:['dark','light'], set:v=>this.setState({theme:v})},
+      {k:'Accent palette', v:this.state.accent, opts:['indigo','teal','amber'], set:v=>this.setState({accent:v})},
+      {k:'Dashboard layout', v:this.state.layout, opts:['overview','coding','audit'], set:v=>this.setState({layout:v})},
+      {k:'Agent tail follow', v:'on', opts:['on','off'], set:()=>{}},
+      {k:'Mouse support', v:'on', opts:['on','off'], set:()=>{}},
+      {k:'Confirm before --force', v:'always', opts:['always','never'], set:()=>{}},
+      {k:'tmux session prefix', v:'spectatui-', opts:[], set:()=>{}},
+      {k:'Customize panes', v:'open layout editor →', opts:[], set:()=>{}, action:()=>this.go('layouteditor')},
+      {k:'Attach agent session', v:FEATURES[this.state.feat].id+' →', opts:[], set:()=>{}, action:()=>this.setState({screen:'attach'})},
+      {k:'Config location', v:'~/.config/spectatui/config.toml', opts:[], set:()=>{}},
+    ];
+  }
+  drawSettings(r){
+    const C=k=>this.C(k);
+    this.box(r.x,r.y,r.w,r.h,'Settings',C('accent'),{titleFg:C('accent'),bold:true});
+    const rows=this.settingsRows();
+    let y=r.y+2;
+    this.text(r.x+3,y,'Adjust appearance, layout, and CLI behaviour. Persisted to config.toml.',C('dim')); y+=2;
+    rows.forEach((row,i)=>{
+      const sel=(i===this.state.feat);
+      if(sel){ this.fill(r.x+1,y,r.w-2,1,C('sel')); this.put(r.x+1,y,'▌',C('accent'),C('sel')); }
+      this.text(r.x+4,y,row.k,sel?C('selFg'):C('fg'),sel?C('sel'):null,sel);
+      if(row.opts.length){
+        let x=r.x+34;
+        row.opts.forEach(o=>{ const on=row.v===o; this.text(x,y,' '+o+' ',on?C('accent'):C('dim'),on?C('panelAlt'):(sel?C('sel'):null),on); this.reg(x,y,o.length+2,1,()=>{row.set(o);}); x+=o.length+3; });
+      } else {
+        this.text(r.x+34,y,row.v,row.action?C('accent'):C('info'),sel?C('sel'):null,!!row.action);
+        if(row.action) this.reg(r.x+34,y,row.v.length,1,()=>{ this.setState({feat:i}); row.action(); });
+      }
+      this.reg(r.x+1,y,r.w-2,1,()=>this.setState({feat:i}));
+      y+=2;
+    });
+    this.text(r.x+3,r.y+r.h-2,'[↑↓] move   [enter/←→] change   [esc] back',C('faint'));
+  }
+
+  // ---- layout editor ----
+  drawLayoutEditor(r){
+    const C=k=>this.C(k);
+    const lw=46;
+    this.box(r.x,r.y,lw,r.h,'Panes',C('accent'),{titleFg:C('accent'),bold:true});
+    this.text(r.x+2,r.y+2,'Show / hide, reorder, and resize',C('dim'));
+    this.text(r.x+2,r.y+3,'the dashboard grid.',C('dim'));
+    let y=r.y+5;
+    this.state.paneCfg.forEach((p,i)=>{
+      const sel=(i===this.state.leSel);
+      if(sel){ this.fill(r.x+1,y,lw-2,1,C('sel')); this.put(r.x+1,y,'▌',C('accent'),C('sel')); }
+      const bg=sel?C('sel'):null;
+      this.text(r.x+3,y,(p.visible?(this.state.paneCfg.filter((q,qi)=>q.visible&&qi<=i).length):'·'),C('faint'),bg);
+      this.put(r.x+6,y,p.visible?'◉':'○',p.visible?C('good'):C('faint'),bg);
+      this.text(r.x+8,y,p.label,p.visible?(sel?C('selFg'):C('fg')):C('dim'),bg,sel);
+      // size meter
+      const bw=4; const fn=p.size;
+      this.text(r.x+lw-16,y,'size',C('dim'),bg);
+      this.text(r.x+lw-11,y,'▰'.repeat(fn)+'▱'.repeat(4-fn),p.visible?C('accent'):C('faint'),bg);
+      this.reg(r.x+1,y,lw-2,1,()=>this.setState({leSel:i}));
+      y+=1;
+    });
+    this.text(r.x+2,r.y+r.h-3,'[space] show/hide   [< >] reorder',C('faint'));
+    this.text(r.x+2,r.y+r.h-2,'[+/-] size    [enter] apply & view',C('faint'));
+    // live preview
+    const px=r.x+lw+1, pw=r.w-lw-1;
+    this.box(px,r.y,pw,r.h,'Live preview',C('border'),{titleFg:C('fg')});
+    const vis=this.state.paneCfg.filter(p=>p.visible).length;
+    this.text(px+2,r.y+1,(vis?vis+' panes · custom grid':'no panes visible'),C('dim'));
+    const inner={x:px+3,y:r.y+3,w:pw-6,h:r.h-5};
+    const panes=this.panesForCustom(inner);
+    if(!panes.length){ this.text(inner.x,inner.y+2,'Toggle a pane on to preview the grid.',C('faint')); }
+    panes.forEach((pp,i)=>{
+      const isSel = this.state.paneCfg.filter(q=>q.visible)[i] && this.state.paneCfg[this.state.leSel] && this.state.paneCfg.filter(q=>q.visible)[i].kind===this.state.paneCfg[this.state.leSel].kind;
+      const bc=isSel?C('accent'):C('border');
+      this.box(pp.r.x,pp.r.y,pp.r.w,pp.r.h,null,bc);
+      this.fill(pp.r.x+1,pp.r.y+1,pp.r.w-2,pp.r.h-2, isSel? C('sel'):null);
+      this.text(pp.r.x+2,pp.r.y+1,this.clip(this.paneLabel(pp.kind),pp.r.w-4),isSel?C('accent'):C('fg'),isSel?C('sel'):null,true);
+    });
+  }
+
+  // ---- session attach (full-screen handoff) ----
+  drawAttach(){
+    const C=k=>this.C(k);
+    const f=FEATURES[this.state.feat];
+    const seg=(x,y,parts)=>{ let cx=x; parts.forEach(([t,col,bold])=>{ this.text(cx,y,t,col?(col[0]==='#'?col:C(col)):C('fg'),null,!!bold); cx+=String(t).length; }); };
+    // top bar
+    this.fill(0,0,COLS,1,C('headerBg'));
+    this.put(2,0,'●',C('good'),C('headerBg'));
+    seg(4,0,[['attached','good',true],['  '+f.id+'  ·  '+f.agent+'  ·  tmux %3','dim']]);
+    const rt='Ctrl-b d detach  ·  esc back to spectatui';
+    this.text(COLS-2-rt.length,0,rt,C('dim'),C('headerBg'));
+    this.hline(0,1,COLS,C('border'));
+    // transcript
+    const x=3; let y=3;
+    const spin='✻✺✳✶'[Math.floor(Date.now()/180)%4];
+    seg(x,y,[['› ','accent',true],['implement the drag-and-drop reordering for the board, persist order','fg']]); y+=2;
+    this.wrap("I'll wire pointer events on the cards and persist the new column order to the store. Starting with the drop handlers, then the highlight states.",COLS-8).forEach(w=>{ seg(x,y,[[w,'dim']]); y+=1; }); y+=1;
+    const tool=(marker,verb,target,meta,result,rcol)=>{
+      seg(x,y,[[marker+' ','accent',true],[verb+'  ','fg',true],[target,'info'],[meta?('  '+meta):'','dim']]); y+=1;
+      if(result){ this.put(x+1,y,'⎿',C('faint')); seg(x+3,y,[[result,rcol||'dim']]); y+=1; }
+      y+=1;
+    };
+    tool('⏺','Read','src/board/Column.tsx',null,'142 lines · found <Card> map + column refs','dim');
+    tool('⏺','Edit','src/board/dragHandlers.ts','+42 -8','wired onPointerDown → reorder; persists to localStorage','good');
+    tool('⏺','Bash','npm test -- board',null,'✓ 18 passed  (board.spec.ts)  1.4s','good');
+    tool('⏺','Edit','src/board/Column.tsx','+11 -3','drop-zone highlight on dragenter / dragleave','good');
+    seg(x,y,[[spin+' ','warn'],['Verifying reorder survives a reload…','fg'],['  (esc to interrupt)','faint']]); y+=1;
+    // input box
+    const iy=ROWS-6;
+    this.box(2,iy,COLS-4,3,null,C('accent'));
+    this.put(4,iy+1,'›',C('accent'),null,true);
+    const caret = (Math.floor(Date.now()/500)%2)?'▌':' ';
+    seg(6,iy+1,[['ask a follow-up, or press ','faint'],['esc','accent'],[' to detach '+caret,'faint']]);
+    // footer status + keyhint
+    this.fill(0,ROWS-2,COLS,1,C('panel'));
+    seg(2,ROWS-2,[[f.agent,'fg',true],['  ·  sonnet · 38.2k tokens  ·  ','dim'],[f.branch,'info'],['*','warn'],['   ⏵ 2 edits · 1 test run','dim']]);
+    const rs='● session live in tmux';
+    this.text(COLS-2-rs.length,ROWS-2,rs,C('good'),C('panel'));
+    let kx=2; const kh=[['Ctrl-b d','detach (keeps running)'],['esc','back to dashboard'],['↑↓','scroll']];
+    for(const [kk,dd] of kh){ this.text(kx,ROWS-1,kk,C('accent'),null,true); kx+=kk.length+1; this.text(kx,ROWS-1,dd,C('dim')); kx+=dd.length; this.text(kx,ROWS-1,'  ·  ',C('faint')); kx+=5; }
+  }
+
+  // ---- actions ----
+  toggleTheme(){ this.setState({theme:this.state.theme==='dark'?'light':'dark'}); }
+  cycleAccent(){ const a=['indigo','teal','amber']; this.setState({accent:a[(a.indexOf(this.state.accent)+1)%3]}); }
+  startCli(cmd, willFail){
+    const word=(cmd.split(' ')[1]||'extension');
+    const seq=[
+      {t:'Resolving '+word+'…', c:'dim'},
+      {t:'→ '+cmd.split(' ').slice(0,3).join(' '), c:'info'},
+      {t:'Backing up config to .specify/'+word+'s/.backup/', c:'dim'},
+      {t:'✓ backup written', c:'good'},
+      {t:'Updating .registry.json', c:'dim'},
+      {t:willFail?'✗ error: extension is a dependency of openapi-contracts':'✓ registry updated', c:willFail?'bad':'good'},
+    ];
+    this.setState({popup:{kind:'cli'}, cliCmd:cmd, cliLines:[], cliStatus:'running'});
+    let i=0;
+    clearInterval(this._cliTimer);
+    this._cliTimer=setInterval(()=>{
+      if(i>=seq.length){ clearInterval(this._cliTimer); this.setState({cliStatus:willFail?'fail':'ok'}); return; }
+      const lines=this.state.cliLines.concat([seq[i]]); i++;
+      this.setState({cliLines:lines});
+    },360);
+    this._cliSpin=setInterval(()=>this.forceUpdate(),100);
+    setTimeout(()=>clearInterval(this._cliSpin),seq.length*360+400);
+  }
+  buildCmd(action, o){
+    o=o||{};
+    const force=((o.force!==undefined?o.force:(this.state.popup&&this.state.popup.force))?' --force':'');
+    if(o.target==='integration'){
+      const id=o.id;
+      if(action==='install') return `specify integration install ${id}`;
+      if(action==='uninstall') return `specify integration uninstall ${id}${force}`;
+      if(action==='use') return `specify integration use ${id}`;
+      if(action==='switch') return `specify integration switch ${id}${force}`;
+      if(action==='upgrade') return `specify integration upgrade ${id}`;
+      return '';
+    }
+    if(o.target==='workflow'){
+      const id=o.id;
+      if(action==='run') return `specify workflow run ${id}`;
+      if(action==='resume') return `specify workflow resume ${id}`;
+      if(action==='status') return `specify workflow status ${id}`;
+      if(action==='add') return `specify workflow add ${id}`;
+      if(action==='remove') return `specify workflow remove ${id}${force}`;
+      if(action==='info') return `specify workflow info ${id}`;
+      return '';
+    }
+    const e=this.curExtList()[this.state.extSel];
+    const tgt=this.state.extTab==='extensions'?'extension':'preset';
+    if(action==='add') return `specify ${tgt} add ${e.id}`;
+    if(action==='remove') return `specify ${tgt} remove ${e.id}${force}`;
+    if(action==='enable') return `specify ${tgt} enable ${e.id}`;
+    if(action==='disable') return `specify ${tgt} disable ${e.id}`;
+    if(action==='resolve') return `specify preset resolve ${e.id}`;
+    if(action==='update') return `specify extension update ${e.id}`;
+    if(action==='set-priority') return `specify ${tgt} set-priority ${e.id} 75`;
+    return '';
+  }
+
+  // ---- keyboard ----
+  onKey(e){
+    const k=e.key; const st=this.state; const p=st.popup;
+    const stop=()=>{ e.preventDefault(); e.stopPropagation(); };
+    // popups first
+    if(p){
+      if(p.kind==='palette'){
+        const cmds=this.paletteCmds();
+        if(k==='Escape'){ stop(); this.setState({popup:null,palQuery:''}); return; }
+        if(k==='ArrowDown'){ stop(); this.setState({palSel:Math.min(cmds.length-1,st.palSel+1)}); return; }
+        if(k==='ArrowUp'){ stop(); this.setState({palSel:Math.max(0,st.palSel-1)}); return; }
+        if(k==='Enter'){ stop(); const c=cmds[st.palSel]; if(c){ this.setState({palQuery:''}); c.run(); } return; }
+        if(k==='Backspace'){ stop(); this.setState({palQuery:st.palQuery.slice(0,-1),palSel:0}); return; }
+        if(k===':'){ stop(); return; }
+        if(k.length===1){ stop(); this.setState({palQuery:st.palQuery+k,palSel:0}); return; }
+        return;
+      }
+      if(p.kind==='confirm'){
+        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(k==='f'||k==='F'){ stop(); const nf=!p.force; this.setState({popup:{...p,force:nf}, cliCmd:this.buildCmd(p.action,{target:p.target,id:p.id,force:nf})}); return; }
+        if(k==='Enter'){ stop(); const willFail=(p.action==='remove'&&!p.target&&this.curExtList()[st.extSel].id==='adr-templates'); this.startCli(this.buildCmd(p.action,{target:p.target,id:p.id}),willFail); return; }
+        return;
+      }
+      if(p.kind==='cli'){ if(k==='Escape'){ stop(); clearInterval(this._cliTimer); this.setState({popup:null}); } return; }
+      if(p.kind==='extPresets'){ this.extKeys(k,stop,true); if(k==='Escape'){ stop(); this.setState({popup:null}); } return; }
+      if(p.kind==='integrations'){
+        const list=INTEGRATIONS, it=list[st.intSel];
+        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({intSel:Math.min(list.length-1,st.intSel+1)}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({intSel:Math.max(0,st.intSel-1)}); return; }
+        const open=(action)=>this.setState({popup:{kind:'confirm',action,target:'integration',id:it.key,name:it.name,force:false},cliCmd:this.buildCmd(action,{target:'integration',id:it.key})});
+        if(k==='i'&&!it.installed){ stop(); open('install'); return; }
+        if(k==='s'&&!it.installed){ stop(); open('switch'); return; }
+        if(k==='x'&&it.installed){ stop(); open('uninstall'); return; }
+        if(k==='d'&&it.installed&&!it.isDefault){ stop(); open('use'); return; }
+        if(k==='g'&&it.installed){ stop(); open('upgrade'); return; }
+        return;
+      }
+      if(p.kind==='workflows'){
+        const list=WORKFLOWS, wf=list[st.wfSel];
+        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({wfSel:Math.min(list.length-1,st.wfSel+1)}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({wfSel:Math.max(0,st.wfSel-1)}); return; }
+        const open=(action)=>this.setState({popup:{kind:'confirm',action,target:'workflow',id:wf.id,name:wf.name,force:false},cliCmd:this.buildCmd(action,{target:'workflow',id:wf.id})});
+        if(k==='r'&&wf.installed){ stop(); open('run'); return; }
+        if(k==='R'&&wf.installed){ stop(); open('resume'); return; }
+        if(k==='s'&&wf.installed){ stop(); open('status'); return; }
+        if(k==='x'&&wf.installed){ stop(); open('remove'); return; }
+        if(k==='a'&&!wf.installed){ stop(); open('add'); return; }
+        return;
+      }
+      if(p.kind==='features'){
+        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({feat:Math.min(FEATURES.length-1,st.feat+1)}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({feat:Math.max(0,st.feat-1)}); return; }
+        if(k==='Enter'){ stop(); this.setState({popup:null,screen:'dashboard'}); return; }
+        return;
+      }
+      // simple list popups
+      if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+      if(k==='q'){ stop(); this.setState({popup:null}); }
+      return;
+    }
+    // global
+    if(k===':'||(k==='k'&&(e.metaKey||e.ctrlKey))){ stop(); this.setState({popup:{kind:'palette'},palQuery:'',palSel:0}); return; }
+    if(k==='?'){ stop(); this.setState({popup:{kind:'help'}}); return; }
+    if(k==='t'){ stop(); this.toggleTheme(); return; }
+    if(k==='T'){ stop(); this.cycleAccent(); return; }
+    if(k==='q'){ stop(); this.setState({popup:{kind:'quit'}}); return; }
+    if(k==='i'){ stop(); this.openPopup('integrations'); return; }
+    if(k==='w'){ stop(); this.openPopup('workflows'); return; }
+    if(k==='f'){ stop(); this.openPopup('features'); return; }
+    if(k==='Escape'){ stop(); if(st.screen!=='dashboard') this.go('dashboard'); return; }
+
+    if(st.screen==='dashboard'){
+      const panes=this.panesFor();
+      if(k==='Tab'){ stop(); const d=e.shiftKey?-1:1; this.setState({focus:(st.focus+d+panes.length)%panes.length}); return; }
+      if(k==='1'){ stop(); this.setState({layout:'overview',focus:0}); return; }
+      if(k==='2'){ stop(); this.setState({layout:'coding',focus:0}); return; }
+      if(k==='3'){ stop(); this.setState({layout:'audit',focus:0}); return; }
+      if(k==='e'){ stop(); this.go('extensions'); return; }
+      if(k==='p'){ stop(); this.openPopup('presets'); return; }
+      if(k==='a'){ stop(); this.setState({screen:'attach'}); return; }
+      if(k==='s'){ stop(); this.go('settings'); return; }
+      const fk=panes[st.focus]?panes[st.focus].kind:'features';
+      if(fk==='features'||fk==='workflow'||fk==='agent'){
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({feat:Math.min(FEATURES.length-1,st.feat+1)}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({feat:Math.max(0,st.feat-1)}); return; }
+        if(k==='Enter'){ stop(); this.go('spec'); return; }
+      }
+      if((fk==='spec'||fk==='const'||fk==='ext')){
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({scroll:st.scroll+1}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({scroll:Math.max(0,st.scroll-1)}); return; }
+      }
+      return;
+    }
+    if(st.screen==='extensions'){ this.extKeys(k,stop,false); if(k==='e'&&false){} return; }
+    if(st.screen==='spec'){
+      if(k==='Tab'){ stop(); const tabs=['spec','plan','tasks','research']; const d=e.shiftKey?-1:1; this.setState({specTab:tabs[(tabs.indexOf(st.specTab)+d+4)%4],scroll:0}); return; }
+      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({scroll:Math.min(this._specMax||0,st.scroll+1)}); return; }
+      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({scroll:Math.max(0,st.scroll-1)}); return; }
+      if(k==='ArrowRight'){ stop(); this.setState({feat:Math.min(FEATURES.length-1,st.feat+1),scroll:0}); return; }
+      if(k==='ArrowLeft'){ stop(); this.setState({feat:Math.max(0,st.feat-1),scroll:0}); return; }
+    }
+    if(st.screen==='constitution'){
+      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({scroll:Math.min(this._constMax||0,st.scroll+1)}); return; }
+      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({scroll:Math.max(0,st.scroll-1)}); return; }
+    }
+    if(st.screen==='layouteditor'){
+      const pc=st.paneCfg.slice(); const i=st.leSel;
+      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({leSel:Math.min(pc.length-1,i+1)}); return; }
+      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({leSel:Math.max(0,i-1)}); return; }
+      if(k===' '){ stop(); pc[i]={...pc[i],visible:!pc[i].visible}; this.setState({paneCfg:pc}); return; }
+      if((k==='<'||k===','||k==='[')&&i>0){ stop(); [pc[i-1],pc[i]]=[pc[i],pc[i-1]]; this.setState({paneCfg:pc,leSel:i-1}); return; }
+      if((k==='>'||k==='.'||k===']')&&i<pc.length-1){ stop(); [pc[i+1],pc[i]]=[pc[i],pc[i+1]]; this.setState({paneCfg:pc,leSel:i+1}); return; }
+      if(k==='+'||k==='='){ stop(); pc[i]={...pc[i],size:Math.min(4,pc[i].size+1)}; this.setState({paneCfg:pc}); return; }
+      if(k==='-'||k==='_'){ stop(); pc[i]={...pc[i],size:Math.max(1,pc[i].size-1)}; this.setState({paneCfg:pc}); return; }
+      if(k==='Enter'){ stop(); this.setState({layout:'custom',screen:'dashboard',focus:0}); return; }
+      return;
+    }
+    if(st.screen==='attach'){
+      if(k==='a'||k==='r'){ stop(); return; }
+      return;
+    }
+    if(st.screen==='settings'){
+      const rows=this.settingsRows();
+      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({feat:Math.min(rows.length-1,st.feat+1)}); return; }
+      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({feat:Math.max(0,st.feat-1)}); return; }
+      if(k==='ArrowRight'||k==='ArrowLeft'||k==='Enter'||k===' '){ stop(); const row=rows[st.feat]; if(row.opts.length){ const idx=row.opts.indexOf(row.v); const d=(k==='ArrowLeft')?-1:1; row.set(row.opts[(idx+d+row.opts.length)%row.opts.length]); } else if(row.action&&(k==='Enter'||k==='ArrowRight')){ row.action(); } return; }
+    }
+  }
+  extKeys(k,stop,inPopup){
+    const st=this.state; const list=this.curExtList(); const e=list[st.extSel];
+    if(k==='Tab'){ stop(); if(inPopup) return; this.setState({extTab:st.extTab==='extensions'?'presets':'extensions',extSel:0}); return; }
+    if(k==='ArrowDown'||k==='j'){ stop(); this.setState({extSel:Math.min(list.length-1,st.extSel+1)}); return; }
+    if(k==='ArrowUp'||k==='k'){ stop(); this.setState({extSel:Math.max(0,st.extSel-1)}); return; }
+    if(k==='a'&&e.status==='available'){ stop(); this.setState({popup:{kind:'confirm',action:'add',force:false},cliCmd:`specify ${st.extTab==='extensions'?'extension':'preset'} add ${e.id}`}); return; }
+    if(k==='x'&&e.status!=='available'){ stop(); this.setState({popup:{kind:'confirm',action:'remove',force:false},cliCmd:this.buildCmd('remove')}); return; }
+    if((k==='e'||k==='d')&&e.status!=='available'){ stop(); const act=e.status==='enabled'?'disable':'enable'; this.setState({popup:{kind:'confirm',action:act,force:false},cliCmd:this.buildCmd(act)}); return; }
+    if(k==='u'&&e.status!=='available'&&st.extTab==='extensions'){ stop(); this.setState({popup:{kind:'confirm',action:'update',force:false},cliCmd:this.buildCmd('update')}); return; }
+    if(k==='p'&&e.status!=='available'){ stop(); this.setState({popup:{kind:'confirm',action:'set-priority',force:false},cliCmd:this.buildCmd('set-priority')}); return; }
+    if(k==='r'&&e.status!=='available'&&st.extTab==='presets'){ stop(); this.startCli(this.buildCmd('resolve'),false); return; }
+    if(k==='Escape'&&!inPopup){ stop(); this.go('dashboard'); return; }
+  }
+
+  onClick(e){
+    const termW=COLS*this.cellW, termH=ROWS*this.cellH;
+    const ox=(window.innerWidth-termW)/2, oy=(window.innerHeight-termH)/2;
+    const cx=Math.floor((e.clientX-ox)/this.cellW), cy=Math.floor((e.clientY-oy)/this.cellH);
+    for(let i=this.click.length-1;i>=0;i--){ const r=this.click[i]; if(cx>=r.x&&cx<r.x+r.w&&cy>=r.y&&cy<r.y+r.h){ r.fn(); return; } }
+  }
+
+  // ---- buffer -> react ----
+  toEl(){
+    const rows=[]; const cw=this.cellW, ch=this.cellH;
+    for(let y=0;y<ROWS;y++){
+      const spans=[]; let run=null;
+      for(let x=0;x<COLS;x++){
+        const c=this.buf[y][x];
+        const key=c.fg+'|'+(c.bg||'-')+'|'+(c.bold?1:0);
+        if(run&&run.key===key){ run.text+=c.ch; }
+        else { if(run)spans.push(run); run={key,text:c.ch,fg:c.fg,bg:c.bg,bold:c.bold}; }
+      }
+      if(run)spans.push(run);
+      rows.push(React.createElement('div',{key:y,className:'term-row',style:{height:ch+'px',lineHeight:ch+'px'}},
+        spans.map((s,i)=>React.createElement('span',{key:i,style:{color:s.fg,background:s.bg||undefined,fontWeight:s.bold?700:400}},s.text))
+      ));
+    }
+    return React.createElement('div',{
+      style:{ fontFamily:"'JetBrains Mono', ui-monospace, monospace", fontSize:this.fs+'px', lineHeight:ch+'px',
+        background:this.C('bg'), color:this.C('fg'), width:(COLS*cw)+'px', height:(ROWS*ch)+'px',
+        whiteSpace:'pre', overflow:'hidden', borderRadius:'5px', boxShadow:'0 24px 80px rgba(0,0,0,0.5)', userSelect:'none' }
+    }, rows);
+  }
+
+  renderVals(){ return { screenEl: this.compose() }; }
+}
+</script>
+</body>
+</html>

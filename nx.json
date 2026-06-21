@@ -1,0 +1,58 @@
+{
+  "installation": {
+    "version": "23.0.0"
+  },
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "defaultBase": "main",
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*"
+    ],
+    "production": [
+      "default",
+      "!{projectRoot}/**/*.spec.rs"
+    ]
+  },
+  "targetDefaults": {
+    "build": {
+      "cache": true
+    },
+    "test": {
+      "cache": true
+    },
+    "lint": {
+      "cache": true
+    }
+  },
+  "plugins": [
+    "@monodon/rust"
+  ],
+  "release": {
+    "projects": [
+      "crates/*"
+    ],
+    "projectsRelationship": "fixed",
+    "releaseTag": {
+      "pattern": "v{version}"
+    },
+    "version": {
+      "conventionalCommits": true,
+      "git": {
+        "commit": true,
+        "commitMessage": "chore(release): v{version}",
+        "tag": true
+      }
+    },
+    "changelog": {
+      "projectChangelogs": false,
+      "workspaceChangelog": {
+        "file": "CHANGELOG.md",
+        "createRelease": "github"
+      }
+    },
+    "git": {
+      "push": false
+    }
+  },
+  "analytics": false
+}

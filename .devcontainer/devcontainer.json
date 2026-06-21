@@ -1,0 +1,80 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+{
+	"name": "spectatui",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/typescript-node:24-bookworm",
+	"runArgs": [
+		"--shm-size=2g"
+	],
+	"remoteUser": "node",
+	"updateRemoteUserUID": true,
+	"containerEnv": {
+		"NPM_CONFIG_FUND": "false",
+		"NPM_CONFIG_UPDATE_NOTIFIER": "false",
+		"UV_LINK_MODE": "copy"
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/git:1": {
+			"ppa": true,
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": false,
+			"installOhMyZsh": false,
+			"upgradePackages": false
+		},
+		"ghcr.io/devcontainers/features/python:1": {
+			"version": "3.12",
+			"toolsToInstall": "uv"
+		},
+        "ghcr.io/devcontainers/features/rust:1": {
+            "version": "1.96.0"
+        }
+	},
+  "mounts": [
+    "source=${localWorkspaceFolderBasename}-node_modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=claude-config,target=/home/node/.claude,type=volume",
+	"type=volume,source=${localWorkspaceFolderBasename}-npm-cache,target=/home/node/.npm",
+	"type=volume,source=${localWorkspaceFolderBasename}-uv-cache,target=/home/node/.cache/uv",
+	"type=volume,source=${localWorkspaceFolderBasename}-venv,target=/workspaces/${localWorkspaceFolderBasename}/.venv"
+  ],
+  // Mount parent directory so git worktrees (sibling dirs) are accessible
+  "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind,consistency=cached",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+	// Use 'postCreateCommand' to run commands after the container is created.
+    "postCreateCommand": "chmod +x ./.devcontainer/post-create.sh && ./.devcontainer/post-create.sh && git config --global --add safe.directory '*' && (git worktree repair 2>/dev/null || true)",
+	// Configure tool-specific properties.
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				//Claude Code
+				"Anthropic.claude-code",
+				// Git tools
+				"mhutchie.git-graph",
+				"eamodio.gitlens",
+				// IDE tools
+				"anweber.reveal-button",
+				"mutantdino.resourcemonitor"
+			],
+			"settings": {
+				"debug.javascript.autoAttachFilter": "disabled",
+				"terminal.integrated.defaultProfile.linux": "bash",
+				"files.watcherExclude": {
+					"**/node_modules/**": true,
+					"**/.venv/**": true,
+					"**/.mypy_cache/**": true
+				},
+				"search.exclude": {
+					"**/node_modules": true,
+					"**/.venv": true,
+					"**/.mypy_cache": true
+				}
+			}
+		}
+	}
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}

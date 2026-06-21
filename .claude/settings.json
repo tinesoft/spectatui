@@ -1,0 +1,29 @@
+{
+  "statusLine": {
+    "type": "command",
+    "command": "./.claude/statusline.sh",
+    "padding": 1
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true,
+    "skill-creator@claude-plugins-official": true
+  },
+  "sandbox": {
+    "network": {
+      "allowedDomains": [
+        "www.google-analytics.com"
+      ]
+    }
+  }
+}
