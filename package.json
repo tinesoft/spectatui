@@ -6,6 +6,7 @@
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
+    "ci": "pnpm install --frozen-lockfile",
     "reset": "nx reset && rm -rf dist",
     "release": "nx release",
     "release:first": "nx release --first-release",

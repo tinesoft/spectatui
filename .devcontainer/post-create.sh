@@ -35,11 +35,11 @@ echo "✅ Done"
 
 # Installing project's dependencies
 
-echo -e "\n📦 Installing NPM dependencies..."
-if [ -f package-lock.json ]; then
-  run_command "npm ci"
+echo -e "\n📦 Installing PNPM dependencies..."
+if [ -f pnpm-lock.yaml ]; then
+  run_command "pnpm run ci"
 elif [ -f package.json ]; then
-  run_command "npm install"
+  run_command "pnpm install"
 fi
 echo "✅ Done"
 
