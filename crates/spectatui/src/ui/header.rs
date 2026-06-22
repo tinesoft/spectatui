@@ -21,15 +21,12 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         }
     };
 
-    let feature_name = app
-        .selected_feature()
-        .map(|f| f.id.as_str())
-        .unwrap_or(&app.project_name);
+    let project_name = app.project_name.as_str();
 
     let left = vec![
         Span::styled(" spectatui ", theme.accent_bold),
         Span::styled("› ", ratatui::style::Style::default().fg(theme.faint).bg(theme.header_bg)),
-        Span::styled(format!(" {feature_name}  "), ratatui::style::Style::default().fg(theme.fg).bg(theme.header_bg)),
+        Span::styled(format!(" {project_name}  "), ratatui::style::Style::default().fg(theme.fg).bg(theme.header_bg)),
         Span::styled(&app.project_path, ratatui::style::Style::default().fg(theme.dim).bg(theme.header_bg)),
     ];
 

@@ -29,7 +29,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Command Palette", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);

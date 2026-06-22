@@ -38,7 +38,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .unwrap_or("none");
 
     let title = Line::from(vec![
-        Span::styled("┤ ", border_style),
+        Span::styled("─┤ ", border_style),
         Span::styled(format!("Workflow · {feature_id}"), title_style),
         Span::styled(" ├", border_style),
     ]);

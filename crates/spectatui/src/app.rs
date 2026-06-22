@@ -835,10 +835,13 @@ pub enum ClickAction {
 pub fn palette_commands() -> Vec<PaletteCommand> {
     vec![
         PaletteCommand { label: "Go to Dashboard", hint: "d", action: PaletteAction::SetScreen(Screen::Dashboard) },
-        PaletteCommand { label: "Manage Extensions", hint: "e", action: PaletteAction::SetScreen(Screen::ExtensionsPresets) },
-        PaletteCommand { label: "Manage Presets", hint: "p", action: PaletteAction::OpenPopup(PopupKind::Presets) },
         PaletteCommand { label: "Go to Spec Browser", hint: "s", action: PaletteAction::SetScreen(Screen::SpecBrowser) },
         PaletteCommand { label: "Go to Constitution", hint: "c", action: PaletteAction::SetScreen(Screen::Constitution) },
+        PaletteCommand { label: "Show Features", hint: "f", action: PaletteAction::OpenPopup(PopupKind::Features) },
+        PaletteCommand { label: "Manage Integrations", hint: "i", action: PaletteAction::OpenPopup(PopupKind::Integrations) },
+        PaletteCommand { label: "Manage Extensions", hint: "e", action: PaletteAction::OpenPopup(PopupKind::Extensions) },
+        PaletteCommand { label: "Manage Presets", hint: "p", action: PaletteAction::OpenPopup(PopupKind::Presets) },
+        PaletteCommand { label: "Manage Workflows", hint: "w", action: PaletteAction::OpenPopup(PopupKind::Workflows) },
         PaletteCommand { label: "Open Settings", hint: "⚙", action: PaletteAction::SetScreen(Screen::Settings) },
         PaletteCommand { label: "Layout: Overview", hint: "1", action: PaletteAction::SetLayout(DashboardLayout::Overview) },
         PaletteCommand { label: "Layout: Coding", hint: "2", action: PaletteAction::SetLayout(DashboardLayout::Coding) },
@@ -847,10 +850,6 @@ pub fn palette_commands() -> Vec<PaletteCommand> {
         PaletteCommand { label: "Attach agent session", hint: "a", action: PaletteAction::SetScreen(Screen::SessionAttach) },
         PaletteCommand { label: "Toggle theme (dark / light)", hint: "t", action: PaletteAction::ToggleTheme },
         PaletteCommand { label: "Cycle accent palette", hint: "T", action: PaletteAction::CycleAccent },
-        PaletteCommand { label: "Manage Integrations", hint: "i", action: PaletteAction::OpenPopup(PopupKind::Integrations) },
-        PaletteCommand { label: "Manage Automation Workflows", hint: "w", action: PaletteAction::OpenPopup(PopupKind::Workflows) },
-        PaletteCommand { label: "Show Features", hint: "f", action: PaletteAction::OpenPopup(PopupKind::Features) },
-        PaletteCommand { label: "Search extension catalog", hint: "", action: PaletteAction::SetScreen(Screen::ExtensionsPresets) },
         PaletteCommand { label: "Help", hint: "?", action: PaletteAction::OpenPopup(PopupKind::Help) },
         PaletteCommand { label: "Quit", hint: "q", action: PaletteAction::Quit },
     ]

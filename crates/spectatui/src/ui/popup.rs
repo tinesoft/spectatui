@@ -77,13 +77,14 @@ fn fixed_centered_rect(w: u16, h: u16, r: Rect) -> Rect {
 fn draw_features(frame: &mut Frame, app: &App) {
     let theme = &app.theme;
 
-    let features_count = app.project.features.len();
-    let h = (features_count as u16 * 2 + 5).min(frame.area().height);
-    let area = fixed_centered_rect(58, h, frame.area());
+    let full = frame.area();
+    let w = ((108.min(full.width.saturating_sub(6))) as f32 * 2.0 / 3.0).round() as u16;
+    let h = 30u16.min(full.height.saturating_sub(6)).max(8);
+    let area = fixed_centered_rect(w, h, full);
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Features", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
@@ -95,6 +96,7 @@ fn draw_features(frame: &mut Frame, app: &App) {
         .title(title);
 
     let mut lines = Vec::new();
+    lines.push(Line::default());
     if app.project.features.is_empty() {
         lines.push(Line::from(Span::styled(
             " No features found",
@@ -142,7 +144,7 @@ fn draw_features(frame: &mut Frame, app: &App) {
                 theme.dim_style,
             )));
 
-            let row_y = area.y + 1 + (i as u16) * 2;
+            let row_y = area.y + 2 + (i as u16) * 2;
             app.register_click(
                 Rect::new(area.x + 1, row_y, area.width.saturating_sub(2), 2),
                 crate::app::ClickAction::JumpToFeature(i),
@@ -150,14 +152,19 @@ fn draw_features(frame: &mut Frame, app: &App) {
         }
     }
 
-    lines.push(Line::default());
-    lines.push(Line::from(vec![
-        Span::styled("  [enter]", theme.accent_bold),
-        Span::styled(" jump to feature", theme.dim_style),
-    ]));
-
     let content = Paragraph::new(lines).block(block).style(theme.base);
     frame.render_widget(content, area);
+
+    if area.height > 2 {
+        let footer_y = area.y + area.height - 2;
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled(
+                "[enter] jump to feature   esc close",
+                theme.faint_style,
+            ))),
+            Rect::new(area.x + 3, footer_y, area.width.saturating_sub(6), 1),
+        );
+    }
 }
 
 fn stage_note(stage: spectatui_core::speckit::WorkflowStage) -> &'static str {
@@ -177,8 +184,11 @@ fn stage_note(stage: spectatui_core::speckit::WorkflowStage) -> &'static str {
 fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
+    // Paint a solid background so the dashboard beneath doesn't bleed through.
+    frame.render_widget(Clear, area);
+
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Keybindings", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
@@ -211,7 +221,7 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         ),
         (
             "Appearance",
-            &[("t", "cycle theme"), ("T", "cycle accent palette")],
+            &[("t", "cycle theme (dark/light)"), ("T", "cycle accent palette")],
         ),
     ];
 
@@ -246,7 +256,7 @@ fn draw_quit_confirm(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Quit Spectatui?", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
@@ -281,7 +291,7 @@ fn draw_cli_confirm(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Confirm action", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
@@ -349,7 +359,7 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("CLI Output · specify", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);

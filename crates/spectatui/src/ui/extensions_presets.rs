@@ -25,30 +25,23 @@ fn draw_impl(frame: &mut Frame, app: &App, area: Rect, single: Option<ExtTab>) {
     let preset_count = app.project.presets.len();
     let active_tab = single.unwrap_or(app.ext_tab);
 
-    let title_line = if single.is_some() {
-        let label = match active_tab {
+    // The full manager keeps a single "Extensions & Presets" box title and draws
+    // the tabs as a highlighted row inside; the single-category popup just names
+    // the category.
+    let title_line = if let Some(tab) = single {
+        let label = match tab {
             ExtTab::Extensions => "Extensions",
             ExtTab::Presets => "Presets",
         };
         Line::from(vec![
-            Span::styled("┤ ", theme.border_focused),
+            Span::styled("─┤ ", theme.border_focused),
             Span::styled(label, theme.accent_bold),
             Span::styled(" ├", theme.border_focused),
         ])
     } else {
         Line::from(vec![
-            Span::styled("┤ ", theme.border_focused),
-            tab_span(
-                &format!("Extensions {ext_count}"),
-                active_tab == ExtTab::Extensions,
-                theme,
-            ),
-            Span::styled(" │ ", theme.faint_style),
-            tab_span(
-                &format!("Presets {preset_count}"),
-                active_tab == ExtTab::Presets,
-                theme,
-            ),
+            Span::styled("─┤ ", theme.border_focused),
+            Span::styled("Extensions & Presets", theme.title_focused),
             Span::styled(" ├", theme.border_focused),
         ])
     };
@@ -62,40 +55,71 @@ fn draw_impl(frame: &mut Frame, app: &App, area: Rect, single: Option<ExtTab>) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    // Register clickable tab regions (tabbed mode only).
-    if single.is_none() {
-        let tx = area.x + 2;
-        let ext_label = format!("Extensions {ext_count}");
-        let preset_label = format!("Presets {preset_count}");
-        app.register_click(
-            Rect::new(tx, area.y, ext_label.len() as u16, 1),
-            crate::app::ClickAction::SetExtTab(ExtTab::Extensions),
-        );
-        app.register_click(
-            Rect::new(tx + ext_label.len() as u16 + 3, area.y, preset_label.len() as u16, 1),
-            crate::app::ClickAction::SetExtTab(ExtTab::Presets),
-        );
-    }
-
-    if inner.width < 10 || inner.height < 3 {
+    if inner.width < 10 || inner.height < 5 {
         return;
     }
 
+    // Tab row (tabbed mode only) on the first inner row, active tab highlighted.
+    if single.is_none() {
+        let mut spans: Vec<Span> = vec![Span::raw(" ")];
+        let tabs = [
+            (ExtTab::Extensions, format!("Extensions {ext_count}")),
+            (ExtTab::Presets, format!("Presets {preset_count}")),
+        ];
+        let mut tx = inner.x + 1;
+        for (i, (tab, label)) in tabs.iter().enumerate() {
+            if i > 0 {
+                spans.push(Span::raw(" "));
+                tx += 1;
+            }
+            let chip = format!(" {label} ");
+            let style = if *tab == active_tab {
+                Style::default()
+                    .fg(theme.accent)
+                    .bg(theme.panel_alt)
+                    .add_modifier(ratatui::style::Modifier::BOLD)
+            } else {
+                theme.dim_style
+            };
+            app.register_click(
+                Rect::new(tx, inner.y, chip.len() as u16, 1),
+                crate::app::ClickAction::SetExtTab(*tab),
+            );
+            tx += chip.len() as u16;
+            spans.push(Span::styled(chip, style));
+        }
+        frame.render_widget(
+            Paragraph::new(Line::from(spans)).style(theme.base),
+            Rect::new(inner.x, inner.y, inner.width, 1),
+        );
+    }
+
+    // Single-category popup has no tab row, so its content sits one row higher.
+    let (top_off, shrink) = if single.is_some() { (1, 2) } else { (2, 3) };
+    let body = Rect::new(
+        inner.x,
+        inner.y + top_off,
+        inner.width,
+        inner.height.saturating_sub(shrink),
+    );
+
     let cols =
-        Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).split(inner);
+        Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).split(body);
 
     match active_tab {
         ExtTab::Extensions => draw_ext_list(frame, app, cols[0], cols[1]),
         ExtTab::Presets => draw_preset_list(frame, app, cols[0], cols[1]),
     }
 
-    // Footer
+    // Footer one row inside the bottom border.
     if area.height > 2 {
-        let footer_y = area.y + area.height - 1;
+        let footer_y = area.y + area.height - 2;
         let footer_area = Rect::new(area.x + 2, footer_y, area.width.saturating_sub(4), 1);
         let is_compact = inner.width < 60;
         let footer_text = if is_compact {
             "[enter] manage"
+        } else if single.is_some() {
+            "[/] search catalog   [c] catalog list   esc close"
         } else {
             "[/] search catalog   [c] catalog list"
         };
@@ -103,14 +127,6 @@ fn draw_impl(frame: &mut Frame, app: &App, area: Rect, single: Option<ExtTab>) {
             Paragraph::new(Line::from(Span::styled(footer_text, theme.faint_style))),
             footer_area,
         );
-    }
-}
-
-fn tab_span<'a>(label: &str, active: bool, theme: &crate::theme::Theme) -> Span<'a> {
-    if active {
-        Span::styled(label.to_string(), theme.accent_bold)
-    } else {
-        Span::styled(label.to_string(), theme.dim_style)
     }
 }
 
@@ -140,17 +156,22 @@ fn draw_ext_list(frame: &mut Frame, app: &App, list_area: Rect, detail_area: Rec
             Span::raw(" ")
         };
 
-        let priority = ext
+        // Priority and version are right-aligned columns; "—" marks no priority.
+        let pri = ext
             .priority
-            .map(|p| format!("p{p} "))
-            .unwrap_or_default();
+            .map(|p| format!("p{p}"))
+            .unwrap_or_else(|| "—".to_string());
+        let ver = format!("v{}", ext.version);
+        let list_w = list_area.width as usize;
+        let pad = list_w.saturating_sub(1 + 2 + ext.id.chars().count() + 5 + ver.chars().count() + 1);
 
         lines.push(Line::from(vec![
             sel_bar,
             status_dot(ext.status, theme),
             Span::styled(ext.id.clone(), row_style),
-            Span::styled(format!(" {priority}"), theme.faint_style),
-            Span::styled(format!("v{}", ext.version), theme.dim_style),
+            Span::styled(" ".repeat(pad), theme.base),
+            Span::styled(format!("{pri:<5}"), theme.dim_style),
+            Span::styled(ver, theme.faint_style),
         ]));
 
         let row_y = list_area.y + i as u16;
@@ -283,17 +304,21 @@ fn draw_preset_list(frame: &mut Frame, app: &App, list_area: Rect, detail_area: 
             Span::raw(" ")
         };
 
-        let priority = preset
+        let pri = preset
             .priority
-            .map(|p| format!("p{p} "))
-            .unwrap_or_default();
+            .map(|p| format!("p{p}"))
+            .unwrap_or_else(|| "—".to_string());
+        let ver = format!("v{}", preset.version);
+        let list_w = list_area.width as usize;
+        let pad = list_w.saturating_sub(1 + 2 + preset.id.chars().count() + 5 + ver.chars().count() + 1);
 
         lines.push(Line::from(vec![
             sel_bar,
             status_dot(preset.status, theme),
             Span::styled(preset.id.clone(), row_style),
-            Span::styled(format!(" {priority}"), theme.faint_style),
-            Span::styled(format!("v{}", preset.version), theme.dim_style),
+            Span::styled(" ".repeat(pad), theme.base),
+            Span::styled(format!("{pri:<5}"), theme.dim_style),
+            Span::styled(ver, theme.faint_style),
         ]));
 
         let row_y = list_area.y + i as u16;

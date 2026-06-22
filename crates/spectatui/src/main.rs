@@ -307,7 +307,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 }
                 KeyCode::Char('s') => {
                     if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if !intg.installed {
+                        if !intg.installed || !intg.is_default {
                             let action = CliAction::IntegrationSwitch {
                                 key: intg.key.clone(),
                             };
@@ -351,6 +351,30 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                             app.force_flag = false;
                             app.active_popup = Some(PopupKind::CliConfirm);
                         }
+                    }
+                }
+                KeyCode::Char('v') => {
+                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
+                        if intg.installed {
+                            let action = CliAction::IntegrationStatus {
+                                key: intg.key.clone(),
+                            };
+                            let (job, rx) = cli_client.spawn_job(&action);
+                            app.cli_job = Some(job);
+                            app.cli_rx = Some(rx);
+                            app.active_popup = Some(PopupKind::CliOutput);
+                        }
+                    }
+                }
+                KeyCode::Char('n') => {
+                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
+                        let action = CliAction::IntegrationGetInfo {
+                            key: intg.key.clone(),
+                        };
+                        let (job, rx) = cli_client.spawn_job(&action);
+                        app.cli_job = Some(job);
+                        app.cli_rx = Some(rx);
+                        app.active_popup = Some(PopupKind::CliOutput);
                     }
                 }
                 _ => {}
@@ -411,6 +435,15 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         app.pending_action = Some(action);
                         app.force_flag = false;
                         app.active_popup = Some(PopupKind::CliConfirm);
+                    }
+                }
+                KeyCode::Char('i') => {
+                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
+                        let action = CliAction::WorkflowGetInfo { id: wf.id.clone() };
+                        let (job, rx) = cli_client.spawn_job(&action);
+                        app.cli_job = Some(job);
+                        app.cli_rx = Some(rx);
+                        app.active_popup = Some(PopupKind::CliOutput);
                     }
                 }
                 _ => {}
@@ -615,7 +648,10 @@ fn handle_dashboard_key(app: &mut App, key: KeyEvent, _cli_client: &SpecifyCliCl
             app.screen = Screen::SessionAttach;
         }
         KeyCode::Char('c') => app.enter_constitution(),
-        KeyCode::Char('e') => app.enter_extensions(),
+        KeyCode::Char('e') => {
+            app.ext_tab = ExtTab::Extensions;
+            app.open_popup(PopupKind::Extensions);
+        }
         KeyCode::Char('s') => app.enter_settings(),
         KeyCode::Char('p') => {
             app.ext_tab = ExtTab::Presets;

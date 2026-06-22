@@ -8,19 +8,16 @@ use crate::app::App;
 
 pub fn draw(frame: &mut Frame, app: &App) {
     let theme = &app.theme;
-    let integrations = &app.project.integrations;
 
     let full = frame.area();
-    let w = full.width.saturating_sub(6).clamp(40, 98);
-    let h = (integrations.len() as u16 + 6)
-        .min(full.height.saturating_sub(4))
-        .max(8);
+    let w = full.width.saturating_sub(6).clamp(40, 108);
+    let h = 30u16.min(full.height.saturating_sub(6)).max(8);
 
     let area = centered(w, h, full);
     frame.render_widget(Clear, area);
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("AI Integrations", theme.accent_bold),
         Span::styled(" ├", theme.border_focused),
     ]);
@@ -41,7 +38,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let list_w = (inner.width as f32 * 0.42) as u16;
     let cols = Layout::horizontal([Constraint::Length(list_w), Constraint::Min(0)]).split(inner);
 
-    draw_list(frame, app, cols[0]);
+    // Content starts one row below the title, leaving a blank line.
+    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(1));
+    draw_list(frame, app, list_area);
 
     // Vertical divider
     for y in cols[1].y..cols[1].y + cols[1].height {
@@ -51,16 +50,16 @@ pub fn draw(frame: &mut Frame, app: &App) {
         );
     }
 
-    let detail_area = Rect::new(cols[1].x + 1, cols[1].y, cols[1].width.saturating_sub(1), cols[1].height);
+    let detail_area = Rect::new(cols[1].x + 1, cols[1].y + 1, cols[1].width.saturating_sub(1), cols[1].height.saturating_sub(1));
     draw_detail(frame, app, detail_area);
 
     // Footer
     if area.height > 2 {
-        let footer_y = area.y + area.height - 1;
+        let footer_y = area.y + area.height - 2;
         let footer_area = Rect::new(area.x + 3, footer_y, area.width.saturating_sub(6), 1);
         frame.render_widget(
             Paragraph::new(Line::from(Span::styled(
-                "specify integration · status --json drift-check · esc close",
+                "[/] search catalog   [c] catalog list   esc close",
                 theme.faint_style,
             ))),
             footer_area,
@@ -213,13 +212,19 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     if !intg.installed {
         lines.push(action_line("i", "install", theme));
         lines.push(action_line("s", "switch to this", theme));
+        lines.push(action_line("n", "info", theme));
     } else if intg.is_default {
-        lines.push(action_line("x", "uninstall", theme));
         lines.push(action_line("g", "upgrade", theme));
+        lines.push(action_line("x", "uninstall", theme));
+        lines.push(action_line("v", "status · drift-check", theme));
+        lines.push(action_line("n", "info", theme));
     } else {
         lines.push(action_line("d", "use as default", theme));
-        lines.push(action_line("x", "uninstall", theme));
+        lines.push(action_line("s", "switch to this", theme));
         lines.push(action_line("g", "upgrade", theme));
+        lines.push(action_line("x", "uninstall", theme));
+        lines.push(action_line("v", "status · drift-check", theme));
+        lines.push(action_line("n", "info", theme));
     }
 
     let detail = Paragraph::new(lines)

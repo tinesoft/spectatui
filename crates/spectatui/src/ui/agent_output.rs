@@ -23,7 +23,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
     let agent_name = app.default_agent_name();
     let title = Line::from(vec![
-        Span::styled("┤ ", border_style),
+        Span::styled("─┤ ", border_style),
         Span::styled(format!("Agent · {agent_name}"), title_style),
         Span::styled(" ├", border_style),
     ]);

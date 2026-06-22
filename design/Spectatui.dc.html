@@ -700,7 +700,7 @@ class Component extends DCLogic {
     this.box(r.x,r.y,r.w,r.h,title,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
     let top;
     if(single){
-      top=r.y+3;
+      top=r.y+2;
     } else {
       // tabs
       let tx=r.x+2;
@@ -734,7 +734,7 @@ class Component extends DCLogic {
       const dx=r.x+listW+1, dw=r.w-listW-2;
       for(let j=r.y+1;j<r.y+r.h-1;j++) this.put(dx-1,j,'│',C('border'));
       const e=list[this.state.extSel];
-      let y=r.y+3;
+      let y=top;
       this.text(dx+1,y,this.clip(e.id,dw-2),C('fg'),null,true); 
       this.text(dx+1+e.id.length+1,y,'v'+e.ver,C('dim'));
       y+=2;
@@ -759,7 +759,7 @@ class Component extends DCLogic {
       if(this.state.extTab==='presets'&&e.status!=='available') acts.push(['r','resolve','resolve']);
       acts.forEach(([key,lbl])=>{ this.text(dx+1,y,'['+key+'] ',C('accent'),null,true); this.text(dx+5,y,lbl,C('fg')); y+=1; });
     }
-    this.text(r.x+2,r.y+r.h-2,compact?'[enter] manage':'[/] search catalog   [c] catalog list',C('faint'));
+    this.text(r.x+2,r.y+r.h-2,compact?'[enter] manage':('[/] search catalog   [c] catalog list'+(single?'   esc close':'')),C('faint'));
   }
 
   // ---- popups ----
@@ -784,7 +784,7 @@ class Component extends DCLogic {
   drawPopup(){
     const C=k=>this.C(k); const p=this.state.popup;
     if(p.kind==='integrations'){
-      const w=Math.min(98,COLS-6), h=Math.min(INTEGRATIONS.length+6,ROWS-4);
+      const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
       const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
       for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
       this.fill(x,y,w,h,C('panel'));
@@ -816,14 +816,14 @@ class Component extends DCLogic {
       dyy+=1;
       this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
       let acts;
-      if(!it.installed) acts=[['i','install'],['s','switch to this']];
-      else if(it.isDefault) acts=[['x','uninstall'],['g','upgrade']];
-      else acts=[['d','use as default'],['x','uninstall'],['g','upgrade']];
-      acts.forEach(([key,lbl])=>{ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; });
-      this.text(x+3,y+h-2,'specify integration · status --json drift-check · esc close',C('faint'));
+      if(!it.installed) acts=[['i','install'],['s','switch to this'],['n','info']];
+      else if(it.isDefault) acts=[['g','upgrade'],['x','uninstall'],['v','status · drift-check'],['n','info']];
+      else acts=[['d','use as default'],['s','switch to this'],['g','upgrade'],['x','uninstall'],['v','status · drift-check'],['n','info']];
+      acts.forEach(([key,lbl])=>{ if(dyy<y+h-2){ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; } });
+      this.text(x+3,y+h-2,'[/] search catalog   [c] catalog list   esc close',C('faint'));
     }
     else if(p.kind==='features'){
-      const w=58,h=FEATURES.length*2+5; const b=this.centeredBox(w,h,'Features');
+      const w=Math.round(Math.min(108,COLS-6)*2/3),h=Math.min(30,ROWS-6); const b=this.centeredBox(w,h,'Features');
       let y=b.y+2;
       FEATURES.forEach((f,i)=>{
         this.put(b.x+3,y,f.running?'●':'○',f.running?C('good'):C('faint'));
@@ -835,14 +835,14 @@ class Component extends DCLogic {
         this.reg(b.x+1,y,w-2,2,()=>this.setState({feat:i,popup:null,screen:'dashboard'}));
         y+=2;
       });
-      this.text(b.x+3,b.y+h-2,'[enter] jump to feature',C('faint'));
+      this.text(b.x+3,b.y+h-2,'[enter] jump to feature   esc close',C('faint'));
     }
     else if(p.kind==='workflows'){
-      const w=Math.min(100,COLS-6), h=Math.min(ROWS-4,17);
+      const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
       const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
       for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
       this.fill(x,y,w,h,C('panel'));
-      this.box(x,y,w,h,'Automation Workflows · specify workflow',C('accent'),{titleFg:C('accent'),bold:true});
+      this.box(x,y,w,h,'Automation Workflows',C('accent'),{titleFg:C('accent'),bold:true});
       const listW=Math.floor(w*0.44), top=y+2;
       WORKFLOWS.forEach((wf,i)=>{
         const ry=top+i; if(ry>=y+h-2)return;
@@ -869,9 +869,9 @@ class Component extends DCLogic {
       this.wrap(wf.desc,dw-2).forEach(wl=>{ if(dyy<y+h-6){ this.text(dx+1,dyy,wl,C('fg')); dyy+=1; } });
       dyy+=1;
       this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
-      const acts = wf.installed ? [['r','run'],['R','resume last run'],['s','status / run history'],['x','remove']] : [['a','add'],['i','info']];
+      const acts = wf.installed ? [['r','run'],['R','resume last run'],['s','status / run history'],['i','info'],['x','remove']] : [['a','add'],['i','info']];
       acts.forEach(([key,lbl])=>{ if(dyy<y+h-1){ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; } });
-      this.text(x+3,y+h-2,'run executes the full lifecycle as a tracked job · esc close',C('faint'));
+      this.text(x+3,y+h-2,'[/] search catalog   [c] catalog list   esc close',C('faint'));
     }
     else if(p.kind==='extPresets'){
       const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
@@ -939,10 +939,13 @@ class Component extends DCLogic {
   paletteCmds(){
     const all=[
       {label:'Go to Dashboard', hint:'d', run:()=>this.go('dashboard')},
-      {label:'Manage Extensions', hint:'e', run:()=>this.openPopup('extensions')},
-      {label:'Manage Presets', hint:'p', run:()=>this.openPopup('presets')},
       {label:'Go to Spec Browser', hint:'s', run:()=>this.go('spec')},
       {label:'Go to Constitution', hint:'c', run:()=>this.go('constitution')},
+      {label:'Show Features', hint:'f', run:()=>this.openPopup('features')},
+      {label:'Manage Integrations', hint:'i', run:()=>this.openPopup('integrations')},
+      {label:'Manage Extensions', hint:'e', run:()=>this.openPopup('extensions')},
+      {label:'Manage Presets', hint:'p', run:()=>this.openPopup('presets')},
+      {label:'Manage Workflows', hint:'w', run:()=>this.openPopup('workflows')},
       {label:'Open Settings', hint:'⚙', run:()=>this.go('settings')},
       {label:'Layout: Overview', hint:'1', run:()=>this.setState({layout:'overview',screen:'dashboard',popup:null,focus:0})},
       {label:'Layout: Coding', hint:'2', run:()=>this.setState({layout:'coding',screen:'dashboard',popup:null,focus:0})},
@@ -952,10 +955,6 @@ class Component extends DCLogic {
       {label:'Attach agent session', hint:'a', run:()=>this.setState({screen:'attach',popup:null})},
       {label:'Toggle theme (dark / light)', hint:'t', run:()=>{this.toggleTheme();this.setState({popup:null});}},
       {label:'Cycle accent palette', hint:'T', run:()=>{this.cycleAccent();this.setState({popup:null});}},
-      {label:'Manage Integrations', hint:'i', run:()=>this.openPopup('integrations')},
-      {label:'Manage Automation Workflows', hint:'w', run:()=>this.openPopup('workflows')},
-      {label:'Show Features', hint:'f', run:()=>this.openPopup('features')},
-      {label:'Search extension catalog', run:()=>this.go('extensions')},
     ];
     const q=this.state.palQuery.toLowerCase();
     return q? all.filter(c=>c.label.toLowerCase().includes(q)) : all;
@@ -1116,6 +1115,8 @@ class Component extends DCLogic {
       if(action==='use') return `specify integration use ${id}`;
       if(action==='switch') return `specify integration switch ${id}${force}`;
       if(action==='upgrade') return `specify integration upgrade ${id}`;
+      if(action==='status') return `specify integration status ${id} --json`;
+      if(action==='info') return `specify integration info ${id}`;
       return '';
     }
     if(o.target==='workflow'){
@@ -1172,10 +1173,12 @@ class Component extends DCLogic {
         if(k==='ArrowUp'||k==='k'){ stop(); this.setState({intSel:Math.max(0,st.intSel-1)}); return; }
         const open=(action)=>this.setState({popup:{kind:'confirm',action,target:'integration',id:it.key,name:it.name,force:false},cliCmd:this.buildCmd(action,{target:'integration',id:it.key})});
         if(k==='i'&&!it.installed){ stop(); open('install'); return; }
-        if(k==='s'&&!it.installed){ stop(); open('switch'); return; }
+        if(k==='s'&&(!it.installed||(it.installed&&!it.isDefault))){ stop(); open('switch'); return; }
         if(k==='x'&&it.installed){ stop(); open('uninstall'); return; }
         if(k==='d'&&it.installed&&!it.isDefault){ stop(); open('use'); return; }
         if(k==='g'&&it.installed){ stop(); open('upgrade'); return; }
+        if(k==='v'&&it.installed){ stop(); this.startCli(this.buildCmd('status',{target:'integration',id:it.key}),false); return; }
+        if(k==='n'){ stop(); this.startCli(this.buildCmd('info',{target:'integration',id:it.key}),false); return; }
         return;
       }
       if(p.kind==='workflows'){
@@ -1189,6 +1192,7 @@ class Component extends DCLogic {
         if(k==='s'&&wf.installed){ stop(); open('status'); return; }
         if(k==='x'&&wf.installed){ stop(); open('remove'); return; }
         if(k==='a'&&!wf.installed){ stop(); open('add'); return; }
+        if(k==='i'){ stop(); this.startCli(this.buildCmd('info',{target:'workflow',id:wf.id}),false); return; }
         return;
       }
       if(p.kind==='features'){
@@ -1220,7 +1224,7 @@ class Component extends DCLogic {
       if(k==='1'){ stop(); this.setState({layout:'overview',focus:0}); return; }
       if(k==='2'){ stop(); this.setState({layout:'coding',focus:0}); return; }
       if(k==='3'){ stop(); this.setState({layout:'audit',focus:0}); return; }
-      if(k==='e'){ stop(); this.go('extensions'); return; }
+      if(k==='e'){ stop(); this.openPopup('extensions'); return; }
       if(k==='p'){ stop(); this.openPopup('presets'); return; }
       if(k==='a'){ stop(); this.setState({screen:'attach'}); return; }
       if(k==='s'){ stop(); this.go('settings'); return; }

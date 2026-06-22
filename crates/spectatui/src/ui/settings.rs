@@ -10,8 +10,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
-        Span::styled("Settings ⚙", theme.title_focused),
+        Span::styled("─┤ ", theme.border_focused),
+        Span::styled("Settings", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
 
@@ -108,11 +108,11 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
     lines.push(Line::default());
     lines.push(Line::from(vec![
-        Span::styled("  ←→", theme.accent_bold),
-        Span::styled(" / ", theme.faint_style),
-        Span::styled("Enter", theme.accent_bold),
-        Span::styled(" cycle value  ", theme.dim_style),
-        Span::styled("Esc", theme.accent_bold),
+        Span::styled("  [↑↓]", theme.accent_bold),
+        Span::styled(" move   ", theme.dim_style),
+        Span::styled("[enter/←→]", theme.accent_bold),
+        Span::styled(" change   ", theme.dim_style),
+        Span::styled("[esc]", theme.accent_bold),
         Span::styled(" back", theme.dim_style),
     ]));
 

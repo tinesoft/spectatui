@@ -22,8 +22,8 @@ pub fn draw_constitution(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
-        Span::styled("Constitution", theme.title_focused),
+        Span::styled("─┤ ", theme.border_focused),
+        Span::styled("constitution.md", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);
 
@@ -71,7 +71,7 @@ fn draw_feature_sidebar(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_unfocused),
+        Span::styled("─┤ ", theme.border_unfocused),
         Span::styled("Features", theme.title_unfocused),
         Span::styled(" ├", theme.border_unfocused),
     ]);
@@ -145,11 +145,11 @@ fn draw_doc_pane(frame: &mut Frame, app: &App, area: Rect, focused: bool) {
     let tabs = build_tabs(app, border_style);
     let title = Line::from(tabs);
 
-    // Register clickable tab regions (title starts with "┤ " = 2 cells, tabs
+    // Register clickable tab regions (title starts with "─┤ " = 3 cells, tabs
     // separated by " │ " = 3 cells).
     {
         let tab_kinds = [SpecTab::Spec, SpecTab::Plan, SpecTab::Tasks, SpecTab::Research];
-        let mut tx = area.x + 2;
+        let mut tx = area.x + 3;
         for tab in tab_kinds {
             let len = tab.label().len() as u16;
             app.register_click(
@@ -214,7 +214,7 @@ fn build_tabs<'a>(app: &App, border_style: Style) -> Vec<Span<'a>> {
     let theme = &app.theme;
     let tabs = [SpecTab::Spec, SpecTab::Plan, SpecTab::Tasks, SpecTab::Research];
 
-    let mut spans = vec![Span::styled("┤ ", border_style)];
+    let mut spans = vec![Span::styled("─┤ ", border_style)];
 
     for (i, tab) in tabs.iter().enumerate() {
         if i > 0 {

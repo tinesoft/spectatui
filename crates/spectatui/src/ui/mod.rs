@@ -197,7 +197,7 @@ fn draw_cli_output_pane(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_unfocused),
+        Span::styled("─┤ ", theme.border_unfocused),
         Span::styled("CLI Output", theme.title_unfocused),
         Span::styled(" ├", theme.border_unfocused),
     ]);
@@ -235,8 +235,8 @@ fn draw_constitution_inline(frame: &mut Frame, app: &App, area: Rect) {
     let title_style = theme.title_unfocused;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", border_style),
-        Span::styled("Constitution", title_style),
+        Span::styled("─┤ ", border_style),
+        Span::styled("constitution.md", title_style),
         Span::styled(" ├", border_style),
     ]);
 

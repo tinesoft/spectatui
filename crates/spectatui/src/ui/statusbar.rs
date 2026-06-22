@@ -10,17 +10,18 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
 
     let hints: Vec<(&str, &str)> = if app.layout_editor_active {
         vec![
-            ("Space", "show/hide"),
+            ("↑↓", "select pane"),
+            ("space", "show/hide"),
             ("< >", "reorder"),
             ("+ -", "resize"),
-            ("Enter", "apply"),
-            ("Esc", "back"),
+            ("enter", "apply"),
+            ("esc", "back"),
         ]
     } else if app.palette.is_some() {
         vec![
             ("↑↓", "navigate"),
-            ("Enter", "run"),
-            ("Esc", "close"),
+            ("enter", "run"),
+            ("esc", "close"),
             ("type", "filter"),
         ]
     } else if app.active_popup == Some(PopupKind::Integrations) {
@@ -31,7 +32,7 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
             ("d", "use default"),
             ("s", "switch"),
             ("g", "upgrade"),
-            ("Esc", "close"),
+            ("esc", "close"),
         ]
     } else if app.active_popup == Some(PopupKind::Workflows) {
         vec![
@@ -40,86 +41,68 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
             ("R", "resume"),
             ("s", "status"),
             ("a", "add"),
-            ("Esc", "close"),
+            ("esc", "close"),
         ]
     } else if app.active_popup == Some(PopupKind::Features) {
         vec![
             ("↑↓", "select"),
-            ("Enter", "jump to feature"),
-            ("Esc", "close"),
+            ("enter", "jump to feature"),
+            ("esc", "close"),
         ]
     } else if app.active_popup == Some(PopupKind::CliConfirm) {
         vec![
-            ("Enter", "run command"),
-            ("Esc", "cancel"),
+            ("enter", "run command"),
+            ("esc", "cancel"),
             ("f", "toggle --force"),
         ]
     } else if app.active_popup == Some(PopupKind::CliOutput) {
-        vec![("Esc", "close & refresh")]
-    } else if matches!(
-        app.active_popup,
-        Some(PopupKind::Extensions) | Some(PopupKind::Presets)
-    ) {
-        vec![
-            ("Tab", "ext/presets"),
-            ("↑↓", "select"),
-            ("a", "add"),
-            ("x", "remove"),
-            ("e/d", "enable"),
-            ("/", "search"),
-            ("Esc", "close"),
-        ]
+        vec![("esc", "close & refresh")]
     } else if app.active_popup.is_some() {
+        // Extensions/Presets popup and any other popup use the generic fallback.
         vec![
-            ("Esc", "close"),
-            ("↑↓", "select"),
-            ("Enter", "confirm"),
+            ("↑↓", "navigate"),
+            ("enter", "select"),
+            ("esc", "close"),
         ]
     } else {
         match app.screen {
             Screen::Dashboard => vec![
-                ("Tab", "focus"),
-                ("↑↓/jk", "select"),
-                ("Enter", "open"),
-                ("1-4", "layout"),
+                ("tab", "focus"),
+                ("↑↓", "select"),
+                ("enter", "open"),
+                ("1·2·3", "layout"),
                 ("t", "theme"),
-                ("T", "accent"),
-                (":", "palette"),
+                (":", "commands"),
                 ("?", "help"),
                 ("q", "quit"),
             ],
             Screen::SpecBrowser => vec![
-                ("Tab", "doc tab"),
-                ("↑↓/jk", "scroll"),
-                ("←→", "feature"),
-                ("Esc", "back"),
-                ("t", "theme"),
-                (":", "palette"),
-                ("q", "quit"),
+                ("tab", "switch doc"),
+                ("↑↓", "scroll"),
+                ("esc", "back"),
             ],
             Screen::Constitution => vec![
-                ("↑↓/jk", "scroll"),
-                ("Esc", "back"),
-                ("t", "theme"),
-                (":", "palette"),
-                ("q", "quit"),
+                ("↑↓", "navigate"),
+                ("enter", "toggle"),
+                ("esc", "back"),
             ],
             Screen::ExtensionsPresets => vec![
-                ("Tab", "ext/presets"),
-                ("↑↓/jk", "select"),
-                ("Esc", "back"),
-                (":", "palette"),
-                ("q", "quit"),
+                ("tab", "ext/presets"),
+                ("↑↓", "select"),
+                ("a", "add"),
+                ("x", "remove"),
+                ("e/d", "enable"),
+                ("/", "search"),
+                ("esc", "back"),
             ],
             Screen::Settings => vec![
-                ("↑↓", "select"),
-                ("←→/Enter", "change"),
-                ("Esc", "back"),
-                ("q", "quit"),
+                ("↑↓", "navigate"),
+                ("enter", "toggle"),
+                ("esc", "back"),
             ],
             Screen::SessionAttach => vec![
-                ("Ctrl-b d", "detach"),
-                ("Esc", "back"),
+                ("ctrl-b d", "detach"),
+                ("esc", "back"),
                 ("↑↓", "scroll"),
             ],
         }

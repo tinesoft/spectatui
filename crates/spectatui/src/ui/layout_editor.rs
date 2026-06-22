@@ -10,7 +10,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
     let title = Line::from(vec![
-        Span::styled("┤ ", theme.border_focused),
+        Span::styled("─┤ ", theme.border_focused),
         Span::styled("Panes", theme.title_focused),
         Span::styled(" ├", theme.border_focused),
     ]);

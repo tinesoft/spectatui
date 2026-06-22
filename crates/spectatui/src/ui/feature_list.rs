@@ -21,8 +21,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let title = Line::from(vec![
-        Span::styled("┤ ", border_style),
-        Span::styled(format!("Features {}", app.project.features.len()), title_style),
+        Span::styled("─┤ ", border_style),
+        Span::styled("Features", title_style),
         Span::styled(" ├", border_style),
     ]);
 

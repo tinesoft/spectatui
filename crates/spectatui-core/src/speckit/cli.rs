@@ -96,6 +96,12 @@ pub enum CliAction {
     IntegrationSwitch {
         key: String,
     },
+    IntegrationStatus {
+        key: String,
+    },
+    IntegrationGetInfo {
+        key: String,
+    },
     WorkflowAdd {
         source: String,
     },
@@ -272,6 +278,12 @@ impl CliAction {
             }
             Self::IntegrationSwitch { key } => {
                 format!("specify integration switch {key}")
+            }
+            Self::IntegrationStatus { key } => {
+                format!("specify integration status {key} --json")
+            }
+            Self::IntegrationGetInfo { key } => {
+                format!("specify integration info {key}")
             }
             Self::WorkflowAdd { source } => {
                 format!("specify workflow add {source}")
