@@ -104,7 +104,28 @@ fn draw_features(frame: &mut Frame, app: &App) {
         )));
     } else {
         let inner_width = area.width.saturating_sub(2) as usize;
-        for (i, feat) in app.project.features.iter().enumerate() {
+
+        // Each feature occupies 2 rows. The body spans from area.y+2 (after the
+        // top border and the blank line) down to the row above the footer, so
+        // only `per_page` features fit. Scroll the window to keep the selected
+        // feature visible instead of drawing it off-screen.
+        let body_rows = (area.height as usize).saturating_sub(4);
+        let per_page = (body_rows / 2).max(1);
+        let offset = if app.feature_index >= per_page {
+            app.feature_index - per_page + 1
+        } else {
+            0
+        };
+
+        for (i, feat) in app
+            .project
+            .features
+            .iter()
+            .enumerate()
+            .skip(offset)
+            .take(per_page)
+        {
+            let row = i - offset;
             let selected = i == app.feature_index;
             let badge_style = theme.stage_badge(feat.stage.label(), app.theme_mode);
             let running = app.running_features.contains(&feat.id);
@@ -144,7 +165,7 @@ fn draw_features(frame: &mut Frame, app: &App) {
                 theme.dim_style,
             )));
 
-            let row_y = area.y + 2 + (i as u16) * 2;
+            let row_y = area.y + 2 + (row as u16) * 2;
             app.register_click(
                 Rect::new(area.x + 1, row_y, area.width.saturating_sub(2), 2),
                 crate::app::ClickAction::JumpToFeature(i),
