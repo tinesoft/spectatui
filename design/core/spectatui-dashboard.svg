@@ -1,0 +1,117 @@
+<svg width="680" height="478" viewBox="0 0 680 478" xmlns="http://www.w3.org/2000/svg" role="img" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+<title>spectatui dashboard screen with status bar</title>
+<desc>A terminal window showing a feature list sidebar, a workflow stage stepper, a live agent output tail, a keybinding hint line, and a bottom status bar showing counts of installed integrations, extensions, workflows, and presets each with a small icon, plus a settings gear icon at the bottom right.</desc>
+
+<rect x="0" y="0" width="680" height="478" fill="#1e1e1e"/>
+
+<rect x="10" y="10" width="660" height="448" rx="10" fill="#252526" stroke="#3c3c3c" stroke-width="0.5"/>
+<text x="34" y="30" fill="#e8e8e6" font-size="14" font-weight="500" dominant-baseline="central">spectatui — taskify</text>
+<line x1="10" y1="42" x2="670" y2="42" stroke="#3c3c3c" stroke-width="0.5"/>
+
+<rect x="18" y="50" width="180" height="336" rx="8" fill="#2a2a2b" stroke="#3c3c3c" stroke-width="0.5"/>
+<text x="28" y="72" fill="#e8e8e6" font-size="14" font-weight="500" dominant-baseline="central">Features</text>
+
+<rect x="22" y="96" width="168" height="30" rx="6" fill="#3c3489"/>
+<rect x="30" y="102" width="50" height="18" rx="9" fill="#085041"/>
+<text x="55" y="111" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">impl</text>
+<text x="92" y="111" fill="#EEEDFE" font-size="14" font-weight="500" dominant-baseline="central">001-taskify</text>
+<circle cx="180" cy="111" r="4" fill="#7BC67B"/>
+
+<rect x="30" y="140" width="50" height="18" rx="9" fill="#633806"/>
+<text x="55" y="149" fill="#FAC775" font-size="12" text-anchor="middle" dominant-baseline="central">plan</text>
+<text x="92" y="149" fill="#c8c8c5" font-size="12" dominant-baseline="central">002-notify</text>
+<circle cx="180" cy="149" r="4" fill="#888780"/>
+
+<rect x="30" y="178" width="50" height="18" rx="9" fill="#4A1B0C"/>
+<text x="55" y="187" fill="#F0997B" font-size="12" text-anchor="middle" dominant-baseline="central">spec</text>
+<text x="92" y="187" fill="#c8c8c5" font-size="12" dominant-baseline="central">003-auth</text>
+<circle cx="180" cy="187" r="4" fill="#888780"/>
+
+<rect x="30" y="216" width="50" height="18" rx="9" fill="#042C53"/>
+<text x="55" y="225" fill="#85B7EB" font-size="12" text-anchor="middle" dominant-baseline="central">task</text>
+<text x="92" y="225" fill="#c8c8c5" font-size="12" dominant-baseline="central">004-search</text>
+<circle cx="180" cy="225" r="4" fill="#7BC67B"/>
+
+<text x="28" y="262" fill="#888780" font-size="12" dominant-baseline="central">+ new feature</text>
+<text x="28" y="370" fill="#c8c8c5" font-size="12" dominant-baseline="central">[n] new   [enter] open</text>
+
+<rect x="208" y="50" width="452" height="140" rx="8" fill="#2a2a2b" stroke="#3c3c3c" stroke-width="0.5"/>
+<text x="222" y="72" fill="#e8e8e6" font-size="14" font-weight="500" dominant-baseline="central">Workflow: 001-taskify</text>
+
+<rect x="222" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="245" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">cons</text>
+<line x1="268" y1="109" x2="274" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="274" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="297" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">spec</text>
+<line x1="320" y1="109" x2="326" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="326" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="349" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">clar</text>
+<line x1="372" y1="109" x2="378" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="378" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="401" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">plan</text>
+<line x1="424" y1="109" x2="430" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="430" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="453" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">task</text>
+<line x1="476" y1="109" x2="482" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="482" y="96" width="46" height="26" rx="6" fill="#085041"/>
+<text x="505" y="109" fill="#9FE1CB" font-size="12" text-anchor="middle" dominant-baseline="central">anly</text>
+<line x1="528" y1="109" x2="534" y2="109" stroke="#888780" stroke-width="0.5"/>
+<rect x="534" y="96" width="46" height="26" rx="6" fill="#633806" stroke="#FAC775" stroke-width="1"/>
+<text x="557" y="109" fill="#FAEEDA" font-size="14" font-weight="500" text-anchor="middle" dominant-baseline="central">impl</text>
+
+<text x="222" y="140" fill="#c8c8c5" font-size="12" dominant-baseline="central">In progress — tasks 9/14 complete</text>
+
+<rect x="208" y="200" width="452" height="186" rx="8" fill="#2a2a2b" stroke="#3c3c3c" stroke-width="0.5"/>
+<text x="222" y="222" fill="#e8e8e6" font-size="14" font-weight="500" dominant-baseline="central">Agent output — claude-code</text>
+<circle cx="430" cy="222" r="4" fill="#7BC67B"/>
+<text x="438" y="222" fill="#c8c8c5" font-size="12" dominant-baseline="central">running</text>
+
+<rect x="222" y="244" width="300" height="6" rx="3" fill="#3c3c3c" opacity="0.8"/>
+<rect x="222" y="258" width="380" height="6" rx="3" fill="#3c3c3c" opacity="0.8"/>
+<rect x="222" y="272" width="220" height="6" rx="3" fill="#3c3c3c" opacity="0.8"/>
+<rect x="222" y="286" width="340" height="6" rx="3" fill="#3c3c3c" opacity="0.8"/>
+<rect x="222" y="300" width="260" height="6" rx="3" fill="#3c3c3c" opacity="0.8"/>
+<text x="222" y="320" fill="#7BC67B" font-size="12" dominant-baseline="central">$ implementing task 12/14: wire drag handlers...</text>
+
+<text x="222" y="364" fill="#c8c8c5" font-size="12" dominant-baseline="central">[a] attach   [r] refresh tail</text>
+
+<rect x="18" y="398" width="642" height="20" rx="6" fill="#2a2a2b" stroke="#3c3c3c" stroke-width="0.5"/>
+<text x="34" y="408" fill="#c8c8c5" font-size="12" dominant-baseline="central">Tab switch panes  ·  ←/→ resize  ·  t theme  ·  q quit</text>
+
+<rect x="18" y="422" width="642" height="26" rx="8" fill="#2a2a2b" stroke="#3c3c3c" stroke-width="0.5"/>
+
+<circle cx="32" cy="432" r="4" stroke="#c8c8c5" stroke-width="1.3" fill="none"/>
+<circle cx="40" cy="438" r="4" stroke="#c8c8c5" stroke-width="1.3" fill="none"/>
+<text x="50" y="435" fill="#c8c8c5" font-size="12" dominant-baseline="central">8 integrations</text>
+
+<rect x="158" y="429" width="10" height="10" rx="2" stroke="#c8c8c5" stroke-width="1.2" fill="none"/>
+<circle cx="170" cy="434" r="2.5" stroke="#c8c8c5" stroke-width="1.2" fill="none"/>
+<text x="180" y="435" fill="#c8c8c5" font-size="12" dominant-baseline="central">5 extensions</text>
+
+<line x1="290" y1="435" x2="297" y2="435" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="297" y1="435" x2="304" y2="435" stroke="#c8c8c5" stroke-width="1.2"/>
+<circle cx="290" cy="435" r="2" fill="#c8c8c5"/>
+<circle cx="297" cy="435" r="2" fill="#c8c8c5"/>
+<circle cx="304" cy="435" r="2" fill="#c8c8c5"/>
+<text x="312" y="435" fill="#c8c8c5" font-size="12" dominant-baseline="central">3 workflows</text>
+
+<line x1="415" y1="429" x2="427" y2="429" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="415" y1="434" x2="427" y2="434" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="415" y1="439" x2="427" y2="439" stroke="#c8c8c5" stroke-width="1.2"/>
+<circle cx="419" cy="429" r="1.8" fill="#c8c8c5"/>
+<circle cx="424" cy="434" r="1.8" fill="#c8c8c5"/>
+<circle cx="417" cy="439" r="1.8" fill="#c8c8c5"/>
+<text x="435" y="435" fill="#c8c8c5" font-size="12" dominant-baseline="central">4 presets</text>
+
+<text x="614" y="435" fill="#c8c8c5" font-size="12" text-anchor="end" dominant-baseline="central">Settings</text>
+<circle cx="628" cy="435" r="6" stroke="#c8c8c5" stroke-width="1.2" fill="none"/>
+<circle cx="628" cy="435" r="2" fill="#c8c8c5"/>
+<line x1="634" y1="435" x2="637" y2="435" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="632.2" y1="439.2" x2="634.4" y2="441.4" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="628" y1="441" x2="628" y2="444" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="623.8" y1="439.2" x2="621.6" y2="441.4" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="622" y1="435" x2="619" y2="435" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="623.8" y1="430.8" x2="621.6" y2="428.6" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="628" y1="429" x2="628" y2="426" stroke="#c8c8c5" stroke-width="1.2"/>
+<line x1="632.2" y1="430.8" x2="634.4" y2="428.6" stroke="#c8c8c5" stroke-width="1.2"/>
+</svg>

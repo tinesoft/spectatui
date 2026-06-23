@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 640" font-family="'JetBrains Mono', ui-monospace, monospace">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#93a4ff"/>
+    </marker>
+    <marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#84d48f"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="640" fill="#101013"/>
+  <text x="40" y="44" fill="#93a4ff" font-size="22" font-weight="700">spectatui — runtime architecture</text>
+  <text x="40" y="64" fill="#8b8b95" font-size="12">ratatui TUI ↔ tmux server ↔ filesystem ↔ specify CLI</text>
+
+  <!-- spectatui process container -->
+  <rect x="36" y="86" width="500" height="436" rx="12" fill="#16161b" stroke="#2c2c35" stroke-width="1.5"/>
+  <text x="56" y="112" fill="#d7d7dc" font-size="14" font-weight="700">spectatui process</text>
+
+  <!-- UI layer -->
+  <rect x="56" y="126" width="460" height="120" rx="9" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="74" y="150" fill="#93a4ff" font-size="13" font-weight="700">UI layer — crates/spectatui</text>
+  <text x="74" y="170" fill="#8b8b95" font-size="11.5">ratatui 0.29 + crossterm 0.28</text>
+  <text x="74" y="192" fill="#d7d7dc" font-size="11.5">Dashboard panes · popups · status bar</text>
+  <text x="74" y="210" fill="#d7d7dc" font-size="11.5">command palette · settings · theming</text>
+  <text x="74" y="232" fill="#5b5b65" font-size="11">App state · Screen / Pane / PopupKind</text>
+
+  <!-- event stream arrow between UI and core -->
+  <line x1="286" y1="246" x2="286" y2="286" stroke="#93a4ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="250" y1="286" x2="250" y2="246" stroke="#93a4ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="300" y="270" fill="#7cc2e8" font-size="10.5">events: Key · Tick · TmuxChanged · FsChanged</text>
+
+  <!-- core engine -->
+  <rect x="56" y="286" width="460" height="170" rx="9" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="74" y="310" fill="#5fd6bf" font-size="13" font-weight="700">Async core engine — crates/spectatui-core</text>
+  <text x="74" y="330" fill="#8b8b95" font-size="11.5">tokio runtime</text>
+  <rect x="74" y="344" width="200" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="86" y="362" fill="#d7d7dc" font-size="11">Project / Feature discovery</text>
+  <rect x="290" y="344" width="210" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="302" y="362" fill="#d7d7dc" font-size="11">WorkflowStage inference</text>
+  <rect x="74" y="380" width="200" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="86" y="398" fill="#d7d7dc" font-size="11">SpecifyCliClient (CliJob)</text>
+  <rect x="290" y="380" width="210" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="302" y="398" fill="#d7d7dc" font-size="11">registry parsing (serde)</text>
+  <rect x="74" y="416" width="200" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="86" y="434" fill="#d7d7dc" font-size="11">TmuxClient</text>
+  <rect x="290" y="416" width="210" height="28" rx="6" fill="#16161b" stroke="#2c2c35"/>
+  <text x="302" y="434" fill="#d7d7dc" font-size="11">notify watcher</text>
+
+  <!-- config chip -->
+  <rect x="56" y="476" width="460" height="34" rx="8" fill="#16161b" stroke="#2c2c35"/>
+  <text x="74" y="498" fill="#e3b673" font-size="11">config  ~/.config/spectatui/config.toml  ·  ./.spectatui/config.toml</text>
+
+  <!-- tmux server -->
+  <rect x="600" y="96" width="344" height="156" rx="12" fill="#16161b" stroke="#2c2c35" stroke-width="1.5"/>
+  <text x="620" y="122" fill="#84d48f" font-size="14" font-weight="700">tmux server</text>
+  <text x="620" y="142" fill="#8b8b95" font-size="11">one pane per feature → coding agent</text>
+  <rect x="620" y="154" width="96" height="80" rx="7" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="636" y="176" fill="#90d890" font-size="11">pane %1</text>
+  <text x="636" y="196" fill="#8b8b95" font-size="10">001-taskify</text>
+  <text x="636" y="214" fill="#5b5b65" font-size="10">claude-code</text>
+  <rect x="724" y="154" width="96" height="80" rx="7" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="740" y="176" fill="#90d890" font-size="11">pane %2</text>
+  <text x="740" y="196" fill="#8b8b95" font-size="10">004-search</text>
+  <text x="740" y="214" fill="#5b5b65" font-size="10">gemini-cli</text>
+  <rect x="828" y="154" width="96" height="80" rx="7" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="844" y="176" fill="#5b5b65" font-size="11">pane %3</text>
+  <text x="844" y="196" fill="#5b5b65" font-size="10">…</text>
+
+  <!-- specify CLI -->
+  <rect x="600" y="280" width="344" height="76" rx="12" fill="#16161b" stroke="#2c2c35" stroke-width="1.5"/>
+  <text x="620" y="306" fill="#93a4ff" font-size="14" font-weight="700">specify CLI</text>
+  <text x="620" y="326" fill="#8b8b95" font-size="11">subprocess — extension · preset</text>
+  <text x="620" y="344" fill="#8b8b95" font-size="11">integration · workflow · self</text>
+
+  <!-- filesystem -->
+  <rect x="600" y="384" width="344" height="200" rx="12" fill="#16161b" stroke="#2c2c35" stroke-width="1.5"/>
+  <text x="620" y="410" fill="#d7d7dc" font-size="14" font-weight="700">filesystem</text>
+  <rect x="620" y="422" width="304" height="78" rx="7" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="634" y="442" fill="#7cc2e8" font-size="11.5">.specify/</text>
+  <text x="634" y="460" fill="#8b8b95" font-size="10.5">extensions/.registry · presets/.registry</text>
+  <text x="634" y="476" fill="#8b8b95" font-size="10.5">integration.json · workflows/ · templates/</text>
+  <text x="634" y="492" fill="#8b8b95" font-size="10.5">memory/constitution.md</text>
+  <rect x="620" y="508" width="304" height="62" rx="7" fill="#1c1c23" stroke="#2c2c35"/>
+  <text x="634" y="528" fill="#7cc2e8" font-size="11.5">specs/NNN-name/</text>
+  <text x="634" y="546" fill="#8b8b95" font-size="10.5">spec · plan · tasks · research · data-model</text>
+  <text x="634" y="562" fill="#ef8c7d" font-size="10.5">read-only — rendered, never written</text>
+
+  <!-- arrows: core <-> tmux -->
+  <line x1="516" y1="174" x2="600" y2="174" stroke="#84d48f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+  <line x1="600" y1="200" x2="516" y2="200" stroke="#84d48f" stroke-width="1.5" marker-end="url(#arrowg)"/>
+  <text x="520" y="166" fill="#84d48f" font-size="10">capture-pane / send-keys / attach</text>
+  <text x="520" y="216" fill="#5b5b65" font-size="9.5">tokio::process::Command</text>
+
+  <!-- arrow: core -> specify CLI -->
+  <line x1="516" y1="318" x2="600" y2="318" stroke="#93a4ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="600" y1="340" x2="516" y2="340" stroke="#93a4ff" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="520" y="312" fill="#93a4ff" font-size="9.5">spawn job</text>
+  <text x="520" y="356" fill="#5b5b65" font-size="9.5">streamed stdout/stderr</text>
+
+  <!-- arrow: core -> filesystem -->
+  <line x1="516" y1="430" x2="600" y2="430" stroke="#7cc2e8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="520" y="424" fill="#7cc2e8" font-size="9.5">read registries / artifacts</text>
+  <line x1="600" y1="452" x2="516" y2="452" stroke="#7cc2e8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="520" y="468" fill="#5b5b65" font-size="9.5">notify watch → FsChanged</text>
+</svg>

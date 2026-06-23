@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'JetBrains Mono',ui-monospace,monospace;}
+  .mark{display:flex;align-items:center;justify-content:center;background:#16161b;border:1px solid #2c2c35;position:relative;flex:none;}
+  .chev{color:var(--accent);font-weight:700;line-height:1;}
+  .cur{background:var(--accent);border-radius:1px;flex:none;}
+  .lbl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8b8b95;font-weight:500;}
+</style>
+</helmet>
+<div style="min-width:100%;width:max-content;min-height:100vh;box-sizing:border-box;padding:48px;background:{{ canvas }};--accent:{{ accent }};--accent-deep:{{ accentDeep }};--owl-filter:{{ owlFilter }};--radrk:{{ radrk }};">
+  <div style="display:flex;gap:48px;align-items:flex-start;">
+
+    <!-- HERO -->
+    <div style="flex:none;width:760px;">
+      <div class="lbl" style="margin-bottom:10px;">Primary mark · recommended</div>
+      <div style="background:#101013;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.18);padding:56px 56px 48px;">
+        <div style="display:flex;align-items:center;gap:34px;">
+          <div class="mark" style="width:148px;height:148px;border-radius:calc(34px * var(--radrk));filter:var(--owl-filter);">
+            <dc-import name="OwlMark" style="width:84%;height:84%;" hint-size="84%,84%"></dc-import>
+          </div>
+          <div>
+            <div style="font-size:58px;font-weight:700;letter-spacing:-.02em;color:#d7d7dc;line-height:1;">
+              <span style="color:var(--accent);">spec</span>tatui
+            </div>
+            <div style="margin-top:14px;font-size:18px;color:#8b8b95;letter-spacing:.02em;">A TUI dashboard for GitHub Spec-Kit</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- light-theme hero twin -->
+      <div style="margin-top:24px;background:#fbf9f4;border:1px solid #ddd8cc;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:56px 56px 48px;">
+        <div style="display:flex;align-items:center;gap:34px;">
+          <div class="mark" style="width:148px;height:148px;border-radius:calc(34px * var(--radrk));background:#f4f1ea;border-color:#ddd8cc;filter:var(--owl-filter);">
+            <dc-import name="OwlMark" style="width:84%;height:84%;" hint-size="84%,84%"></dc-import>
+          </div>
+          <div>
+            <div style="font-size:58px;font-weight:700;letter-spacing:-.02em;color:#2c2a26;line-height:1;">
+              <span style="color: var(--accent-deep);">&lt;spec</span>tatui/&gt;</div>
+            <div style="margin-top:14px;font-size:18px;color:#7c7a72;letter-spacing:.02em;">A TUI dashboard for GitHub Spec-Kit</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- light lockup -->
+      <div style="margin-top:24px;background:#fbf9f4;border:1px solid #ddd8cc;border-radius:2px;padding:40px 56px;display:flex;align-items:center;gap:28px;">
+        <div class="mark" style="width:96px;height:96px;border-radius:calc(22px * var(--radrk));background:#f4f1ea;border-color:#ddd8cc;filter:var(--owl-filter);">
+          <dc-import name="OwlMark" style="width:84%;height:84%;" hint-size="84%,84%"></dc-import>
+        </div>
+        <div style="font-size:40px;font-weight:700;letter-spacing:-.02em;color:#2c2a26;line-height:1;">
+          <span style="color:var(--accent-deep);">spec</span>tatui
+        </div>
+      </div>
+    </div>
+
+    <!-- APP ICONS + FAVICON -->
+    <div style="flex:none;width:360px;">
+      <div class="lbl" style="margin-bottom:10px;">App icon</div>
+      <div style="background:#fff;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:32px;display:flex;gap:24px;align-items:center;justify-content:center;">
+        <div class="mark" style="width:120px;height:120px;border-radius:calc(27px * var(--radrk));box-shadow:0 8px 24px rgba(0,0,0,.35);filter:var(--owl-filter);">
+          <dc-import name="OwlMark" style="width:84%;height:84%;" hint-size="84%,84%"></dc-import>
+        </div>
+        <div class="mark" style="width:120px;height:120px;border-radius:calc(27px * var(--radrk));background:#fbf9f4;border-color:#ddd8cc;box-shadow:0 8px 24px rgba(0,0,0,.2);filter:var(--owl-filter);">
+          <dc-import name="OwlMark" style="width:84%;height:84%;" hint-size="84%,84%"></dc-import>
+        </div>
+      </div>
+
+      <div class="lbl" style="margin:28px 0 10px;">Favicon · actual size</div>
+      <div style="background:#fff;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:28px;display:flex;gap:30px;align-items:flex-end;justify-content:center;">
+        <div style="text-align:center;">
+          <div class="mark" style="width:48px;height:48px;border-radius:calc(11px * var(--radrk));margin:0 auto;filter:var(--owl-filter);">
+            <dc-import name="OwlMark" style="width:86%;height:86%;" hint-size="86%,86%"></dc-import>
+          </div>
+          <div style="font-size:10px;color:#8b8b95;margin-top:8px;">48</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="mark" style="width:32px;height:32px;border-radius:calc(8px * var(--radrk));margin:0 auto;filter:var(--owl-filter);">
+            <dc-import name="OwlMark" style="width:88%;height:88%;" hint-size="88%,88%"></dc-import>
+          </div>
+          <div style="font-size:10px;color:#8b8b95;margin-top:8px;">32</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="mark" style="width:16px;height:16px;border-radius:calc(4px * var(--radrk));margin:0 auto;filter:var(--owl-filter);">
+            <dc-import name="OwlMark" style="width:92%;height:92%;" hint-size="92%,92%"></dc-import>
+          </div>
+          <div style="font-size:10px;color:#8b8b95;margin-top:8px;">16</div>
+        </div>
+      </div>
+
+      <div class="lbl" style="margin:28px 0 10px;">Wordmark · terminal use</div>
+      <div style="background:#101013;border-radius:2px;padding:24px 26px;font-size:18px;color:#d7d7dc;">
+        <span style="color:#5b5b65;">~/code/taskify $ </span><span style="color:var(--accent);font-weight:700;">spec</span><span style="font-weight:700;">tatui</span><span style="background:var(--accent);color:#101013;">&nbsp;</span>
+      </div>
+    </div>
+
+    <!-- ALTERNATES -->
+    <div style="flex:none;width:300px;">
+      <div class="lbl" style="margin-bottom:10px;">Alternate concepts</div>
+
+      <div style="background:#101013;border-radius:2px;padding:28px;">
+        <div style="font-size:11px;color:#8b8b95;margin-bottom:14px;">B · stepper iris (spectate + stages)</div>
+        <div style="display:flex;justify-content:center;">
+          <div class="mark" style="width:120px;height:120px;border-radius:calc(27px * var(--radrk));gap:7px;">
+            <span style="width:11px;height:11px;border-radius:50%;background:#3a3a45;"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#3a3a45;"></span>
+            <span style="width:26px;height:26px;border-radius:50%;border:5px solid var(--accent);"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#3a3a45;"></span>
+            <span style="width:11px;height:11px;border-radius:50%;background:#3a3a45;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#101013;border-radius:2px;padding:28px;margin-top:20px;">
+        <div style="font-size:11px;color:#8b8b95;margin-bottom:14px;">C · framed monogram</div>
+        <div style="display:flex;justify-content:center;">
+          <div class="mark" style="width:120px;height:120px;border-radius:calc(27px * var(--radrk));">
+            <span style="font-size:30px;color:#5b5b65;line-height:1;position:absolute;top:14px;left:18px;">╭</span>
+            <span style="font-size:30px;color:#5b5b65;line-height:1;position:absolute;top:14px;right:18px;">╮</span>
+            <span style="font-size:30px;color:#5b5b65;line-height:1;position:absolute;bottom:14px;left:18px;">╰</span>
+            <span style="font-size:30px;color:#5b5b65;line-height:1;position:absolute;bottom:14px;right:18px;">╯</span>
+            <span style="font-size:58px;font-weight:700;color:var(--accent);line-height:1;">S</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:#fff;border-radius:2px;box-shadow:0 1px 3px rgba(0,0,0,.08);padding:20px;margin-top:20px;">
+        <div class="lbl" style="margin-bottom:12px;">Palette</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="width:36px;height:36px;border-radius:6px;background:#101013;" title="#101013"></span>
+          <span style="width:36px;height:36px;border-radius:6px;background:#16161b;border:1px solid #2c2c35;" title="#16161b"></span>
+          <span style="width:36px;height:36px;border-radius:6px;background:var(--accent);" title="accent"></span>
+          <span style="width:36px;height:36px;border-radius:6px;background:#d7d7dc;border:1px solid #ddd8cc;" title="#d7d7dc"></span>
+          <span style="width:36px;height:36px;border-radius:6px;background:#90d890;" title="#90d890"></span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;accent&quot;: {
+    &quot;editor&quot;: &quot;enum&quot;,
+    &quot;default&quot;: &quot;Periwinkle&quot;,
+    &quot;options&quot;: [&quot;Periwinkle&quot;, &quot;Terminal green&quot;, &quot;Amber&quot;, &quot;Coral&quot;],
+    &quot;tsType&quot;: &quot;string&quot;
+  },
+  &quot;silhouette&quot;: {
+    &quot;editor&quot;: &quot;enum&quot;,
+    &quot;default&quot;: &quot;Squircle&quot;,
+    &quot;options&quot;: [&quot;Squircle&quot;, &quot;Pill&quot;, &quot;Sharp&quot;],
+    &quot;tsType&quot;: &quot;string&quot;
+  },
+  &quot;canvas&quot;: {
+    &quot;editor&quot;: &quot;enum&quot;,
+    &quot;default&quot;: &quot;Studio paper&quot;,
+    &quot;options&quot;: [&quot;Studio paper&quot;, &quot;Carbon&quot;, &quot;Blueprint&quot;],
+    &quot;tsType&quot;: &quot;string&quot;
+  }
+}">
+class Component extends DCLogic {
+  renderVals() {
+    const accents = {
+      'Periwinkle':     { a: '#93a4ff', d: '#5159d4', f: 'none' },
+      'Terminal green': { a: '#5ce6a0', d: '#1f9d57', f: 'hue-rotate(-85deg) saturate(1.05)' },
+      'Amber':          { a: '#f0c25a', d: '#b8791a', f: 'hue-rotate(-190deg) saturate(1.18)' },
+      'Coral':          { a: '#f5896a', d: '#cf4f2e', f: 'hue-rotate(-220deg) saturate(1.12)' },
+    };
+    const silhouette = { 'Squircle': '1', 'Pill': '50', 'Sharp': '0.12' };
+    const canvases   = { 'Studio paper': '#e7e5df', 'Carbon': '#0d0d10', 'Blueprint': '#1b2a4a' };
+
+    const acc = accents[this.props.accent] ?? accents['Periwinkle'];
+    return {
+      accent:     acc.a,
+      accentDeep: acc.d,
+      owlFilter:  acc.f,
+      radrk:      silhouette[this.props.silhouette] ?? '1',
+      canvas:     canvases[this.props.canvas] ?? '#e7e5df',
+    };
+  }
+}
+</script>
+</body>
+</html>
