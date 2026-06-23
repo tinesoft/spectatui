@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 672 252" width="672" height="252" font-family="&#39;JetBrains Mono&#39;, ui-monospace, &#39;SFMono-Regular&#39;, Menlo, monospace">
+  <defs>
+    
+
+    <linearGradient id="tuftLo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f60cb"></stop><stop offset="0.55" stop-color="#6b7ce8"></stop><stop offset="1" stop-color="#8a98f3"></stop>
+    </linearGradient>
+    <linearGradient id="tuftLi" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8a98f3"></stop><stop offset="1" stop-color="#aeb9ff"></stop>
+    </linearGradient>
+    <linearGradient id="tuftRo" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f60cb"></stop><stop offset="0.55" stop-color="#6b7ce8"></stop><stop offset="1" stop-color="#8a98f3"></stop>
+    </linearGradient>
+    <linearGradient id="tuftRi" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8a98f3"></stop><stop offset="1" stop-color="#aeb9ff"></stop>
+    </linearGradient>
+    <radialGradient id="body" cx="0.5" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#9fafff"></stop><stop offset="1" stop-color="#8294f7"></stop>
+    </radialGradient>
+    <linearGradient id="wingL" x1="0" y1="0" x2="1" y2="0.58">
+      <stop offset="0" stop-color="#7385ed"></stop><stop offset="1" stop-color="#92a2fb"></stop>
+    </linearGradient>
+    <linearGradient id="wingR" x1="1" y1="0" x2="0" y2="0.58">
+      <stop offset="0" stop-color="#7385ed"></stop><stop offset="1" stop-color="#92a2fb"></stop>
+    </linearGradient>
+    <radialGradient id="earOuterL" cx="0.38" cy="0.3" r="0.72">
+      <stop offset="0" stop-color="#e9ebf1"></stop><stop offset="0.58" stop-color="#b6bbc9"></stop><stop offset="1" stop-color="#969cae"></stop>
+    </radialGradient>
+    <radialGradient id="earOuterR" cx="0.62" cy="0.3" r="0.72">
+      <stop offset="0" stop-color="#e9ebf1"></stop><stop offset="0.58" stop-color="#b6bbc9"></stop><stop offset="1" stop-color="#969cae"></stop>
+    </radialGradient>
+    <radialGradient id="earInner" cx="0.5" cy="0.4" r="0.62">
+      <stop offset="0" stop-color="#565b70"></stop><stop offset="1" stop-color="#393c4c"></stop>
+    </radialGradient>
+    <radialGradient id="eye" cx="0.5" cy="0.45" r="0.62">
+      <stop offset="0" stop-color="#fdfbf7"></stop><stop offset="1" stop-color="#e7e4dc"></stop>
+    </radialGradient>
+    <linearGradient id="beak" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3b088"></stop><stop offset="1" stop-color="#e8916a"></stop>
+    </linearGradient>
+    <linearGradient id="micboom" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d2d6e1"></stop><stop offset="1" stop-color="#a9afc1"></stop>
+    </linearGradient>
+    <radialGradient id="foam" cx="0.4" cy="0.35" r="0.65">
+      <stop offset="0" stop-color="#4a4d5a"></stop><stop offset="1" stop-color="#2a2c36"></stop>
+    </radialGradient>
+  </defs>
+
+  
+  
+
+  
+
+  
+  <g transform="translate(67.84,67.84) scale(1.2432)">
+    
+    <polygon points="26.5,8 36,26.72 24.6,32" fill="url(#tuftLo)" transform="rotate(-26 36 32)"></polygon>
+    <polygon points="26.5,10 33,25.2 25.98,29" fill="url(#tuftLi)" transform="rotate(-26 33 29)"></polygon>
+    <polygon points="73.5,8 64,26.72 75.4,32" fill="url(#tuftRo)" transform="rotate(26 64 32)"></polygon>
+    <polygon points="73.5,10 67,25.2 74.02,29" fill="url(#tuftRi)" transform="rotate(26 67 29)"></polygon>
+
+    
+    <path d="M11,52 L11,22.8 A35.9,24.8 0 0 1 46.9,-2 L53.1,-2 A35.9,24.8 0 0 1 89,22.8 L89,52" fill="none" stroke="#9aa0b2" stroke-width="4.2" stroke-linecap="round"></path>
+    <path d="M12,21.84 A34.96,24.84 0 0 1 46.96,-3 L53.04,-3 A34.96,24.84 0 0 1 88,21.84" fill="none" stroke="#e6e8f0" stroke-width="1.6" stroke-linecap="round"></path>
+
+    
+    <ellipse cx="50" cy="58" rx="34" ry="36" fill="url(#body)"></ellipse>
+    <ellipse cx="50" cy="67" rx="20" ry="21" fill="#bcc6ff"></ellipse>
+
+    
+    <ellipse cx="25" cy="67" rx="10" ry="17" fill="url(#wingL)" transform="rotate(8 25 67)"></ellipse>
+    <ellipse cx="23.5" cy="57.5" rx="6.5" ry="3.5" fill="#8294f7"></ellipse>
+    <ellipse cx="23.5" cy="65.5" rx="6.5" ry="3.5" fill="#7c8ef2"></ellipse>
+    <ellipse cx="24" cy="73.5" rx="6" ry="3.5" fill="#7385ed"></ellipse>
+    <ellipse cx="75" cy="67" rx="10" ry="17" fill="url(#wingR)" transform="rotate(-8 75 67)"></ellipse>
+    <ellipse cx="76.5" cy="57.5" rx="6.5" ry="3.5" fill="#8294f7"></ellipse>
+    <ellipse cx="76.5" cy="65.5" rx="6.5" ry="3.5" fill="#7c8ef2"></ellipse>
+    <ellipse cx="76" cy="73.5" rx="6" ry="3.5" fill="#7385ed"></ellipse>
+
+    
+    <ellipse cx="39.5" cy="68.5" rx="4.5" ry="4.5" fill="#cdd5ff"></ellipse>
+    <ellipse cx="50" cy="68.5" rx="4.5" ry="4.5" fill="#cdd5ff"></ellipse>
+    <ellipse cx="60.5" cy="68.5" rx="4.5" ry="4.5" fill="#cdd5ff"></ellipse>
+    <ellipse cx="45" cy="76.5" rx="4.5" ry="4.5" fill="#c3ccff"></ellipse>
+    <ellipse cx="55" cy="76.5" rx="4.5" ry="4.5" fill="#c3ccff"></ellipse>
+
+    
+    <path d="M37,88 L47,88 L47,91.85 A5,3.15 0 0 1 37,91.85 Z" fill="#f0a47c"></path>
+    <path d="M53,88 L63,88 L63,91.85 A5,3.15 0 0 1 53,91.85 Z" fill="#f0a47c"></path>
+
+    
+    <ellipse cx="13.5" cy="50.5" rx="14.5" ry="14.5" fill="url(#earOuterL)"></ellipse>
+    <ellipse cx="87.5" cy="50.5" rx="14.5" ry="14.5" fill="url(#earOuterR)"></ellipse>
+    <ellipse cx="13.5" cy="50.5" rx="9" ry="9" fill="url(#earInner)"></ellipse>
+    <ellipse cx="86.5" cy="50.5" rx="9" ry="9" fill="url(#earInner)"></ellipse>
+    <ellipse cx="13" cy="49.5" rx="2.5" ry="2.5" fill="#262833"></ellipse>
+    <ellipse cx="86" cy="49.5" rx="2.5" ry="2.5" fill="#262833"></ellipse>
+
+    
+    <ellipse cx="36.5" cy="46.5" rx="13.5" ry="13.5" fill="url(#eye)"></ellipse>
+    <ellipse cx="63.5" cy="46.5" rx="13.5" ry="13.5" fill="url(#eye)"></ellipse>
+    <ellipse cx="38" cy="47" rx="6" ry="6" fill="#101013"></ellipse>
+    <ellipse cx="62" cy="47" rx="6" ry="6" fill="#101013"></ellipse>
+    <ellipse cx="35.75" cy="44.75" rx="1.75" ry="1.75" fill="#fbf9f4"></ellipse>
+    <ellipse cx="59.75" cy="44.75" rx="1.75" ry="1.75" fill="#fbf9f4"></ellipse>
+
+    
+    <polygon points="50,62 44.5,50 55.5,50" fill="url(#beak)"></polygon>
+
+    
+    <rect x="54" y="62" width="31" height="3.5" rx="1.75" fill="url(#micboom)"></rect>
+    <ellipse cx="55" cy="64.5" rx="5" ry="4.5" fill="url(#foam)"></ellipse>
+  </g>
+
+  
+  <text x="238" y="142" font-size="58" font-weight="700" letter-spacing="-1.16">
+    <tspan fill="#5159d4">&lt;spec</tspan><tspan fill="#2c2a26">tatui/&gt;</tspan>
+  </text>
+  <text x="239" y="174" font-size="18" font-weight="400" letter-spacing="0.4" fill="#7c7a72">A TUI dashboard for GitHub Spec-Kit</text>
+</svg>
