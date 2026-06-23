@@ -47,6 +47,10 @@ echo -e "\n🤖 Installing Claude CLI..."
 run_command "curl -fsSL https://claude.ai/install.sh | bash"
 echo "✅ Done"
 
+echo -e "\n🎨 Installing JetBrains Mono font..."
+run_command "curl -fsSL https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/install_manual.sh"
+echo "✅ Done"
+
 echo -e "\n🎤 Installing SoX for audio recording (in order to use '/voice' in Claude Code)..."
 run_command "sudo apt-get update"
 run_command "sudo apt-get install -y sox"

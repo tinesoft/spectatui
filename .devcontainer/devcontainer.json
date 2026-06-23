@@ -62,6 +62,9 @@
 			"settings": {
 				"debug.javascript.autoAttachFilter": "disabled",
 				"terminal.integrated.defaultProfile.linux": "bash",
+				"terminal.integrated.fontSize": 14,
+				"terminal.integrated.fontFamily": "JetBrains Mono", 
+				"terminal.integrated.fontLigatures.enabled": true,
 				"files.watcherExclude": {
 					"**/node_modules/**": true,
 					"**/.venv/**": true,
