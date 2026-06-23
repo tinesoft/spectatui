@@ -2,7 +2,17 @@
   "name": "spectatui",
   "version": "0.0.0",
   "private": true,
+  "description": "A TUI dashboard for Github Spec-Kit",
+  "author": {
+    "name": "Tine Kondo"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tinesoft/spectatui.git"
+  },
   "scripts": {
+    "prepare": "husky",
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
@@ -13,6 +23,9 @@
     "release:dry": "nx release --dry-run"
   },
   "devDependencies": {
-    "@monodon/rust": "^3.0.0"
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@monodon/rust": "^3.0.0",
+    "husky": "^9.1.7"
   }
 }
