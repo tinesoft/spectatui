@@ -1,7 +1,4 @@
 {
-  "installation": {
-    "version": "23.0.0"
-  },
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "main",
   "namedInputs": {

@@ -26,6 +26,7 @@
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@monodon/rust": "^3.0.0",
-    "husky": "^9.1.7"
+    "husky": "^9.1.7",
+    "nx": "^23.0.0"
   }
 }
