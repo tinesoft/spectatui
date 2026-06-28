@@ -87,12 +87,25 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .border_style(theme.border_focused);
     frame.render_widget(input_block, input_area);
 
-    let input_line = Line::from(vec![
-        Span::styled("›", theme.accent_bold),
-        Span::styled(" ask a follow-up, or press ", theme.faint_style),
-        Span::styled("esc", theme.accent_bold),
-        Span::styled(" to detach", theme.faint_style),
-    ]);
+    let input_line = if app.attach_input.is_empty() {
+        Line::from(vec![
+            Span::styled("›", theme.accent_bold),
+            Span::styled(" type a follow-up + enter, or enter to ", theme.faint_style),
+            Span::styled("attach", theme.accent_bold),
+            Span::styled(" · ", theme.faint_style),
+            Span::styled("esc", theme.accent_bold),
+            Span::styled(" to detach", theme.faint_style),
+        ])
+    } else {
+        Line::from(vec![
+            Span::styled("› ", theme.accent_bold),
+            Span::styled(
+                &app.attach_input,
+                ratatui::style::Style::default().fg(theme.fg),
+            ),
+            Span::styled("▏", theme.accent_bold),
+        ])
+    };
     frame.render_widget(
         Paragraph::new(input_line),
         Rect::new(input_area.x + 2, input_box_y + 1, input_area.width.saturating_sub(4), 1),

@@ -116,6 +116,44 @@ async fn run_loop(
     // CLI client
     let cli_client = SpecifyCliClient::new(root.to_path_buf());
 
+    // Selected-feature channel: the tmux poller reads the latest selection so it
+    // can capture the right pane without owning app state.
+    let (selection_tx, selection_rx) =
+        tokio::sync::watch::channel(app.selected_feature().map(|f| f.id.clone()));
+
+    // tmux poller — emits TmuxChanged off the Tick path.
+    if app.tmux_available {
+        let tmux_tx = event_tx.clone();
+        let selection_rx = selection_rx.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_millis(750));
+            loop {
+                interval.tick().await;
+                let sessions = TmuxClient::list_sessions().await.unwrap_or_default();
+                let selected = selection_rx.borrow().clone();
+                let session = match selected {
+                    Some(id) => {
+                        if let Some(mut s) = TmuxClient::find_session(&id).await {
+                            if let Ok(lines) = TmuxClient::capture_pane(&s.name, 50).await {
+                                s.last_snapshot = lines;
+                            }
+                            Some(s)
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
+                };
+                if tmux_tx
+                    .send(AppEvent::TmuxChanged { sessions, session })
+                    .is_err()
+                {
+                    return;
+                }
+            }
+        });
+    }
+
     // Async catalog indexing
     {
         let catalog_tx = event_tx.clone();
@@ -146,10 +184,17 @@ async fn run_loop(
         // Poll CLI job progress
         app.poll_cli_job();
 
+        // Publish the current selection for the tmux poller.
+        let _ = selection_tx.send(app.selected_feature().map(|f| f.id.clone()));
+
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Key(key) => {
                     handle_key(app, key, &cli_client);
+                    if app.attach_request {
+                        app.attach_request = false;
+                        attach_session(terminal, app).await?;
+                    }
                 }
                 AppEvent::Mouse(mouse) => {
                     handle_mouse(app, mouse);
@@ -172,38 +217,48 @@ async fn run_loop(
                 } => {
                     app.merge_catalog_results(integrations, extensions, presets, workflows);
                 }
+                AppEvent::TmuxChanged { sessions, session } => {
+                    app.apply_tmux(sessions, session);
+                }
                 AppEvent::Tick => {
                     app.indexing_tick = app.indexing_tick.wrapping_add(1);
-                    // Poll tmux session for selected feature
-                    if app.tmux_available {
-                        // Rebuild the running-feature set from live tmux sessions.
-                        if let Ok(sessions) = TmuxClient::list_sessions().await {
-                            app.running_features = app
-                                .project
-                                .features
-                                .iter()
-                                .filter(|f| sessions.iter().any(|s| s.contains(&f.id)))
-                                .map(|f| f.id.clone())
-                                .collect();
-                        }
-                        if let Some(feature) = app.selected_feature() {
-                            let id = feature.id.clone();
-                            if let Some(mut session) = TmuxClient::find_session(&id).await {
-                                if let Ok(lines) =
-                                    TmuxClient::capture_pane(&session.name, 50).await
-                                {
-                                    session.last_snapshot = lines;
-                                }
-                                app.tmux_session = Some(session);
-                            } else {
-                                app.tmux_session = None;
-                            }
-                        }
-                    }
                 }
             }
         }
     }
+}
+
+/// Suspend the TUI, attach to the selected tmux session as a foreground
+/// process, then restore the alternate screen / raw mode on detach.
+async fn attach_session(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> Result<()> {
+    let Some(target) = app.attach_target() else {
+        return Ok(());
+    };
+    if !app.tmux_available {
+        return Ok(());
+    }
+
+    // Leave the TUI.
+    if app.config.mouse_support {
+        execute!(terminal.backend_mut(), crossterm::event::DisableMouseCapture)?;
+    }
+    terminal::disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+
+    let attach_result = TmuxClient::attach(&target).await;
+
+    // Restore the TUI.
+    terminal::enable_raw_mode()?;
+    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    if app.config.mouse_support {
+        execute!(terminal.backend_mut(), crossterm::event::EnableMouseCapture)?;
+    }
+    terminal.clear()?;
+
+    attach_result
 }
 
 fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
@@ -629,11 +684,28 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
         Screen::Constitution => handle_constitution_key(app, key),
         Screen::ExtensionsPresets => handle_extensions_key(app, key, cli_client),
         Screen::Settings => handle_settings_key(app, key, cli_client),
-        Screen::SessionAttach => {
-            if key.code == KeyCode::Esc {
-                app.go_back();
+        Screen::SessionAttach => match key.code {
+            KeyCode::Esc => app.go_back(),
+            KeyCode::Backspace => {
+                app.attach_input.pop();
             }
-        }
+            KeyCode::Char(c) => {
+                app.attach_input.push(c);
+            }
+            KeyCode::Enter => {
+                if app.attach_input.is_empty() {
+                    // Empty input: go full-screen and attach to the live pane.
+                    app.attach_request = true;
+                } else if let Some(target) = app.attach_target() {
+                    // Send the typed follow-up to the agent pane.
+                    let text = std::mem::take(&mut app.attach_input);
+                    tokio::spawn(async move {
+                        let _ = TmuxClient::send_keys(&target, &text).await;
+                    });
+                }
+            }
+            _ => {}
+        },
     }
 }
 

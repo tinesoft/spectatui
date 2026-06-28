@@ -5,6 +5,7 @@ use tokio::sync::mpsc;
 
 use spectatui_core::speckit::watch::FsEvent;
 use spectatui_core::speckit::{ExtensionInfo, IntegrationInfo, PresetInfo, WorkflowInfo};
+use spectatui_core::tmux::TmuxSession;
 
 #[allow(dead_code)]
 pub enum AppEvent {
@@ -12,6 +13,10 @@ pub enum AppEvent {
     Mouse(MouseEvent),
     Tick,
     FsChanged(FsEvent),
+    TmuxChanged {
+        sessions: Vec<String>,
+        session: Option<TmuxSession>,
+    },
     Resize(u16, u16),
     CatalogIndexed {
         integrations: Vec<IntegrationInfo>,

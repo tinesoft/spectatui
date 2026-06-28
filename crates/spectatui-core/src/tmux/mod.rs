@@ -105,6 +105,43 @@ impl TmuxClient {
         }
     }
 
+    /// Send a line of text to the target pane/session, followed by Enter.
+    ///
+    /// The text is sent with `-l` (literal) so tmux does not interpret words
+    /// like `Enter` inside it as key names; Enter is then sent separately.
+    pub async fn send_keys(target: &str, text: &str) -> Result<()> {
+        Command::new("tmux")
+            .args(["send-keys", "-t", target, "-l", text])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .await
+            .context("failed to send keys to tmux pane")?;
+
+        Command::new("tmux")
+            .args(["send-keys", "-t", target, "Enter"])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .await
+            .context("failed to send Enter to tmux pane")?;
+
+        Ok(())
+    }
+
+    /// Attach to a tmux session as a foreground process with inherited stdio.
+    ///
+    /// The caller must leave the alternate screen / raw mode before calling
+    /// this and restore it after the future resolves (on detach).
+    pub async fn attach(session_name: &str) -> Result<()> {
+        Command::new("tmux")
+            .args(["attach", "-t", session_name])
+            .status()
+            .await
+            .context("failed to attach to tmux session")?;
+        Ok(())
+    }
+
     pub async fn has_tmux() -> bool {
         Command::new("tmux")
             .arg("-V")

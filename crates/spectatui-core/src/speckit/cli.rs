@@ -1,5 +1,7 @@
 use std::path::PathBuf;
+use std::process::Stdio;
 
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
@@ -377,32 +379,56 @@ impl SpecifyCliClient {
                 return;
             }
 
-            let result = Command::new(parts[0])
+            let spawned = Command::new(parts[0])
                 .args(&parts[1..])
                 .current_dir(&root)
-                .output()
-                .await;
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn();
 
-            match result {
-                Ok(output) => {
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-
-                    for line in stdout.lines() {
-                        let _ = tx.send(CliEvent::OutputLine(line.to_string()));
-                    }
-                    for line in stderr.lines() {
-                        let _ = tx.send(CliEvent::OutputLine(line.to_string()));
-                    }
-                    let _ = tx.send(CliEvent::Completed {
-                        success: output.status.success(),
-                    });
-                }
+            let mut child = match spawned {
+                Ok(child) => child,
                 Err(e) => {
                     let _ = tx.send(CliEvent::OutputLine(format!("error: {e}")));
                     let _ = tx.send(CliEvent::Completed { success: false });
+                    return;
                 }
+            };
+
+            // Stream stdout and stderr concurrently, emitting each line as it arrives.
+            let stdout_task = child.stdout.take().map(|stdout| {
+                let tx = tx.clone();
+                let mut lines = BufReader::new(stdout).lines();
+                tokio::spawn(async move {
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        let _ = tx.send(CliEvent::OutputLine(line));
+                    }
+                })
+            });
+            let stderr_task = child.stderr.take().map(|stderr| {
+                let tx = tx.clone();
+                let mut lines = BufReader::new(stderr).lines();
+                tokio::spawn(async move {
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        let _ = tx.send(CliEvent::OutputLine(line));
+                    }
+                })
+            });
+
+            let success = child
+                .wait()
+                .await
+                .map(|status| status.success())
+                .unwrap_or(false);
+
+            // Drain remaining buffered output before signaling completion.
+            if let Some(task) = stdout_task {
+                let _ = task.await;
             }
+            if let Some(task) = stderr_task {
+                let _ = task.await;
+            }
+            let _ = tx.send(CliEvent::Completed { success });
         });
 
         (job, rx)

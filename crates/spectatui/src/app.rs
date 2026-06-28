@@ -223,6 +223,7 @@ pub struct App {
 
     // Session attach
     pub attach_input: String,
+    pub attach_request: bool,
 
     // Click regions registered during the current frame (cleared each draw).
     pub click_regions: RefCell<Vec<(Rect, ClickAction)>>,
@@ -290,6 +291,7 @@ impl App {
             indexing_tick: 0,
             running_features: HashSet::new(),
             attach_input: String::new(),
+            attach_request: false,
             click_regions: RefCell::new(Vec::new()),
         }
     }
@@ -660,6 +662,24 @@ impl App {
             ),
             SettingsRow::ConfigPath => config::config_path_display(),
         }
+    }
+
+    /// Apply a tmux poll result: recompute which features have live sessions
+    /// and store the snapshot for the selected feature.
+    pub fn apply_tmux(&mut self, sessions: Vec<String>, session: Option<TmuxSession>) {
+        self.running_features = self
+            .project
+            .features
+            .iter()
+            .filter(|f| sessions.iter().any(|s| s.contains(&f.id)))
+            .map(|f| f.id.clone())
+            .collect();
+        self.tmux_session = session;
+    }
+
+    /// The tmux target (session name) for the currently attached session, if any.
+    pub fn attach_target(&self) -> Option<String> {
+        self.tmux_session.as_ref().map(|s| s.name.clone())
     }
 
     pub fn refresh_project(&mut self) {
