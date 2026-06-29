@@ -29,19 +29,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
             let area = fixed_centered_rect(44, 7, frame.area());
             draw_quit_confirm(frame, app, area);
         }
-        PopupKind::Extensions | PopupKind::Presets => {
-            let full = frame.area();
-            let w = 108.min(full.width.saturating_sub(6));
-            let h = 30.min(full.height.saturating_sub(6));
-            let area = fixed_centered_rect(w, h, full);
-            frame.render_widget(Clear, area);
-            let tab = if *popup == PopupKind::Presets {
-                crate::app::ExtTab::Presets
-            } else {
-                crate::app::ExtTab::Extensions
-            };
-            super::extensions_presets::draw_single(frame, app, area, tab);
-        }
+        PopupKind::Extensions => super::extensions::draw(frame, app),
+        PopupKind::Presets => super::presets::draw(frame, app),
         PopupKind::CommandPalette => {}
         PopupKind::CliConfirm => {
             let area = fixed_centered_rect(72, 11, frame.area());

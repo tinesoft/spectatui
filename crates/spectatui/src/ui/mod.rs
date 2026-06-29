@@ -1,6 +1,8 @@
 mod agent_output;
+mod extensions;
 mod extensions_presets;
 mod feature_list;
+mod presets;
 mod header;
 mod integrations;
 mod layout_editor;
@@ -14,9 +16,52 @@ mod workflow;
 mod workflows;
 
 use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::style::{Modifier, Style};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
 use crate::app::{App, DashboardLayout, Screen};
+use crate::theme::Theme;
+
+/// Footer for filterable popups: an active filter bar (`/ query ▌ … enter keep ·
+/// esc clear`) or the idle `[/] filter <noun>   esc close` prompt.
+pub(super) fn draw_search_footer(
+    frame: &mut Frame,
+    theme: &Theme,
+    area: Rect,
+    noun: &str,
+    active: bool,
+    query: &str,
+) {
+    if active {
+        let bar = Style::default().bg(theme.panel_alt);
+        let (text, text_style) = if query.is_empty() {
+            (format!("filter {noun}…"), Style::default().fg(theme.faint).bg(theme.panel_alt))
+        } else {
+            (query.to_string(), Style::default().fg(theme.fg).bg(theme.panel_alt))
+        };
+        let tail = "enter keep · esc clear";
+        let used = 2 + text.chars().count() + 1 + tail.chars().count();
+        let pad = (area.width as usize).saturating_sub(used);
+        let line = Line::from(vec![
+            Span::styled("/", Style::default().fg(theme.accent).bg(theme.panel_alt).add_modifier(Modifier::BOLD)),
+            Span::styled(" ", bar),
+            Span::styled(text, text_style),
+            Span::styled("▌", Style::default().fg(theme.accent).bg(theme.panel_alt)),
+            Span::styled(" ".repeat(pad), bar),
+            Span::styled(tail, Style::default().fg(theme.faint).bg(theme.panel_alt)),
+        ]);
+        frame.render_widget(Paragraph::new(line).style(bar), area);
+    } else {
+        let line = Line::from(vec![
+            Span::styled("[/] ", theme.accent_bold),
+            Span::styled(format!("filter {noun}"), Style::default().fg(theme.fg)),
+            Span::styled("   esc close", theme.faint_style),
+        ]);
+        frame.render_widget(Paragraph::new(line).style(theme.base), area);
+    }
+}
 
 pub fn draw(frame: &mut Frame, app: &App) {
     app.clear_click_regions();
@@ -54,7 +99,6 @@ pub fn draw(frame: &mut Frame, app: &App) {
             Screen::Dashboard => draw_dashboard(frame, app, outer[1]),
             Screen::SpecBrowser => spec_browser::draw(frame, app, outer[1]),
             Screen::Constitution => spec_browser::draw_constitution(frame, app, outer[1]),
-            Screen::ExtensionsPresets => extensions_presets::draw(frame, app, outer[1]),
             Screen::Settings => settings::draw(frame, app, outer[1]),
             Screen::SessionAttach => unreachable!(),
         }

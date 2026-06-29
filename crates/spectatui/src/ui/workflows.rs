@@ -16,9 +16,18 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let area = centered(w, h, full);
     frame.render_widget(Clear, area);
 
+    let title_text = if app.filter_query.is_empty() {
+        "Automation Workflows".to_string()
+    } else {
+        format!(
+            "Automation Workflows  ·  {}/{}",
+            app.filtered_workflows().len(),
+            app.project.workflows.len()
+        )
+    };
     let title = Line::from(vec![
         Span::styled("─┤ ", theme.border_focused),
-        Span::styled("Automation Workflows", theme.accent_bold),
+        Span::styled(title_text, theme.accent_bold),
         Span::styled(" ├", theme.border_focused),
     ]);
 
@@ -55,12 +64,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if area.height > 2 {
         let footer_y = area.y + area.height - 2;
         let footer_area = Rect::new(area.x + 3, footer_y, area.width.saturating_sub(6), 1);
-        frame.render_widget(
-            Paragraph::new(Line::from(Span::styled(
-                "[/] search catalog   [c] catalog list   esc close",
-                theme.faint_style,
-            ))),
+        super::draw_search_footer(
+            frame,
+            theme,
             footer_area,
+            "workflows",
+            app.filter_active,
+            &app.filter_query,
         );
     }
 }
@@ -69,6 +79,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
     let mut lines: Vec<Line> = Vec::new();
 
+    let items = app.filtered_workflows();
     if app.project.workflows.is_empty() {
         lines.push(Line::from(Span::styled(
             " No workflows found",
@@ -77,7 +88,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         let name_max = area.width.saturating_sub(10) as usize;
 
-        for (i, wf) in app.project.workflows.iter().enumerate() {
+        for (i, wf) in items.iter().enumerate() {
             let selected = i == app.wf_index;
             let row_style = if selected {
                 Style::default().fg(theme.sel_fg).bg(theme.sel)
@@ -145,7 +156,17 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
-    let Some(wf) = app.project.workflows.get(app.wf_index) else {
+    let items = app.filtered_workflows();
+    let Some(wf) = items.get(app.wf_index) else {
+        if !app.filter_query.is_empty() {
+            frame.render_widget(
+                Paragraph::new(Line::from(Span::styled(
+                    format!(" No matches for \"{}\"", app.filter_query),
+                    theme.dim_style,
+                ))),
+                area,
+            );
+        }
         return;
     };
 

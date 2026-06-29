@@ -18,7 +18,6 @@ pub enum Screen {
     Dashboard,
     SpecBrowser,
     Constitution,
-    ExtensionsPresets,
     Settings,
     SessionAttach,
 }
@@ -214,6 +213,10 @@ pub struct App {
     // Workflow management
     pub wf_index: usize,
 
+    // Inline list filter (management popups)
+    pub filter_query: String,
+    pub filter_active: bool,
+
     // Async catalog indexing
     pub indexing: bool,
     pub indexing_tick: u8,
@@ -287,6 +290,8 @@ impl App {
 
             integration_index: 0,
             wf_index: 0,
+            filter_query: String::new(),
+            filter_active: false,
             indexing: true,
             indexing_tick: 0,
             running_features: HashSet::new(),
@@ -410,12 +415,6 @@ impl App {
                 self.spec_tab = self.spec_tab.next();
                 self.spec_scroll = 0;
             }
-            Screen::ExtensionsPresets => {
-                self.ext_tab = match self.ext_tab {
-                    ExtTab::Extensions => ExtTab::Presets,
-                    ExtTab::Presets => ExtTab::Extensions,
-                };
-            }
             _ => {}
         }
     }
@@ -433,12 +432,6 @@ impl App {
             Screen::SpecBrowser => {
                 self.spec_tab = self.spec_tab.prev();
                 self.spec_scroll = 0;
-            }
-            Screen::ExtensionsPresets => {
-                self.ext_tab = match self.ext_tab {
-                    ExtTab::Extensions => ExtTab::Presets,
-                    ExtTab::Presets => ExtTab::Extensions,
-                };
             }
             _ => {}
         }
@@ -466,12 +459,6 @@ impl App {
         }
     }
 
-    pub fn enter_extensions(&mut self) {
-        self.screen = Screen::ExtensionsPresets;
-        self.ext_tab = ExtTab::Extensions;
-        self.ext_index = 0;
-    }
-
     pub fn enter_settings(&mut self) {
         self.screen = Screen::Settings;
         self.settings_index = 0;
@@ -487,7 +474,7 @@ impl App {
             return;
         }
         match self.screen {
-            Screen::SpecBrowser | Screen::Constitution | Screen::ExtensionsPresets | Screen::Settings | Screen::SessionAttach => {
+            Screen::SpecBrowser | Screen::Constitution | Screen::Settings | Screen::SessionAttach => {
                 self.screen = Screen::Dashboard;
                 self.spec_scroll = 0;
             }
@@ -507,10 +494,12 @@ impl App {
             }
             _ => {}
         }
+        self.reset_filter();
         self.active_popup = Some(kind);
     }
 
     pub fn close_popup(&mut self) {
+        self.reset_filter();
         self.active_popup = None;
     }
 
@@ -529,7 +518,7 @@ impl App {
     }
 
     pub fn ext_select_next(&mut self) {
-        let len = self.ext_list_len();
+        let len = self.filtered_ext_len();
         if len > 0 {
             match self.ext_tab {
                 ExtTab::Extensions => self.ext_index = (self.ext_index + 1) % len,
@@ -539,7 +528,7 @@ impl App {
     }
 
     pub fn ext_select_prev(&mut self) {
-        let len = self.ext_list_len();
+        let len = self.filtered_ext_len();
         if len > 0 {
             match self.ext_tab {
                 ExtTab::Extensions => {
@@ -726,14 +715,14 @@ impl App {
     }
 
     pub fn integration_select_next(&mut self) {
-        let len = self.project.integrations.len();
+        let len = self.filtered_integrations().len();
         if len > 0 {
             self.integration_index = (self.integration_index + 1) % len;
         }
     }
 
     pub fn integration_select_prev(&mut self) {
-        let len = self.project.integrations.len();
+        let len = self.filtered_integrations().len();
         if len > 0 {
             self.integration_index = if self.integration_index == 0 {
                 len - 1
@@ -744,14 +733,14 @@ impl App {
     }
 
     pub fn wf_select_next(&mut self) {
-        let len = self.project.workflows.len();
+        let len = self.filtered_workflows().len();
         if len > 0 {
             self.wf_index = (self.wf_index + 1) % len;
         }
     }
 
     pub fn wf_select_prev(&mut self) {
-        let len = self.project.workflows.len();
+        let len = self.filtered_workflows().len();
         if len > 0 {
             self.wf_index = if self.wf_index == 0 {
                 len - 1
@@ -759,6 +748,67 @@ impl App {
                 self.wf_index - 1
             };
         }
+    }
+
+    // ---- inline list filter ----
+    fn matches_filter(&self, haystack: &str) -> bool {
+        let q = self.filter_query.trim().to_lowercase();
+        q.is_empty() || haystack.to_lowercase().contains(&q)
+    }
+
+    pub fn filtered_integrations(&self) -> Vec<&IntegrationInfo> {
+        self.project
+            .integrations
+            .iter()
+            .filter(|it| self.matches_filter(&format!("{} {} {}", it.name, it.key, it.description)))
+            .collect()
+    }
+
+    pub fn filtered_workflows(&self) -> Vec<&WorkflowInfo> {
+        self.project
+            .workflows
+            .iter()
+            .filter(|wf| {
+                let name = wf.name.as_deref().unwrap_or("");
+                let src = wf.source.as_deref().unwrap_or("");
+                self.matches_filter(&format!("{} {} {} {}", name, wf.id, src, wf.description))
+            })
+            .collect()
+    }
+
+    pub fn filtered_extensions(&self) -> Vec<&ExtensionInfo> {
+        self.project
+            .extensions
+            .iter()
+            .filter(|e| {
+                let by = e.author.as_deref().unwrap_or("");
+                self.matches_filter(&format!("{} {} {}", e.id, by, e.description))
+            })
+            .collect()
+    }
+
+    pub fn filtered_presets(&self) -> Vec<&PresetInfo> {
+        self.project
+            .presets
+            .iter()
+            .filter(|p| {
+                let by = p.author.as_deref().unwrap_or("");
+                let src = p.source_label.as_deref().unwrap_or("");
+                self.matches_filter(&format!("{} {} {} {}", p.id, by, src, p.description))
+            })
+            .collect()
+    }
+
+    pub fn filtered_ext_len(&self) -> usize {
+        match self.ext_tab {
+            ExtTab::Extensions => self.filtered_extensions().len(),
+            ExtTab::Presets => self.filtered_presets().len(),
+        }
+    }
+
+    pub fn reset_filter(&mut self) {
+        self.filter_query.clear();
+        self.filter_active = false;
     }
 
     pub fn merge_catalog_results(
@@ -834,7 +884,6 @@ pub enum PaletteAction {
 pub enum ClickAction {
     OpenPopup(PopupKind),
     SetScreen(Screen),
-    EnterExtensions,
     OpenSettings,
     SetLayout(DashboardLayout),
     FocusPane(Pane),

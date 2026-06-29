@@ -139,7 +139,7 @@ class Component extends DCLogic {
       extTab:'extensions', extSel:0, extScroll:0,
       specTab:'spec', scroll:0,
       popup:null, palQuery:'', palSel:0, cliLines:[], cliStatus:'pending', cliCmd:'',
-      tailN:4, leSel:0, intSel:0, wfSel:0,
+      tailN:4, leSel:0, intSel:0, wfSel:0, flt:'', fltOn:false,
       paneCfg:[
         {kind:'features', label:'Feature list',   visible:true,  size:2},
         {kind:'workflow', label:'Workflow',       visible:true,  size:1},
@@ -200,6 +200,44 @@ class Component extends DCLogic {
     return this.T()[k] || this.T().fg;
   }
   stageCol(stage){ const s=STAGE[stage]; return this.state.theme==='dark'? s.d : s.l; }
+
+  // ---- inline list filter ----
+  applyFilter(list){
+    const q=(this.state.flt||'').trim().toLowerCase();
+    if(!q) return list;
+    return list.filter(it=>[it.name,it.id,it.key,it.by,it.desc,it.src].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  curExtListFiltered(){ return this.applyFilter(this.curExtList()); }
+  searchKeys(k,stop,selKey){
+    const st=this.state;
+    if(st.fltOn){
+      if(k==='Escape'){ stop(); this.setState({fltOn:false,flt:''}); return true; }
+      if(k==='Enter'){ stop(); this.setState({fltOn:false}); return true; }
+      if(k==='Backspace'){ stop(); this.setState(Object.assign({flt:st.flt.slice(0,-1)}, selKey?{[selKey]:0}:{})); return true; }
+      if(k==='ArrowUp'||k==='ArrowDown') return false;
+      if(k.length===1){ stop(); this.setState(Object.assign({flt:st.flt+k}, selKey?{[selKey]:0}:{})); return true; }
+      return true;
+    }
+    if(k==='/'){ stop(); this.setState(Object.assign({fltOn:true,flt:''}, selKey?{[selKey]:0}:{})); return true; }
+    return false;
+  }
+  searchFooter(x,y,w,noun){
+    const C=k=>this.C(k);
+    if(this.state.fltOn){
+      this.fill(x,y,w,1,C('panelAlt'));
+      this.text(x+1,y,'/',C('accent'),C('panelAlt'),true);
+      const q=this.state.flt, ph='filter '+noun+'…';
+      this.text(x+3,y,(q||ph),q?C('fg'):C('faint'),C('panelAlt'),!!q);
+      this.put(x+3+(q||ph).length,y,'▌',C('accent'),C('panelAlt'));
+      const tail='enter keep · esc clear';
+      this.text(x+w-tail.length,y,tail,C('faint'),C('panelAlt'));
+    } else {
+      this.text(x,y,'[/] ',C('accent'),null,true);
+      this.text(x+4,y,'filter '+noun,C('fg'));
+      this.reg(x,y,4+('filter '+noun).length,1,()=>this.setState({fltOn:true,flt:''}));
+      this.text(x+4+('filter '+noun).length,y,'   esc close',C('faint'));
+    }
+  }
 
   // ---- buffer primitives ----
   newBuf(){
@@ -263,8 +301,9 @@ class Component extends DCLogic {
     if(p && p.kind==='palette') hints=[['↑↓','navigate'],['enter','run'],['esc','close'],['type','filter']];
     else if(p && p.kind==='confirm') hints=[['enter','run command'],['esc','cancel'],['f','toggle --force']];
     else if(p && p.kind==='cli') hints=[['esc','close & refresh']];
-    else if(p && p.kind==='integrations') hints=[['↑↓','select'],['i','install'],['x','uninstall'],['d','use default'],['s','switch'],['g','upgrade'],['esc','close']];
-    else if(p && p.kind==='workflows') hints=[['↑↓','select'],['r','run'],['R','resume'],['s','status'],['a','add'],['esc','close']];
+    else if(p && p.kind==='integrations') hints=[['↑↓','select'],['/','filter'],['i','install'],['x','uninstall'],['d','default'],['s','switch'],['esc','close']];
+    else if(p && p.kind==='workflows') hints=[['↑↓','select'],['/','filter'],['r','run'],['s','status'],['a','add'],['esc','close']];
+    else if(p && p.kind==='extPresets') hints=[['tab','ext/presets'],['↑↓','select'],['/','filter'],['a','add'],['x','remove'],['esc','close']];
     else if(p && p.kind==='features') hints=[['↑↓','select'],['enter','jump to feature'],['esc','close']];
     else if(p) hints=[['↑↓','navigate'],['enter','select'],['esc','close']];
     else if(this.state.screen==='extensions') hints=[['tab','ext/presets'],['↑↓','select'],['a','add'],['x','remove'],['e/d','enable'],['/','search'],['esc','back']];
@@ -272,6 +311,7 @@ class Component extends DCLogic {
     else if(this.state.screen==='layouteditor') hints=[['↑↓','select pane'],['space','show/hide'],['< >','reorder'],['+ -','resize'],['enter','apply'],['esc','back']];
     else if(this.state.screen==='constitution'||this.state.screen==='settings') hints=[['↑↓','navigate'],['enter','toggle'],['esc','back']];
     else hints=[['tab','focus'],['↑↓','select'],['enter','open'],['1·2·3','layout'],['t','theme'],[':','commands'],['?','help'],['q','quit']];
+    if(this.state.fltOn) hints=[['type','filter list'],['↑↓','select'],['enter','keep'],['esc','clear']];
     let x=2;
     for(const [k,d] of hints){
       this.text(x,y,k,C('accent'),null,true); x+=k.length+1;
@@ -696,7 +736,7 @@ class Component extends DCLogic {
   drawExtManager(r,focused,compact,single){
     const C=k=>this.C(k);
     const bc=focused?C('accent'):C('border');
-    const title= single ? (this.state.extTab==='extensions'?'Extensions':'Presets') : 'Extensions & Presets';
+    const title= (single ? (this.state.extTab==='extensions'?'Extensions':'Presets') : 'Extensions & Presets')+(this.state.flt?('  ·  '+this.curExtListFiltered().length):'');
     this.box(r.x,r.y,r.w,r.h,title,bc,{titleFg:focused?C('accent'):C('fg'),bold:focused});
     let top;
     if(single){
@@ -714,7 +754,7 @@ class Component extends DCLogic {
       });
       top=r.y+3;
     }
-    const list=this.curExtList();
+    const list=this.curExtListFiltered();
     const listW=compact?r.w-2:Math.floor(r.w*0.46);
     // list
     list.forEach((e,i)=>{
@@ -734,6 +774,8 @@ class Component extends DCLogic {
       const dx=r.x+listW+1, dw=r.w-listW-2;
       for(let j=r.y+1;j<r.y+r.h-1;j++) this.put(dx-1,j,'│',C('border'));
       const e=list[this.state.extSel];
+      if(!e){ this.text(dx+1,top,'No matches for "'+this.state.flt+'"',C('dim')); }
+      else {
       let y=top;
       this.text(dx+1,y,this.clip(e.id,dw-2),C('fg'),null,true); 
       this.text(dx+1+e.id.length+1,y,'v'+e.ver,C('dim'));
@@ -758,17 +800,19 @@ class Component extends DCLogic {
       }
       if(this.state.extTab==='presets'&&e.status!=='available') acts.push(['r','resolve','resolve']);
       acts.forEach(([key,lbl])=>{ this.text(dx+1,y,'['+key+'] ',C('accent'),null,true); this.text(dx+5,y,lbl,C('fg')); y+=1; });
+      }
     }
-    this.text(r.x+2,r.y+r.h-2,compact?'[enter] manage':('[/] search catalog   [c] catalog list'+(single?'   esc close':'')),C('faint'));
+    if(compact) this.text(r.x+2,r.y+r.h-2,'[enter] manage',C('faint'));
+    else this.searchFooter(r.x+2,r.y+r.h-2,r.w-4,this.state.extTab);
   }
 
   // ---- popups ----
   openPopup(kind){
-    if(kind==='extensions'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'extensions', extSel:0}); return; }
-    if(kind==='presets'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'presets', extSel:0}); return; }
-    this.setState({popup:{kind}, palSel:0, intSel:0, wfSel:0});
+    if(kind==='extensions'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'extensions', extSel:0, fltOn:false, flt:''}); return; }
+    if(kind==='presets'){ this.setState({popup:{kind:'extPresets',single:true}, extTab:'presets', extSel:0, fltOn:false, flt:''}); return; }
+    this.setState({popup:{kind}, palSel:0, intSel:0, wfSel:0, fltOn:false, flt:''});
   }
-  go(screen){ this.setState({screen, popup:null, focus:0, scroll:0}); }
+  go(screen){ this.setState({screen, popup:null, focus:0, scroll:0, fltOn:false, flt:''}); }
 
   centeredBox(w,h,title){
     const C=k=>this.C(k);
@@ -788,9 +832,10 @@ class Component extends DCLogic {
       const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
       for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
       this.fill(x,y,w,h,C('panel'));
-      this.box(x,y,w,h,'AI Integrations',C('accent'),{titleFg:C('accent'),bold:true});
+      const ilist=this.applyFilter(INTEGRATIONS);
+      this.box(x,y,w,h,'AI Integrations'+(this.state.flt?('  ·  '+ilist.length+'/'+INTEGRATIONS.length):''),C('accent'),{titleFg:C('accent'),bold:true});
       const listW=Math.floor(w*0.42), top=y+2;
-      INTEGRATIONS.forEach((it,i)=>{
+      ilist.forEach((it,i)=>{
         const ry=top+i; if(ry>=y+h-2)return;
         const sel=(i===this.state.intSel);
         if(sel){ this.fill(x+1,ry,listW-1,1,C('sel')); this.put(x+1,ry,'▌',C('accent'),C('sel')); }
@@ -803,7 +848,9 @@ class Component extends DCLogic {
       });
       const dx=x+listW+1, dw=w-listW-2;
       for(let j=y+1;j<y+h-1;j++) this.put(dx-1,j,'│',C('border'));
-      const it=INTEGRATIONS[this.state.intSel]; let dyy=top;
+      const it=ilist[this.state.intSel]; let dyy=top;
+      if(!it){ this.text(dx+1,dyy,'No matches for "'+this.state.flt+'"',C('dim')); }
+      if(it){
       this.text(dx+1,dyy,this.clip(it.name,dw-14),C('fg'),null,true);
       this.text(dx+1+it.name.length+1,dyy,it.installed?('v'+it.ver):'',C('dim'));
       if(it.isDefault) this.text(dx+dw-9,dyy,'★ default',C('accent'),null,true);
@@ -820,7 +867,8 @@ class Component extends DCLogic {
       else if(it.isDefault) acts=[['g','upgrade'],['x','uninstall'],['v','status · drift-check'],['n','info']];
       else acts=[['d','use as default'],['s','switch to this'],['g','upgrade'],['x','uninstall'],['v','status · drift-check'],['n','info']];
       acts.forEach(([key,lbl])=>{ if(dyy<y+h-2){ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; } });
-      this.text(x+3,y+h-2,'[/] search catalog   [c] catalog list   esc close',C('faint'));
+      }
+      this.searchFooter(x+3,y+h-2,w-6,'integrations');
     }
     else if(p.kind==='features'){
       const w=Math.round(Math.min(108,COLS-6)*2/3),h=Math.min(30,ROWS-6); const b=this.centeredBox(w,h,'Features');
@@ -842,9 +890,10 @@ class Component extends DCLogic {
       const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
       for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
       this.fill(x,y,w,h,C('panel'));
-      this.box(x,y,w,h,'Automation Workflows',C('accent'),{titleFg:C('accent'),bold:true});
+      const wlist=this.applyFilter(WORKFLOWS);
+      this.box(x,y,w,h,'Automation Workflows'+(this.state.flt?('  ·  '+wlist.length+'/'+WORKFLOWS.length):''),C('accent'),{titleFg:C('accent'),bold:true});
       const listW=Math.floor(w*0.44), top=y+2;
-      WORKFLOWS.forEach((wf,i)=>{
+      wlist.forEach((wf,i)=>{
         const ry=top+i; if(ry>=y+h-2)return;
         const sel=(i===this.state.wfSel);
         if(sel){ this.fill(x+1,ry,listW-1,1,C('sel')); this.put(x+1,ry,'▌',C('accent'),C('sel')); }
@@ -856,7 +905,9 @@ class Component extends DCLogic {
       });
       const dx=x+listW+1, dw=w-listW-2;
       for(let j=y+1;j<y+h-1;j++) this.put(dx-1,j,'│',C('border'));
-      const wf=WORKFLOWS[this.state.wfSel]; let dyy=top;
+      const wf=wlist[this.state.wfSel]; let dyy=top;
+      if(!wf){ this.text(dx+1,dyy,'No matches for "'+this.state.flt+'"',C('dim')); }
+      if(wf){
       this.text(dx+1,dyy,this.clip(wf.name,dw-12),C('fg'),null,true);
       this.text(dx+1+wf.name.length+1,dyy,'v'+wf.ver,C('dim'));
       dyy+=2;
@@ -871,7 +922,8 @@ class Component extends DCLogic {
       this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
       const acts = wf.installed ? [['r','run'],['R','resume last run'],['s','status / run history'],['i','info'],['x','remove']] : [['a','add'],['i','info']];
       acts.forEach(([key,lbl])=>{ if(dyy<y+h-1){ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; } });
-      this.text(x+3,y+h-2,'[/] search catalog   [c] catalog list   esc close',C('faint'));
+      }
+      this.searchFooter(x+3,y+h-2,w-6,'workflows');
     }
     else if(p.kind==='extPresets'){
       const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
@@ -1129,7 +1181,7 @@ class Component extends DCLogic {
       if(action==='info') return `specify workflow info ${id}`;
       return '';
     }
-    const e=this.curExtList()[this.state.extSel];
+    const e=this.curExtListFiltered()[this.state.extSel];
     const tgt=this.state.extTab==='extensions'?'extension':'preset';
     if(action==='add') return `specify ${tgt} add ${e.id}`;
     if(action==='remove') return `specify ${tgt} remove ${e.id}${force}`;
@@ -1161,16 +1213,18 @@ class Component extends DCLogic {
       if(p.kind==='confirm'){
         if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
         if(k==='f'||k==='F'){ stop(); const nf=!p.force; this.setState({popup:{...p,force:nf}, cliCmd:this.buildCmd(p.action,{target:p.target,id:p.id,force:nf})}); return; }
-        if(k==='Enter'){ stop(); const willFail=(p.action==='remove'&&!p.target&&this.curExtList()[st.extSel].id==='adr-templates'); this.startCli(this.buildCmd(p.action,{target:p.target,id:p.id}),willFail); return; }
+        if(k==='Enter'){ stop(); const willFail=(p.action==='remove'&&!p.target&&this.curExtListFiltered()[st.extSel]&&this.curExtListFiltered()[st.extSel].id==='adr-templates'); this.startCli(this.buildCmd(p.action,{target:p.target,id:p.id}),willFail); return; }
         return;
       }
       if(p.kind==='cli'){ if(k==='Escape'){ stop(); clearInterval(this._cliTimer); this.setState({popup:null}); } return; }
-      if(p.kind==='extPresets'){ this.extKeys(k,stop,true); if(k==='Escape'){ stop(); this.setState({popup:null}); } return; }
+      if(p.kind==='extPresets'){ if(this.searchKeys(k,stop,'extSel')) return; this.extKeys(k,stop,true); if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); } return; }
       if(p.kind==='integrations'){
-        const list=INTEGRATIONS, it=list[st.intSel];
-        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(this.searchKeys(k,stop,'intSel')) return;
+        const list=this.applyFilter(INTEGRATIONS), it=list[st.intSel];
+        if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); return; }
         if(k==='ArrowDown'||k==='j'){ stop(); this.setState({intSel:Math.min(list.length-1,st.intSel+1)}); return; }
         if(k==='ArrowUp'||k==='k'){ stop(); this.setState({intSel:Math.max(0,st.intSel-1)}); return; }
+        if(!it){ return; }
         const open=(action)=>this.setState({popup:{kind:'confirm',action,target:'integration',id:it.key,name:it.name,force:false},cliCmd:this.buildCmd(action,{target:'integration',id:it.key})});
         if(k==='i'&&!it.installed){ stop(); open('install'); return; }
         if(k==='s'&&(!it.installed||(it.installed&&!it.isDefault))){ stop(); open('switch'); return; }
@@ -1182,10 +1236,12 @@ class Component extends DCLogic {
         return;
       }
       if(p.kind==='workflows'){
-        const list=WORKFLOWS, wf=list[st.wfSel];
-        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(this.searchKeys(k,stop,'wfSel')) return;
+        const list=this.applyFilter(WORKFLOWS), wf=list[st.wfSel];
+        if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); return; }
         if(k==='ArrowDown'||k==='j'){ stop(); this.setState({wfSel:Math.min(list.length-1,st.wfSel+1)}); return; }
         if(k==='ArrowUp'||k==='k'){ stop(); this.setState({wfSel:Math.max(0,st.wfSel-1)}); return; }
+        if(!wf){ return; }
         const open=(action)=>this.setState({popup:{kind:'confirm',action,target:'workflow',id:wf.id,name:wf.name,force:false},cliCmd:this.buildCmd(action,{target:'workflow',id:wf.id})});
         if(k==='r'&&wf.installed){ stop(); open('run'); return; }
         if(k==='R'&&wf.installed){ stop(); open('resume'); return; }
@@ -1203,10 +1259,11 @@ class Component extends DCLogic {
         return;
       }
       // simple list popups
-      if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+      if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); return; }
       if(k==='q'){ stop(); this.setState({popup:null}); }
       return;
     }
+    if(st.screen==='extensions' && st.fltOn){ if(this.searchKeys(k,stop,'extSel')) return; }
     // global
     if(k===':'||(k==='k'&&(e.metaKey||e.ctrlKey))){ stop(); this.setState({popup:{kind:'palette'},palQuery:'',palSel:0}); return; }
     if(k==='?'){ stop(); this.setState({popup:{kind:'help'}}); return; }
@@ -1240,7 +1297,7 @@ class Component extends DCLogic {
       }
       return;
     }
-    if(st.screen==='extensions'){ this.extKeys(k,stop,false); if(k==='e'&&false){} return; }
+    if(st.screen==='extensions'){ if(this.searchKeys(k,stop,'extSel')) return; this.extKeys(k,stop,false); return; }
     if(st.screen==='spec'){
       if(k==='Tab'){ stop(); const tabs=['spec','plan','tasks','research']; const d=e.shiftKey?-1:1; this.setState({specTab:tabs[(tabs.indexOf(st.specTab)+d+4)%4],scroll:0}); return; }
       if(k==='ArrowDown'||k==='j'){ stop(); this.setState({scroll:Math.min(this._specMax||0,st.scroll+1)}); return; }
@@ -1276,10 +1333,11 @@ class Component extends DCLogic {
     }
   }
   extKeys(k,stop,inPopup){
-    const st=this.state; const list=this.curExtList(); const e=list[st.extSel];
-    if(k==='Tab'){ stop(); if(inPopup) return; this.setState({extTab:st.extTab==='extensions'?'presets':'extensions',extSel:0}); return; }
+    const st=this.state; const list=this.curExtListFiltered(); const e=list[st.extSel];
+    if(k==='Tab'){ stop(); if(inPopup) return; this.setState({extTab:st.extTab==='extensions'?'presets':'extensions',extSel:0,fltOn:false,flt:''}); return; }
     if(k==='ArrowDown'||k==='j'){ stop(); this.setState({extSel:Math.min(list.length-1,st.extSel+1)}); return; }
     if(k==='ArrowUp'||k==='k'){ stop(); this.setState({extSel:Math.max(0,st.extSel-1)}); return; }
+    if(!e){ if(k==='Escape'&&!inPopup){ stop(); this.go('dashboard'); } return; }
     if(k==='a'&&e.status==='available'){ stop(); this.setState({popup:{kind:'confirm',action:'add',force:false},cliCmd:`specify ${st.extTab==='extensions'?'extension':'preset'} add ${e.id}`}); return; }
     if(k==='x'&&e.status!=='available'){ stop(); this.setState({popup:{kind:'confirm',action:'remove',force:false},cliCmd:this.buildCmd('remove')}); return; }
     if((k==='e'||k==='d')&&e.status!=='available'){ stop(); const act=e.status==='enabled'?'disable':'enable'; this.setState({popup:{kind:'confirm',action:act,force:false},cliCmd:this.buildCmd(act)}); return; }

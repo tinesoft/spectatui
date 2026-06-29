@@ -16,9 +16,18 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let area = centered(w, h, full);
     frame.render_widget(Clear, area);
 
+    let title_text = if app.filter_query.is_empty() {
+        "AI Integrations".to_string()
+    } else {
+        format!(
+            "AI Integrations  ·  {}/{}",
+            app.filtered_integrations().len(),
+            app.project.integrations.len()
+        )
+    };
     let title = Line::from(vec![
         Span::styled("─┤ ", theme.border_focused),
-        Span::styled("AI Integrations", theme.accent_bold),
+        Span::styled(title_text, theme.accent_bold),
         Span::styled(" ├", theme.border_focused),
     ]);
 
@@ -57,12 +66,13 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if area.height > 2 {
         let footer_y = area.y + area.height - 2;
         let footer_area = Rect::new(area.x + 3, footer_y, area.width.saturating_sub(6), 1);
-        frame.render_widget(
-            Paragraph::new(Line::from(Span::styled(
-                "[/] search catalog   [c] catalog list   esc close",
-                theme.faint_style,
-            ))),
+        super::draw_search_footer(
+            frame,
+            theme,
             footer_area,
+            "integrations",
+            app.filter_active,
+            &app.filter_query,
         );
     }
 }
@@ -71,6 +81,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
     let mut lines: Vec<Line> = Vec::new();
 
+    let items = app.filtered_integrations();
     if app.project.integrations.is_empty() {
         lines.push(Line::from(Span::styled(
             " No integrations found",
@@ -81,7 +92,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
         let right_max = 13; // "★ default" = 9, "available" = 9, padded
         let name_max = col_w.saturating_sub(right_max + 4); // sel_bar + dot + padding
 
-        for (i, intg) in app.project.integrations.iter().enumerate() {
+        for (i, intg) in items.iter().enumerate() {
             let selected = i == app.integration_index;
             let bg = if selected { Some(theme.sel) } else { None };
             let row_style = if selected {
@@ -163,7 +174,17 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
 fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
-    let Some(intg) = app.project.integrations.get(app.integration_index) else {
+    let items = app.filtered_integrations();
+    let Some(intg) = items.get(app.integration_index) else {
+        if !app.filter_query.is_empty() {
+            frame.render_widget(
+                Paragraph::new(Line::from(Span::styled(
+                    format!(" No matches for \"{}\"", app.filter_query),
+                    theme.dim_style,
+                ))),
+                area,
+            );
+        }
         return;
     };
 

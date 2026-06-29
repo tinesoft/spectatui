@@ -8,7 +8,14 @@ use crate::app::{App, PopupKind, Screen};
 pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
     let theme = &app.theme;
 
-    let hints: Vec<(&str, &str)> = if app.layout_editor_active {
+    let hints: Vec<(&str, &str)> = if app.filter_active {
+        vec![
+            ("type", "filter list"),
+            ("↑↓", "select"),
+            ("enter", "keep"),
+            ("esc", "clear"),
+        ]
+    } else if app.layout_editor_active {
         vec![
             ("↑↓", "select pane"),
             ("space", "show/hide"),
@@ -27,20 +34,29 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
     } else if app.active_popup == Some(PopupKind::Integrations) {
         vec![
             ("↑↓", "select"),
+            ("/", "filter"),
             ("i", "install"),
             ("x", "uninstall"),
-            ("d", "use default"),
+            ("d", "default"),
             ("s", "switch"),
-            ("g", "upgrade"),
             ("esc", "close"),
         ]
     } else if app.active_popup == Some(PopupKind::Workflows) {
         vec![
             ("↑↓", "select"),
+            ("/", "filter"),
             ("r", "run"),
-            ("R", "resume"),
             ("s", "status"),
             ("a", "add"),
+            ("esc", "close"),
+        ]
+    } else if matches!(app.active_popup, Some(PopupKind::Extensions) | Some(PopupKind::Presets)) {
+        vec![
+            ("tab", "ext/presets"),
+            ("↑↓", "select"),
+            ("/", "filter"),
+            ("a", "add"),
+            ("x", "remove"),
             ("esc", "close"),
         ]
     } else if app.active_popup == Some(PopupKind::Features) {
@@ -84,15 +100,6 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
             Screen::Constitution => vec![
                 ("↑↓", "navigate"),
                 ("enter", "toggle"),
-                ("esc", "back"),
-            ],
-            Screen::ExtensionsPresets => vec![
-                ("tab", "ext/presets"),
-                ("↑↓", "select"),
-                ("a", "add"),
-                ("x", "remove"),
-                ("e/d", "enable"),
-                ("/", "search"),
                 ("esc", "back"),
             ],
             Screen::Settings => vec![

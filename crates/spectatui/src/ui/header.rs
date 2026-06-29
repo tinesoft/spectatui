@@ -15,7 +15,6 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
             Screen::Dashboard => "Dashboard",
             Screen::SpecBrowser => "Spec Browser",
             Screen::Constitution => "Constitution",
-            Screen::ExtensionsPresets => "Extensions & Presets",
             Screen::Settings => "Settings",
             Screen::SessionAttach => "Attached",
         }

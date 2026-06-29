@@ -344,164 +344,142 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 }
                 _ => {}
             },
-            PopupKind::Integrations => match key.code {
-                KeyCode::Esc => app.close_popup(),
-                KeyCode::Up | KeyCode::Char('k') => app.integration_select_prev(),
-                KeyCode::Down | KeyCode::Char('j') => app.integration_select_next(),
-                KeyCode::Char('i') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if !intg.installed {
-                            let action = CliAction::IntegrationInstall {
-                                key: intg.key.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('s') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if !intg.installed || !intg.is_default {
-                            let action = CliAction::IntegrationSwitch {
-                                key: intg.key.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('d') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if intg.installed && !intg.is_default {
-                            let action = CliAction::IntegrationUseDefault {
-                                key: intg.key.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('x') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if intg.installed {
-                            let action = CliAction::IntegrationUninstall {
-                                key: intg.key.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('g') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if intg.installed {
-                            let action = CliAction::IntegrationUpgrade {
-                                key: Some(intg.key.clone()),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('v') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        if intg.installed {
-                            let action = CliAction::IntegrationStatus {
-                                key: intg.key.clone(),
-                            };
-                            let (job, rx) = cli_client.spawn_job(&action);
-                            app.cli_job = Some(job);
-                            app.cli_rx = Some(rx);
-                            app.active_popup = Some(PopupKind::CliOutput);
-                        }
-                    }
-                }
-                KeyCode::Char('n') => {
-                    if let Some(intg) = app.project.integrations.get(app.integration_index) {
-                        let action = CliAction::IntegrationGetInfo {
-                            key: intg.key.clone(),
-                        };
-                        let (job, rx) = cli_client.spawn_job(&action);
-                        app.cli_job = Some(job);
-                        app.cli_rx = Some(rx);
-                        app.active_popup = Some(PopupKind::CliOutput);
-                    }
-                }
-                _ => {}
-            },
-            PopupKind::Workflows => match key.code {
-                KeyCode::Esc => app.close_popup(),
-                KeyCode::Up | KeyCode::Char('k') => app.wf_select_prev(),
-                KeyCode::Down | KeyCode::Char('j') => app.wf_select_next(),
-                KeyCode::Char('a') => {
-                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
-                        if !wf.installed {
-                            let action = CliAction::WorkflowAdd {
-                                source: wf.id.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('x') => {
-                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
-                        if wf.installed {
-                            let action = CliAction::WorkflowRemove {
-                                id: wf.id.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('r') => {
-                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
-                        if wf.installed {
-                            let action = CliAction::WorkflowRun {
-                                source: wf.id.clone(),
-                            };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('R') => {
-                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
-                        if let Some(run_id) = wf.last_run.clone() {
-                            let action = CliAction::WorkflowResume { run_id };
-                            app.pending_action = Some(action);
-                            app.force_flag = false;
-                            app.active_popup = Some(PopupKind::CliConfirm);
-                        }
-                    }
-                }
-                KeyCode::Char('s') => {
-                    if app.project.workflows.get(app.wf_index).is_some() {
-                        let action = CliAction::WorkflowStatus { run_id: None };
+            PopupKind::Integrations => match handle_filter_key(app, key) {
+                FilterKey::ConsumedReset => app.integration_index = 0,
+                FilterKey::Consumed => {}
+                FilterKey::NotConsumed => {
+                    let sel = app
+                        .filtered_integrations()
+                        .get(app.integration_index)
+                        .map(|it| (it.key.clone(), it.installed, it.is_default));
+                    let confirm = |app: &mut App, action: CliAction| {
                         app.pending_action = Some(action);
                         app.force_flag = false;
                         app.active_popup = Some(PopupKind::CliConfirm);
+                    };
+                    match key.code {
+                        KeyCode::Esc => app.close_popup(),
+                        KeyCode::Up | KeyCode::Char('k') => app.integration_select_prev(),
+                        KeyCode::Down | KeyCode::Char('j') => app.integration_select_next(),
+                        KeyCode::Char('i') => {
+                            if let Some((k, installed, _)) = &sel {
+                                if !installed {
+                                    confirm(app, CliAction::IntegrationInstall { key: k.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('s') => {
+                            if let Some((k, installed, is_default)) = &sel {
+                                if !installed || !is_default {
+                                    confirm(app, CliAction::IntegrationSwitch { key: k.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('d') => {
+                            if let Some((k, installed, is_default)) = &sel {
+                                if *installed && !is_default {
+                                    confirm(app, CliAction::IntegrationUseDefault { key: k.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('x') => {
+                            if let Some((k, installed, _)) = &sel {
+                                if *installed {
+                                    confirm(app, CliAction::IntegrationUninstall { key: k.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('g') => {
+                            if let Some((k, installed, _)) = &sel {
+                                if *installed {
+                                    confirm(app, CliAction::IntegrationUpgrade { key: Some(k.clone()) });
+                                }
+                            }
+                        }
+                        KeyCode::Char('v') => {
+                            if let Some((k, installed, _)) = &sel {
+                                if *installed {
+                                    let (job, rx) = cli_client
+                                        .spawn_job(&CliAction::IntegrationStatus { key: k.clone() });
+                                    app.cli_job = Some(job);
+                                    app.cli_rx = Some(rx);
+                                    app.active_popup = Some(PopupKind::CliOutput);
+                                }
+                            }
+                        }
+                        KeyCode::Char('n') => {
+                            if let Some((k, _, _)) = &sel {
+                                let (job, rx) = cli_client
+                                    .spawn_job(&CliAction::IntegrationGetInfo { key: k.clone() });
+                                app.cli_job = Some(job);
+                                app.cli_rx = Some(rx);
+                                app.active_popup = Some(PopupKind::CliOutput);
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                KeyCode::Char('i') => {
-                    if let Some(wf) = app.project.workflows.get(app.wf_index) {
-                        let action = CliAction::WorkflowGetInfo { id: wf.id.clone() };
-                        let (job, rx) = cli_client.spawn_job(&action);
-                        app.cli_job = Some(job);
-                        app.cli_rx = Some(rx);
-                        app.active_popup = Some(PopupKind::CliOutput);
+            },
+            PopupKind::Workflows => match handle_filter_key(app, key) {
+                FilterKey::ConsumedReset => app.wf_index = 0,
+                FilterKey::Consumed => {}
+                FilterKey::NotConsumed => {
+                    let sel = app
+                        .filtered_workflows()
+                        .get(app.wf_index)
+                        .map(|wf| (wf.id.clone(), wf.installed, wf.last_run.clone()));
+                    let confirm = |app: &mut App, action: CliAction| {
+                        app.pending_action = Some(action);
+                        app.force_flag = false;
+                        app.active_popup = Some(PopupKind::CliConfirm);
+                    };
+                    match key.code {
+                        KeyCode::Esc => app.close_popup(),
+                        KeyCode::Up | KeyCode::Char('k') => app.wf_select_prev(),
+                        KeyCode::Down | KeyCode::Char('j') => app.wf_select_next(),
+                        KeyCode::Char('a') => {
+                            if let Some((id, installed, _)) = &sel {
+                                if !installed {
+                                    confirm(app, CliAction::WorkflowAdd { source: id.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('x') => {
+                            if let Some((id, installed, _)) = &sel {
+                                if *installed {
+                                    confirm(app, CliAction::WorkflowRemove { id: id.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('r') => {
+                            if let Some((id, installed, _)) = &sel {
+                                if *installed {
+                                    confirm(app, CliAction::WorkflowRun { source: id.clone() });
+                                }
+                            }
+                        }
+                        KeyCode::Char('R') => {
+                            if let Some((_, _, Some(run_id))) = &sel {
+                                confirm(app, CliAction::WorkflowResume { run_id: run_id.clone() });
+                            }
+                        }
+                        KeyCode::Char('s') => {
+                            if sel.is_some() {
+                                confirm(app, CliAction::WorkflowStatus { run_id: None });
+                            }
+                        }
+                        KeyCode::Char('i') => {
+                            if let Some((id, _, _)) = &sel {
+                                let (job, rx) = cli_client
+                                    .spawn_job(&CliAction::WorkflowGetInfo { id: id.clone() });
+                                app.cli_job = Some(job);
+                                app.cli_rx = Some(rx);
+                                app.active_popup = Some(PopupKind::CliOutput);
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                _ => {}
             },
             PopupKind::Features => match key.code {
                 KeyCode::Esc => app.close_popup(),
@@ -641,7 +619,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             app.open_popup(PopupKind::QuitConfirm);
             return;
         }
-        KeyCode::Char('t') if !matches!(app.screen, Screen::ExtensionsPresets) => {
+        KeyCode::Char('t') => {
             app.toggle_theme();
             return;
         }
@@ -661,11 +639,11 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             app.open_popup(PopupKind::Integrations);
             return;
         }
-        KeyCode::Char('f') if !matches!(app.screen, Screen::ExtensionsPresets) => {
+        KeyCode::Char('f') => {
             app.open_popup(PopupKind::Features);
             return;
         }
-        KeyCode::Char('w') if !matches!(app.screen, Screen::ExtensionsPresets) => {
+        KeyCode::Char('w') => {
             app.open_popup(PopupKind::Workflows);
             return;
         }
@@ -682,7 +660,6 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
         Screen::Dashboard => handle_dashboard_key(app, key, cli_client),
         Screen::SpecBrowser => handle_spec_browser_key(app, key),
         Screen::Constitution => handle_constitution_key(app, key),
-        Screen::ExtensionsPresets => handle_extensions_key(app, key, cli_client),
         Screen::Settings => handle_settings_key(app, key, cli_client),
         Screen::SessionAttach => match key.code {
             KeyCode::Esc => app.go_back(),
@@ -765,128 +742,77 @@ fn handle_constitution_key(app: &mut App, key: KeyEvent) {
     }
 }
 
-fn handle_extensions_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
-    match key.code {
-        KeyCode::Tab | KeyCode::BackTab => app.cycle_tab_forward(),
-        KeyCode::Up | KeyCode::Char('k') => app.ext_select_prev(),
-        KeyCode::Down | KeyCode::Char('j') => app.ext_select_next(),
-        KeyCode::Esc => app.go_back(),
-
-        // Extension/preset actions
-        KeyCode::Char('a') => {
-            let target = match app.ext_tab {
-                ExtTab::Extensions => CliTarget::Extension,
-                ExtTab::Presets => CliTarget::Preset,
-            };
-            let id = current_ext_id(app);
-            if let Some(id) = id {
-                let action = CliAction::Add {
-                    target,
-                    id,
-                    priority: None,
-                    dev_path: None,
-                    from_url: None,
-                };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('x') => {
-            let target = match app.ext_tab {
-                ExtTab::Extensions => CliTarget::Extension,
-                ExtTab::Presets => CliTarget::Preset,
-            };
-            let id = current_ext_id(app);
-            if let Some(id) = id {
-                let action = CliAction::Remove {
-                    target,
-                    id,
-                    keep_config: false,
-                    force: false,
-                };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('e') => {
-            let target = match app.ext_tab {
-                ExtTab::Extensions => CliTarget::Extension,
-                ExtTab::Presets => CliTarget::Preset,
-            };
-            let id = current_ext_id(app);
-            if let Some(id) = id {
-                let action = CliAction::Enable { target, id };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('d') => {
-            let target = match app.ext_tab {
-                ExtTab::Extensions => CliTarget::Extension,
-                ExtTab::Presets => CliTarget::Preset,
-            };
-            let id = current_ext_id(app);
-            if let Some(id) = id {
-                let action = CliAction::Disable { target, id };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('u') if app.ext_tab == ExtTab::Extensions => {
-            if let Some(id) = current_ext_id(app) {
-                let action = CliAction::Update { target: CliTarget::Extension, id: Some(id) };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('p') => {
-            let target = match app.ext_tab {
-                ExtTab::Extensions => CliTarget::Extension,
-                ExtTab::Presets => CliTarget::Preset,
-            };
-            if let Some(id) = current_ext_id(app) {
-                let action = CliAction::SetPriority { target, id, priority: 75 };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.open_popup(PopupKind::CliConfirm);
-            }
-        }
-        KeyCode::Char('r') if app.ext_tab == ExtTab::Presets => {
-            if let Some(id) = current_ext_id(app) {
-                let action = CliAction::Resolve { name: id };
-                let (job, rx) = cli_client.spawn_job(&action);
-                app.cli_job = Some(job);
-                app.cli_rx = Some(rx);
-                app.open_popup(PopupKind::CliOutput);
-            }
-        }
-        _ => {}
+fn current_ext_id(app: &App) -> Option<String> {
+    match app.ext_tab {
+        ExtTab::Extensions => app.filtered_extensions().get(app.ext_index).map(|e| e.id.clone()),
+        ExtTab::Presets => app.filtered_presets().get(app.preset_index).map(|p| p.id.clone()),
     }
 }
 
-fn current_ext_id(app: &App) -> Option<String> {
-    match app.ext_tab {
-        ExtTab::Extensions => app
-            .project
-            .extensions
-            .get(app.ext_index)
-            .map(|e| e.id.clone()),
-        ExtTab::Presets => app
-            .project
-            .presets
-            .get(app.preset_index)
-            .map(|p| p.id.clone()),
+enum FilterKey {
+    /// Key consumed; the list query changed so the selection should reset to 0.
+    ConsumedReset,
+    /// Key consumed by the filter; no further handling.
+    Consumed,
+    /// Not a filter key; fall through to normal handling.
+    NotConsumed,
+}
+
+/// Handle the inline list-filter keys (`/` to open, typing to narrow). Mutates
+/// `filter_query`/`filter_active`; the caller resets its selection index on
+/// `ConsumedReset`.
+fn handle_filter_key(app: &mut App, key: KeyEvent) -> FilterKey {
+    if app.filter_active {
+        match key.code {
+            KeyCode::Esc => {
+                app.filter_active = false;
+                app.filter_query.clear();
+                FilterKey::ConsumedReset
+            }
+            KeyCode::Enter => {
+                app.filter_active = false;
+                FilterKey::Consumed
+            }
+            KeyCode::Backspace => {
+                app.filter_query.pop();
+                FilterKey::ConsumedReset
+            }
+            // Arrows still move the selection while filtering.
+            KeyCode::Up | KeyCode::Down => FilterKey::NotConsumed,
+            KeyCode::Char(c) => {
+                app.filter_query.push(c);
+                FilterKey::ConsumedReset
+            }
+            _ => FilterKey::Consumed,
+        }
+    } else if key.code == KeyCode::Char('/') {
+        app.filter_active = true;
+        app.filter_query.clear();
+        FilterKey::ConsumedReset
+    } else {
+        FilterKey::NotConsumed
     }
 }
 
 fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
+    match handle_filter_key(app, key) {
+        FilterKey::ConsumedReset => {
+            app.ext_index = 0;
+            app.preset_index = 0;
+            return;
+        }
+        FilterKey::Consumed => return,
+        FilterKey::NotConsumed => {}
+    }
     match key.code {
         KeyCode::Esc => app.close_popup(),
+        KeyCode::Tab | KeyCode::BackTab => {
+            let next = match app.ext_tab {
+                ExtTab::Extensions => PopupKind::Presets,
+                ExtTab::Presets => PopupKind::Extensions,
+            };
+            app.open_popup(next);
+        }
         KeyCode::Up | KeyCode::Char('k') => app.ext_select_prev(),
         KeyCode::Down | KeyCode::Char('j') => app.ext_select_next(),
         KeyCode::Char('a') => {
@@ -1010,7 +936,6 @@ fn execute_click_action(app: &mut App, action: ClickAction) {
     match action {
         ClickAction::OpenPopup(kind) => app.open_popup(kind),
         ClickAction::SetScreen(screen) => app.screen = screen,
-        ClickAction::EnterExtensions => app.enter_extensions(),
         ClickAction::OpenSettings => app.enter_settings(),
         ClickAction::SetLayout(layout) => {
             app.layout = layout;
