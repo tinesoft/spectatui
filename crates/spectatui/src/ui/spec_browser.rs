@@ -44,18 +44,21 @@ pub fn draw_constitution(frame: &mut Frame, app: &App, area: Rect) {
 
     let total_lines = lines.len() as u16;
     let inner_height = block.inner(area).height;
+    app.doc_scroll_max
+        .set(total_lines.saturating_sub(inner_height));
+    let scroll = app.spec_scroll.min(app.doc_scroll_max.get());
 
     let content = Paragraph::new(lines)
         .block(block)
         .wrap(Wrap { trim: false })
-        .scroll((app.spec_scroll, 0))
+        .scroll((scroll, 0))
         .style(theme.base);
 
     frame.render_widget(content, area);
 
     if total_lines > inner_height {
         let mut scrollbar_state = ScrollbarState::new(total_lines as usize)
-            .position(app.spec_scroll as usize);
+            .position(scroll as usize);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("│"))
             .thumb_symbol("┃");
@@ -87,7 +90,16 @@ fn draw_feature_sidebar(frame: &mut Frame, app: &App, area: Rect) {
 
     let mut lines: Vec<Line> = Vec::new();
 
-    for (i, feature) in app.project.features.iter().enumerate() {
+    let per_page = inner.height as usize;
+    let offset = super::scroll_offset(app.feature_index, per_page);
+    for (i, feature) in app
+        .project
+        .features
+        .iter()
+        .enumerate()
+        .skip(offset)
+        .take(per_page)
+    {
         let selected = i == app.feature_index;
         let stage_label = feature.stage.label();
         let badge_style = theme.stage_badge(stage_label, app.theme_mode);
@@ -121,7 +133,7 @@ fn draw_feature_sidebar(frame: &mut Frame, app: &App, area: Rect) {
             Span::styled(pad, row_bg),
         ]));
 
-        let row_y = inner.y + i as u16;
+        let row_y = inner.y + (i - offset) as u16;
         if row_y < inner.y + inner.height {
             app.register_click(
                 Rect::new(inner.x, row_y, inner.width, 1),
@@ -187,18 +199,21 @@ fn draw_doc_pane(frame: &mut Frame, app: &App, area: Rect, focused: bool) {
     };
 
     let total_lines = lines.len() as u16;
+    app.doc_scroll_max
+        .set(total_lines.saturating_sub(inner_area.height));
+    let scroll = app.spec_scroll.min(app.doc_scroll_max.get());
 
     let content = Paragraph::new(lines)
         .block(block)
         .wrap(Wrap { trim: false })
-        .scroll((app.spec_scroll, 0))
+        .scroll((scroll, 0))
         .style(theme.base);
 
     frame.render_widget(content, area);
 
     if total_lines > inner_area.height {
         let mut scrollbar_state = ScrollbarState::new(total_lines as usize)
-            .position(app.spec_scroll as usize);
+            .position(scroll as usize);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("│"))
             .thumb_symbol("┃");

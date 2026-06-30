@@ -24,6 +24,15 @@ use ratatui::Frame;
 use crate::app::{App, DashboardLayout, Screen};
 use crate::theme::Theme;
 
+/// First visible row index for a 1-row-per-item list so `selected` stays on screen.
+pub(super) fn scroll_offset(selected: usize, visible_rows: usize) -> usize {
+    if visible_rows == 0 || selected < visible_rows {
+        0
+    } else {
+        selected - visible_rows + 1
+    }
+}
+
 /// Footer for filterable popups: an active filter bar (`/ query ▌ … enter keep ·
 /// esc clear`) or the idle `[/] filter <noun>   esc close` prompt.
 pub(super) fn draw_search_footer(

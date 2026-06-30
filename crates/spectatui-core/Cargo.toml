@@ -10,6 +10,7 @@ serde_yaml = "0.9"
 thiserror = "2"
 anyhow = "1"
 tokio = { version = "1", features = ["process", "sync", "rt", "io-util", "macros"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 notify = "7"
 notify-debouncer-mini = "0.5"
 

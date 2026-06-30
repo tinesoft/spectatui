@@ -104,18 +104,18 @@ const WORKFLOWS = [
 ];
 
 const EXTENSIONS = [
-  {id:'gherkin-specs',      ver:'1.4.0', status:'enabled',  prio:80, cmds:6, src:'catalog · community', by:'speckit-community', desc:'Adds Given/When/Then scenario blocks to spec.md and a /speckit.scenarios command.'},
-  {id:'openapi-contracts',  ver:'0.9.2', status:'enabled',  prio:70, cmds:4, src:'catalog · community', by:'apiworks',          desc:'Generates OpenAPI 3.1 contracts into contracts/ during /speckit.plan.'},
-  {id:'adr-templates',      ver:'2.1.0', status:'enabled',  prio:60, cmds:3, src:'catalog · official',   by:'speckit',           desc:'Architecture Decision Records scaffolding wired into the plan phase.'},
-  {id:'security-checklist', ver:'1.0.5', status:'disabled', prio:40, cmds:5, src:'catalog · community', by:'redteam-labs',      desc:'OWASP-aligned checklist injected by /speckit.checklist. Currently disabled.'},
-  {id:'mermaid-diagrams',   ver:'0.6.0', status:'available',prio:null,cmds:2, src:'catalog · community', by:'diagrammer',        desc:'Render data-model.md relationships as Mermaid ER diagrams.'},
-  {id:'threat-model',       ver:'1.2.0', status:'available',prio:null,cmds:7, src:'catalog · community', by:'redteam-labs',      desc:'STRIDE threat-modeling pass with a /speckit.threats command.'},
+  {id:'gherkin-specs',      name:'Gherkin Specs',      ver:'1.4.0', status:'enabled',  prio:80, cmds:6, src:'catalog · community', by:'speckit-community', desc:'Adds Given/When/Then scenario blocks to spec.md and a /speckit.scenarios command.'},
+  {id:'openapi-contracts',  name:'OpenAPI Contracts',  ver:'0.9.2', status:'enabled',  prio:70, cmds:4, src:'catalog · community', by:'apiworks',          desc:'Generates OpenAPI 3.1 contracts into contracts/ during /speckit.plan.'},
+  {id:'adr-templates',      name:'ADR Templates',      ver:'2.1.0', status:'enabled',  prio:60, cmds:3, src:'catalog · official',   by:'speckit',           desc:'Architecture Decision Records scaffolding wired into the plan phase.'},
+  {id:'security-checklist', name:'Security Checklist', ver:'1.0.5', status:'disabled', prio:40, cmds:5, src:'catalog · community', by:'redteam-labs',      desc:'OWASP-aligned checklist injected by /speckit.checklist. Currently disabled.'},
+  {id:'mermaid-diagrams',   name:'Mermaid Diagrams',   ver:'0.6.0', status:'available',prio:null,cmds:2, src:'catalog · community', by:'diagrammer',        desc:'Render data-model.md relationships as Mermaid ER diagrams.'},
+  {id:'threat-model',       name:'Threat Model',       ver:'1.2.0', status:'available',prio:null,cmds:7, src:'catalog · community', by:'redteam-labs',      desc:'STRIDE threat-modeling pass with a /speckit.threats command.'},
 ];
 const PRESETS = [
-  {id:'enterprise',   ver:'3.0.0', status:'enabled',  prio:90, cmds:8, src:'catalog · official',  by:'speckit',     desc:'Formal terminology, compliance sections, sign-off blocks across all templates.'},
-  {id:'concise',      ver:'1.1.0', status:'enabled',  prio:50, cmds:4, src:'catalog · community', by:'speckit-community', desc:'Trims boilerplate; terse headings; bullet-first spec/plan format.'},
-  {id:'startup-lean', ver:'0.8.0', status:'disabled', prio:30, cmds:5, src:'catalog · community', by:'yc-tools',    desc:'Lightweight one-pager spec format. Currently disabled.'},
-  {id:'academic',     ver:'1.0.0', status:'available',prio:null,cmds:6, src:'catalog · community', by:'lab-research',desc:'Citation blocks, hypothesis/method framing for research-driven specs.'},
+  {id:'enterprise',   name:'Enterprise',   ver:'3.0.0', status:'enabled',  prio:90, cmds:8, src:'catalog · official',  by:'speckit',     desc:'Formal terminology, compliance sections, sign-off blocks across all templates.'},
+  {id:'concise',      name:'Concise',      ver:'1.1.0', status:'enabled',  prio:50, cmds:4, src:'catalog · community', by:'speckit-community', desc:'Trims boilerplate; terse headings; bullet-first spec/plan format.'},
+  {id:'startup-lean', name:'Startup Lean', ver:'0.8.0', status:'disabled', prio:30, cmds:5, src:'catalog · community', by:'yc-tools',    desc:'Lightweight one-pager spec format. Currently disabled.'},
+  {id:'academic',     name:'Academic',     ver:'1.0.0', status:'available',prio:null,cmds:6, src:'catalog · community', by:'lab-research',desc:'Citation blocks, hypothesis/method framing for research-driven specs.'},
 ];
 
 const AGENT_SCRIPT = [
@@ -763,7 +763,7 @@ class Component extends DCLogic {
       if(sel){ this.fill(r.x+1,y,listW-1,1,C('sel')); this.put(r.x+1,y,'▌',C('accent'),C('sel')); }
       const bg=sel?C('sel'):null;
       this.put(r.x+3,y,this.statusIcon(e.status),this.statusCol(e.status),bg);
-      this.text(r.x+5,y,this.clip(e.id,listW-22),sel?C('selFg'):C('fg'),bg,sel);
+      this.text(r.x+5,y,this.clip(e.name,listW-22),sel?C('selFg'):C('fg'),bg,sel);
       const pr=e.prio!=null?('p'+e.prio):'—';
       this.text(r.x+listW-16,y,pr,C('dim'),bg);
       this.text(r.x+listW-10,y,'v'+e.ver,C('faint'),bg);
@@ -777,8 +777,11 @@ class Component extends DCLogic {
       if(!e){ this.text(dx+1,top,'No matches for "'+this.state.flt+'"',C('dim')); }
       else {
       let y=top;
-      this.text(dx+1,y,this.clip(e.id,dw-2),C('fg'),null,true); 
-      this.text(dx+1+e.id.length+1,y,'v'+e.ver,C('dim'));
+      { let hx=dx+1;
+        this.text(hx,y,this.clip(e.name,dw-24),C('fg'),null,true); hx+=Math.min(e.name.length,dw-24);
+        this.text(hx,y,'  ·  id · ',C('faint')); hx+=10;
+        this.text(hx,y,e.id,C('dim')); hx+=e.id.length+1;
+        this.text(hx,y,'v'+e.ver,C('dim')); }
       y+=2;
       const [icon,col]=[this.statusIcon(e.status),this.statusCol(e.status)];
       this.put(dx+1,y,icon,col); this.text(dx+3,y,e.status,col,null,true);
@@ -851,8 +854,11 @@ class Component extends DCLogic {
       const it=ilist[this.state.intSel]; let dyy=top;
       if(!it){ this.text(dx+1,dyy,'No matches for "'+this.state.flt+'"',C('dim')); }
       if(it){
-      this.text(dx+1,dyy,this.clip(it.name,dw-14),C('fg'),null,true);
-      this.text(dx+1+it.name.length+1,dyy,it.installed?('v'+it.ver):'',C('dim'));
+      { let hx=dx+1;
+        this.text(hx,dyy,this.clip(it.name,dw-24),C('fg'),null,true); hx+=Math.min(it.name.length,dw-24);
+        this.text(hx,dyy,'  ·  id · ',C('faint')); hx+=10;
+        this.text(hx,dyy,it.key,C('dim')); hx+=it.key.length+1;
+        if(it.installed) this.text(hx,dyy,'v'+it.ver,C('dim')); }
       if(it.isDefault) this.text(dx+dw-9,dyy,'★ default',C('accent'),null,true);
       dyy+=2;
       this.put(dx+1,dyy,it.installed?'●':'○',it.installed?C('good'):C('faint'));
@@ -908,8 +914,11 @@ class Component extends DCLogic {
       const wf=wlist[this.state.wfSel]; let dyy=top;
       if(!wf){ this.text(dx+1,dyy,'No matches for "'+this.state.flt+'"',C('dim')); }
       if(wf){
-      this.text(dx+1,dyy,this.clip(wf.name,dw-12),C('fg'),null,true);
-      this.text(dx+1+wf.name.length+1,dyy,'v'+wf.ver,C('dim'));
+      { let hx=dx+1;
+        this.text(hx,dyy,this.clip(wf.name,dw-24),C('fg'),null,true); hx+=Math.min(wf.name.length,dw-24);
+        this.text(hx,dyy,'  ·  id · ',C('faint')); hx+=10;
+        this.text(hx,dyy,wf.id,C('dim')); hx+=wf.id.length+1;
+        this.text(hx,dyy,'v'+wf.ver,C('dim')); }
       dyy+=2;
       this.put(dx+1,dyy,wf.installed?'●':'○',wf.installed?C('good'):C('faint'));
       this.text(dx+3,dyy,wf.installed?'installed':'not installed',wf.installed?C('good'):C('warn'),null,true);

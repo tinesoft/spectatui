@@ -45,14 +45,18 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         return;
     }
 
-    let max_visible = (inner.height as usize) / 2;
+    let max_visible = ((inner.height as usize) / 2).max(1);
+    let offset = super::scroll_offset(app.feature_index, max_visible);
     let mut lines: Vec<Line> = Vec::new();
 
-    for (i, feature) in app.project.features.iter().enumerate() {
-        if lines.len() / 2 >= max_visible {
-            break;
-        }
-
+    for (i, feature) in app
+        .project
+        .features
+        .iter()
+        .enumerate()
+        .skip(offset)
+        .take(max_visible)
+    {
         let selected = i == app.feature_index;
         let stage_label = feature.stage.label();
         let badge_style = theme.stage_badge(stage_label, app.theme_mode);

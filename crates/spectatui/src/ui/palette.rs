@@ -70,9 +70,11 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
     // Commands
     let mut lines: Vec<Line> = Vec::new();
-    for (i, cmd) in filtered.iter().enumerate() {
+    let per_page = rows[2].height as usize;
+    let offset = super::scroll_offset(palette.selected, per_page);
+    for (i, cmd) in filtered.iter().enumerate().skip(offset).take(per_page) {
         let selected = i == palette.selected;
-        let row_y = rows[2].y + i as u16;
+        let row_y = rows[2].y + (i - offset) as u16;
         if row_y < rows[2].y + rows[2].height {
             app.register_click(
                 Rect::new(rows[2].x, row_y, rows[2].width, 1),

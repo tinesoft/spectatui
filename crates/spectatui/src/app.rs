@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 
 use ratatui::layout::Rect;
@@ -159,6 +159,16 @@ pub struct PaletteState {
     pub selected: usize,
 }
 
+/// Snapshot of the one-shot async catalog fetch, re-applied after every project
+/// re-discovery so the popups keep their "available" items and workflows.
+#[derive(Clone, Default)]
+pub struct CatalogResults {
+    pub integrations: Vec<IntegrationInfo>,
+    pub extensions: Vec<ExtensionInfo>,
+    pub presets: Vec<PresetInfo>,
+    pub workflows: Vec<WorkflowInfo>,
+}
+
 pub struct App {
     pub project: Project,
     pub screen: Screen,
@@ -167,6 +177,8 @@ pub struct App {
     pub feature_index: usize,
     pub spec_tab: SpecTab,
     pub spec_scroll: u16,
+    /// Max `spec_scroll` for the doc view rendered last frame (`total_lines - viewport`).
+    pub doc_scroll_max: Cell<u16>,
     pub theme_mode: ThemeMode,
     pub accent: Accent,
     pub theme: Theme,
@@ -186,6 +198,9 @@ pub struct App {
     // CLI jobs
     pub cli_job: Option<CliJob>,
     pub cli_rx: Option<mpsc::UnboundedReceiver<CliEvent>>,
+    pub cli_scroll: u16,
+    /// Max `cli_scroll` for the CLI output popup rendered last frame.
+    pub cli_scroll_max: Cell<u16>,
     pub pending_action: Option<CliAction>,
     pub force_flag: bool,
 
@@ -220,6 +235,9 @@ pub struct App {
     // Async catalog indexing
     pub indexing: bool,
     pub indexing_tick: u8,
+    /// Last async catalog results, re-applied after every project refresh so a
+    /// re-discovery (file watcher / CLI job) doesn't drop the "available" items.
+    pub catalog_cache: Option<CatalogResults>,
 
     // Feature running status
     pub running_features: HashSet<String>,
@@ -256,6 +274,7 @@ impl App {
             feature_index: 0,
             spec_tab: SpecTab::Spec,
             spec_scroll: 0,
+            doc_scroll_max: Cell::new(0),
             theme_mode: mode,
             accent,
             theme,
@@ -272,6 +291,8 @@ impl App {
 
             cli_job: None,
             cli_rx: None,
+            cli_scroll: 0,
+            cli_scroll_max: Cell::new(0),
             pending_action: None,
             force_flag: false,
 
@@ -294,6 +315,7 @@ impl App {
             filter_active: false,
             indexing: true,
             indexing_tick: 0,
+            catalog_cache: None,
             running_features: HashSet::new(),
             attach_input: String::new(),
             attach_request: false,
@@ -438,11 +460,33 @@ impl App {
     }
 
     pub fn scroll_down(&mut self) {
-        self.spec_scroll = self.spec_scroll.saturating_add(1);
+        self.spec_scroll = self
+            .spec_scroll
+            .saturating_add(1)
+            .min(self.doc_scroll_max.get());
     }
 
     pub fn scroll_up(&mut self) {
         self.spec_scroll = self.spec_scroll.saturating_sub(1);
+    }
+
+    pub fn cli_scroll_down(&mut self) {
+        self.cli_scroll = self
+            .cli_scroll
+            .saturating_add(1)
+            .min(self.cli_scroll_max.get());
+    }
+
+    pub fn cli_scroll_up(&mut self) {
+        self.cli_scroll = self.cli_scroll.saturating_sub(1);
+    }
+
+    /// Show the CLI output popup for a freshly spawned job, resetting scroll.
+    pub fn show_cli_job(&mut self, job: CliJob, rx: mpsc::UnboundedReceiver<CliEvent>) {
+        self.cli_job = Some(job);
+        self.cli_rx = Some(rx);
+        self.cli_scroll = 0;
+        self.active_popup = Some(PopupKind::CliOutput);
     }
 
     pub fn enter_spec_browser(&mut self) {
@@ -677,6 +721,9 @@ impl App {
             if self.feature_index >= self.project.features.len() {
                 self.feature_index = self.project.features.len().saturating_sub(1);
             }
+            // Re-discovery loads installed-only data (and empties workflows); re-apply
+            // the catalog results so the popups keep their "available" items.
+            self.apply_catalog_cache();
         }
     }
 
@@ -818,33 +865,85 @@ impl App {
         available_presets: Vec<PresetInfo>,
         workflows: Vec<WorkflowInfo>,
     ) {
-        // Merge integrations: keep installed entries, add available ones not already present
-        for avail in available_integrations {
-            if !self.project.integrations.iter().any(|i| i.key == avail.key) {
-                self.project.integrations.push(avail);
-            } else if let Some(existing) = self.project.integrations.iter_mut().find(|i| i.key == avail.key) {
+        self.catalog_cache = Some(CatalogResults {
+            integrations: available_integrations,
+            extensions: available_extensions,
+            presets: available_presets,
+            workflows,
+        });
+        self.apply_catalog_cache();
+        self.indexing = false;
+    }
+
+    /// Merge the cached catalog results into the current project. Idempotent: safe
+    /// to call after every `refresh_project` so a re-discovery keeps "available"
+    /// items (and workflows, which `Project::discover` never populates).
+    pub fn apply_catalog_cache(&mut self) {
+        let Some(cache) = self.catalog_cache.clone() else {
+            return;
+        };
+
+        // Merge integrations: append new, else backfill catalog metadata into the
+        // installed entry (name/description) without overriding local state.
+        for avail in cache.integrations {
+            if let Some(existing) = self.project.integrations.iter_mut().find(|i| i.key == avail.key) {
+                if existing.name == existing.key && !avail.name.is_empty() {
+                    existing.name = avail.name;
+                }
                 if existing.description.is_empty() && !avail.description.is_empty() {
                     existing.description = avail.description;
                 }
+            } else {
+                self.project.integrations.push(avail);
             }
         }
 
-        // Merge extensions
-        for avail in available_extensions {
-            if !self.project.extensions.iter().any(|e| e.id == avail.id) {
+        // Merge extensions: append new, else backfill catalog metadata.
+        for avail in cache.extensions {
+            if let Some(existing) = self.project.extensions.iter_mut().find(|e| e.id == avail.id) {
+                if existing.name == existing.id {
+                    existing.name = avail.name;
+                }
+                if existing.author.is_none() {
+                    existing.author = avail.author;
+                }
+                if existing.description.is_empty() {
+                    existing.description = avail.description;
+                }
+                // Registry marks bundled extensions as `Local`; prefer the catalog
+                // provenance when we have it.
+                if matches!(existing.source, spectatui_core::speckit::ExtensionSource::Local) {
+                    existing.source = avail.source;
+                }
+            } else {
                 self.project.extensions.push(avail);
             }
         }
 
-        // Merge presets
-        for avail in available_presets {
-            if !self.project.presets.iter().any(|p| p.id == avail.id) {
+        // Merge presets: append new, else backfill catalog metadata.
+        for avail in cache.presets {
+            if let Some(existing) = self.project.presets.iter_mut().find(|p| p.id == avail.id) {
+                if existing.name == existing.id {
+                    existing.name = avail.name;
+                }
+                if existing.author.is_none() {
+                    existing.author = avail.author;
+                }
+                if existing.description.is_empty() {
+                    existing.description = avail.description;
+                }
+                if existing.source_label.is_none() {
+                    existing.source_label = avail.source_label;
+                }
+                if existing.template_count == 0 && avail.template_count > 0 {
+                    existing.template_count = avail.template_count;
+                }
+            } else {
                 self.project.presets.push(avail);
             }
         }
 
-        self.project.workflows = workflows;
-        self.indexing = false;
+        self.project.workflows = cache.workflows;
     }
 
     pub fn accent_label(&self) -> &'static str {

@@ -1,7 +1,10 @@
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Clear, Paragraph, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState,
+    Wrap,
+};
 use ratatui::Frame;
 
 use crate::app::{App, PopupKind};
@@ -100,11 +103,7 @@ fn draw_features(frame: &mut Frame, app: &App) {
         // feature visible instead of drawing it off-screen.
         let body_rows = (area.height as usize).saturating_sub(4);
         let per_page = (body_rows / 2).max(1);
-        let offset = if app.feature_index >= per_page {
-            app.feature_index - per_page + 1
-        } else {
-            0
-        };
+        let offset = super::scroll_offset(app.feature_index, per_page);
 
         for (i, feat) in app
             .project
@@ -398,8 +397,34 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::from(Span::styled(format!(" {l}"), theme.dim_style)));
     }
 
-    let content = Paragraph::new(lines).wrap(Wrap { trim: false }).style(theme.base);
-    frame.render_widget(content, inner);
+    // Scrollable content sits above the pinned status row.
+    let view_h = inner.height.saturating_sub(1);
+    let content_area = Rect::new(inner.x, inner.y, inner.width, view_h);
+    let wrap_w = content_area.width.max(1) as usize;
+    let total_rows: usize = lines.iter().map(|l| l.width().max(1).div_ceil(wrap_w)).sum();
+    let max_scroll = (total_rows as u16).saturating_sub(view_h);
+    app.cli_scroll_max.set(max_scroll);
+    let scroll = app.cli_scroll.min(max_scroll);
+
+    let content = Paragraph::new(lines)
+        .wrap(Wrap { trim: false })
+        .scroll((scroll, 0))
+        .style(theme.base);
+    frame.render_widget(content, content_area);
+
+    if max_scroll > 0 {
+        let mut scrollbar_state = ScrollbarState::new(total_rows).position(scroll as usize);
+        let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
+            .track_symbol(Some("│"))
+            .thumb_symbol("┃");
+        frame.render_stateful_widget(
+            scrollbar
+                .style(theme.border_unfocused)
+                .thumb_style(theme.accent_style),
+            content_area,
+            &mut scrollbar_state,
+        );
+    }
 
     // Status row pinned to the bottom of the inner area.
     let (status_text, status_style) = match job.map(|j| j.status) {

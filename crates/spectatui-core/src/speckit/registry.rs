@@ -7,6 +7,7 @@ use serde::Deserialize;
 #[derive(Debug, Clone)]
 pub struct ExtensionInfo {
     pub id: String,
+    pub name: String,
     pub version: String,
     pub status: InstallStatus,
     pub priority: Option<u8>,
@@ -19,6 +20,7 @@ pub struct ExtensionInfo {
 #[derive(Debug, Clone)]
 pub struct PresetInfo {
     pub id: String,
+    pub name: String,
     pub version: String,
     pub status: InstallStatus,
     pub priority: Option<u8>,
@@ -128,6 +130,7 @@ pub fn load_extensions(root: &Path) -> Result<Vec<ExtensionInfo>> {
             };
 
             ExtensionInfo {
+                name: id.clone(),
                 id,
                 version: entry.version,
                 status,
@@ -167,6 +170,7 @@ pub fn load_presets(root: &Path) -> Result<Vec<PresetInfo>> {
             };
 
             PresetInfo {
+                name: id.clone(),
                 id,
                 version: entry.version,
                 status,
@@ -250,113 +254,449 @@ pub fn load_integrations(root: &Path) -> Result<Vec<IntegrationInfo>> {
     Ok(integrations)
 }
 
-pub async fn fetch_available_integrations(root: &Path) -> Vec<IntegrationInfo> {
+// ---- Catalog discovery & fetching --------------------------------------------
+
+/// Which catalog family to query via `specify <kind> catalog list`.
+#[derive(Debug, Clone, Copy)]
+enum CatalogKind {
+    Extension,
+    Preset,
+    Integration,
+    Workflow,
+}
+
+impl CatalogKind {
+    fn cli(self) -> &'static str {
+        match self {
+            CatalogKind::Extension => "extension",
+            CatalogKind::Preset => "preset",
+            CatalogKind::Integration => "integration",
+            CatalogKind::Workflow => "workflow",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CatalogSource {
+    name: String,
+    url: String,
+    /// `false` for "discovery only" (community) catalogs. Carried for a future
+    /// UI affordance that gates the install action; not yet rendered.
+    #[allow(dead_code)]
+    install_allowed: bool,
+}
+
+/// Label shown in the UI for a catalog source: the built-in `default` catalog is
+/// presented as `official`, matching the design.
+fn catalog_label(name: &str) -> String {
+    if name == "default" {
+        "official".to_string()
+    } else {
+        name.to_string()
+    }
+}
+
+/// Discover active catalog source URLs (default + community, in priority order) by
+/// scraping `specify <kind> catalog list`. Run with `COLUMNS=4000` so the CLI emits
+/// each URL on a single un-wrapped line.
+async fn catalog_urls(root: &Path, kind: CatalogKind) -> Vec<CatalogSource> {
     let output = tokio::process::Command::new("specify")
-        .args(["integration", "list", "--catalog"])
+        .args([kind.cli(), "catalog", "list"])
         .current_dir(root)
+        .env("COLUMNS", "4000")
         .output()
         .await;
 
-    let output = match output {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
-        _ => return Vec::new(),
-    };
-
-    parse_catalog_lines(&output, |name, desc| IntegrationInfo {
-        key: name.clone(),
-        name,
-        installed: false,
-        is_default: false,
-        cli_required: true,
-        version: None,
-        description: desc,
-    })
+    match output {
+        Ok(o) if o.status.success() => parse_catalog_urls(&String::from_utf8_lossy(&o.stdout)),
+        _ => Vec::new(),
+    }
 }
 
-pub async fn fetch_available_extensions(root: &Path) -> Vec<ExtensionInfo> {
-    let output = tokio::process::Command::new("specify")
-        .args(["extension", "list", "--available"])
-        .current_dir(root)
-        .output()
-        .await;
+fn parse_catalog_urls(output: &str) -> Vec<CatalogSource> {
+    let allowed = |s: &str| !s.contains("discovery only");
+    let mut out: Vec<CatalogSource> = Vec::new();
+    let mut name: Option<String> = None;
+    let mut ok = true;
 
-    let output = match output {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
-        _ => return Vec::new(),
-    };
-
-    parse_catalog_lines(&output, |id, desc| ExtensionInfo {
-        id,
-        version: String::new(),
-        status: InstallStatus::Available,
-        priority: None,
-        command_count: 0,
-        source: ExtensionSource::Catalog(String::new()),
-        author: None,
-        description: desc,
-    })
-}
-
-pub async fn fetch_available_presets(root: &Path) -> Vec<PresetInfo> {
-    let output = tokio::process::Command::new("specify")
-        .args(["preset", "search"])
-        .current_dir(root)
-        .output()
-        .await;
-
-    let output = match output {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
-        _ => return Vec::new(),
-    };
-
-    parse_catalog_lines(&output, |id, desc| PresetInfo {
-        id,
-        version: String::new(),
-        status: InstallStatus::Available,
-        priority: None,
-        template_count: 0,
-        author: None,
-        source_label: None,
-        description: desc,
-    })
-}
-
-pub async fn fetch_workflows(root: &Path) -> Vec<WorkflowInfo> {
-    let output = tokio::process::Command::new("specify")
-        .args(["workflow", "list"])
-        .current_dir(root)
-        .output()
-        .await;
-
-    let output = match output {
-        Ok(o) if o.status.success() => String::from_utf8_lossy(&o.stdout).to_string(),
-        _ => return Vec::new(),
-    };
-
-    parse_catalog_lines(&output, |id, desc| WorkflowInfo {
-        id,
-        name: None,
-        version: None,
-        source: None,
-        installed: true,
-        description: desc,
-        last_run: None,
-    })
-}
-
-fn parse_catalog_lines<T>(output: &str, make: impl Fn(String, String) -> T) -> Vec<T> {
-    let mut items = Vec::new();
-    for line in output.lines() {
-        let trimmed = line.trim();
-        if trimmed.is_empty() || trimmed.starts_with("─") || trimmed.starts_with('=') {
+    for raw in output.lines() {
+        let line = raw.trim();
+        if line.is_empty() {
             continue;
         }
-        let parts: Vec<&str> = trimmed.splitn(2, ['\t', ' ']).collect();
-        let id = parts[0].trim().to_string();
-        let desc = parts.get(1).map(|s| s.trim().to_string()).unwrap_or_default();
-        if !id.is_empty() {
-            items.push(make(id, desc));
+
+        // Dialect B header: "- <name> — <policy>" or "[N] <name> — <policy>"
+        let b = line.strip_prefix('-').map(str::trim).or_else(|| {
+            line.starts_with('[')
+                .then(|| line.split_once(']').map(|x| x.1).unwrap_or("").trim())
+        });
+        if let Some((n, tail)) = b.and_then(|r| r.split_once('—')) {
+            name = Some(n.trim().to_string());
+            ok = allowed(tail);
+            continue;
+        }
+
+        // Dialect A header: "<name> (priority N)"
+        if let Some((n, tail)) = line.split_once('(') {
+            if tail.trim_start().starts_with("priority") {
+                name = Some(n.trim().to_string());
+                ok = true; // refined by the trailing "Install:" line
+                continue;
+            }
+        }
+
+        // Dialect A policy line (always trails its URL line)
+        if let Some(p) = line.strip_prefix("Install:") {
+            if let Some(last) = out.last_mut() {
+                last.install_allowed = allowed(p);
+            }
+            continue;
+        }
+
+        // URL line: dialect A "URL: <url>" or dialect B bare "<url>"
+        let url = line
+            .strip_prefix("URL:")
+            .map(str::trim)
+            .or_else(|| line.starts_with("http").then_some(line));
+        if let (Some(url), Some(n)) = (url.filter(|u| !u.is_empty()), name.clone()) {
+            out.push(CatalogSource {
+                name: n,
+                url: url.to_string(),
+                install_allowed: ok,
+            });
+        }
+    }
+    out
+}
+
+async fn fetch_catalog_json<T: serde::de::DeserializeOwned>(url: &str) -> Option<T> {
+    let resp = reqwest::get(url).await.ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    resp.json::<T>().await.ok()
+}
+
+#[derive(Deserialize)]
+struct ExtensionCatalog {
+    #[serde(default)]
+    extensions: HashMap<String, CatalogEntry>,
+}
+
+#[derive(Deserialize)]
+struct PresetCatalog {
+    #[serde(default)]
+    presets: HashMap<String, CatalogEntry>,
+}
+
+#[derive(Deserialize)]
+struct IntegrationCatalog {
+    #[serde(default)]
+    integrations: HashMap<String, CatalogEntry>,
+}
+
+#[derive(Deserialize)]
+struct WorkflowCatalog {
+    #[serde(default)]
+    workflows: HashMap<String, CatalogEntry>,
+}
+
+/// Shared shape across all four catalog JSON files. Every field is optional and
+/// unknown fields are ignored, so a sparse or evolving catalog still parses.
+#[derive(Deserialize, Default)]
+struct CatalogEntry {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
+    description: Option<String>,
+    #[serde(default)]
+    author: Option<String>,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    provides: Option<Provides>,
+}
+
+#[derive(Deserialize, Default)]
+struct Provides {
+    #[serde(default)]
+    templates: u32,
+}
+
+pub async fn fetch_available_integrations(root: &Path) -> Vec<IntegrationInfo> {
+    let mut items = Vec::new();
+    for src in catalog_urls(root, CatalogKind::Integration).await {
+        let Some(cat) = fetch_catalog_json::<IntegrationCatalog>(&src.url).await else {
+            continue;
+        };
+        for (id, e) in cat.integrations {
+            // IDE-based integrations don't require a CLI tool; everything else does.
+            let cli_required = !e.tags.iter().any(|t| t == "ide");
+            items.push(IntegrationInfo {
+                name: e.name.unwrap_or_else(|| id.clone()),
+                key: id,
+                installed: false,
+                is_default: false,
+                cli_required,
+                version: e.version,
+                description: e.description.unwrap_or_default(),
+            });
         }
     }
     items
+}
+
+pub async fn fetch_available_extensions(root: &Path) -> Vec<ExtensionInfo> {
+    let mut items = Vec::new();
+    for src in catalog_urls(root, CatalogKind::Extension).await {
+        let Some(cat) = fetch_catalog_json::<ExtensionCatalog>(&src.url).await else {
+            continue;
+        };
+        for (id, e) in cat.extensions {
+            items.push(ExtensionInfo {
+                name: e.name.unwrap_or_else(|| id.clone()),
+                id,
+                version: e.version.unwrap_or_default(),
+                status: InstallStatus::Available,
+                priority: None,
+                command_count: 0,
+                source: ExtensionSource::Catalog(catalog_label(&src.name)),
+                author: e.author,
+                description: e.description.unwrap_or_default(),
+            });
+        }
+    }
+    items
+}
+
+pub async fn fetch_available_presets(root: &Path) -> Vec<PresetInfo> {
+    let mut items = Vec::new();
+    for src in catalog_urls(root, CatalogKind::Preset).await {
+        let Some(cat) = fetch_catalog_json::<PresetCatalog>(&src.url).await else {
+            continue;
+        };
+        for (id, e) in cat.presets {
+            items.push(PresetInfo {
+                name: e.name.unwrap_or_else(|| id.clone()),
+                id,
+                version: e.version.unwrap_or_default(),
+                status: InstallStatus::Available,
+                priority: None,
+                template_count: e.provides.map(|p| p.templates).unwrap_or(0),
+                author: e.author,
+                source_label: Some(format!("catalog · {}", catalog_label(&src.name))),
+                description: e.description.unwrap_or_default(),
+            });
+        }
+    }
+    items
+}
+
+pub async fn fetch_workflows(root: &Path) -> Vec<WorkflowInfo> {
+    // Installed workflows are authoritative for `installed`/`source`.
+    let mut workflows = fetch_installed_workflows(root).await;
+
+    // Catalog workflows: backfill metadata on installed entries, append the rest.
+    for src in catalog_urls(root, CatalogKind::Workflow).await {
+        let Some(cat) = fetch_catalog_json::<WorkflowCatalog>(&src.url).await else {
+            continue;
+        };
+        for (id, e) in cat.workflows {
+            if let Some(existing) = workflows.iter_mut().find(|w| w.id == id) {
+                if existing.name.is_none() {
+                    existing.name = e.name.clone();
+                }
+                if existing.description.is_empty() {
+                    existing.description = e.description.clone().unwrap_or_default();
+                }
+                continue;
+            }
+            workflows.push(WorkflowInfo {
+                id,
+                name: e.name,
+                version: e.version,
+                source: Some(format!("catalog · {}", catalog_label(&src.name))),
+                installed: false,
+                description: e.description.unwrap_or_default(),
+                last_run: None,
+            });
+        }
+    }
+    workflows
+}
+
+async fn fetch_installed_workflows(root: &Path) -> Vec<WorkflowInfo> {
+    let output = tokio::process::Command::new("specify")
+        .args(["workflow", "list"])
+        .current_dir(root)
+        .env("COLUMNS", "4000")
+        .output()
+        .await;
+
+    match output {
+        Ok(o) if o.status.success() => parse_installed_workflows(&String::from_utf8_lossy(&o.stdout)),
+        _ => Vec::new(),
+    }
+}
+
+/// Parse `specify workflow list`: blocks of `  <name> (<id>) v<ver>` followed by an
+/// indented description line.
+fn parse_installed_workflows(output: &str) -> Vec<WorkflowInfo> {
+    let mut out: Vec<WorkflowInfo> = Vec::new();
+    for raw in output.lines() {
+        let line = raw.trim();
+        if line.is_empty() {
+            continue;
+        }
+
+        // Header "<name> (<id>) v<ver>" — id is the last parenthesised token before " v".
+        if let Some((before_v, ver)) = line.rsplit_once(" v") {
+            if before_v.ends_with(')')
+                && ver.chars().next().is_some_and(|c| c.is_ascii_digit())
+            {
+                if let Some(open) = before_v.rfind('(') {
+                    let id = before_v[open + 1..before_v.len() - 1].trim().to_string();
+                    let name = before_v[..open].trim().to_string();
+                    out.push(WorkflowInfo {
+                        id,
+                        name: Some(name),
+                        version: Some(ver.to_string()),
+                        source: Some("bundled".to_string()),
+                        installed: true,
+                        description: String::new(),
+                        last_run: None,
+                    });
+                    continue;
+                }
+            }
+        }
+
+        // Indented description for the most recent workflow.
+        if let Some(last) = out.last_mut() {
+            if last.description.is_empty() {
+                last.description = line.to_string();
+            }
+        }
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_dialect_a_catalog_urls() {
+        // extension / preset `catalog list` format (run with COLUMNS=4000).
+        let out = "\
+Active Extension Catalogs:
+
+  default (priority 1)
+     Built-in catalog of installable extensions
+     URL: https://example.com/extensions/catalog.json
+     Install: install allowed
+
+  community (priority 2)
+     Community-contributed extensions (discovery only)
+     URL: https://example.com/extensions/catalog.community.json
+     Install: discovery only
+
+Using built-in default catalog stack.
+";
+        let srcs = parse_catalog_urls(out);
+        assert_eq!(srcs.len(), 2);
+        assert_eq!(srcs[0].name, "default");
+        assert_eq!(srcs[0].url, "https://example.com/extensions/catalog.json");
+        assert!(srcs[0].install_allowed);
+        assert_eq!(srcs[1].name, "community");
+        assert!(!srcs[1].install_allowed);
+    }
+
+    #[test]
+    fn parses_dialect_b_catalog_urls() {
+        // integration / workflow `catalog list` format.
+        let out = "\
+Workflow Catalog Sources:
+
+  [0] default — install allowed
+      https://example.com/workflows/catalog.json
+      Official workflows
+
+  [1] community — discovery only
+      https://example.com/workflows/catalog.community.json
+      Community-contributed workflows (discovery only)
+";
+        let srcs = parse_catalog_urls(out);
+        assert_eq!(srcs.len(), 2);
+        assert_eq!(srcs[0].name, "default");
+        assert_eq!(srcs[0].url, "https://example.com/workflows/catalog.json");
+        assert!(srcs[0].install_allowed);
+        assert_eq!(srcs[1].name, "community");
+        assert!(!srcs[1].install_allowed);
+    }
+
+    #[test]
+    fn parses_extension_catalog_json() {
+        let json = r#"{
+            "schema_version": "1.0",
+            "extensions": {
+                "agent-context": {
+                    "name": "Coding Agent Context",
+                    "id": "agent-context",
+                    "version": "1.0.0",
+                    "description": "Manages agent context files",
+                    "author": "spec-kit-core",
+                    "tags": ["agent", "context"]
+                }
+            }
+        }"#;
+        let cat: ExtensionCatalog = serde_json::from_str(json).unwrap();
+        let e = &cat.extensions["agent-context"];
+        assert_eq!(e.name.as_deref(), Some("Coding Agent Context"));
+        assert_eq!(e.author.as_deref(), Some("spec-kit-core"));
+    }
+
+    #[test]
+    fn parses_preset_catalog_json_templates() {
+        let json = r#"{
+            "presets": {
+                "lean": {
+                    "name": "Lean Workflow",
+                    "version": "1.0.0",
+                    "author": "github",
+                    "provides": { "commands": 5, "templates": 3 },
+                    "tags": ["lean"]
+                }
+            }
+        }"#;
+        let cat: PresetCatalog = serde_json::from_str(json).unwrap();
+        let e = &cat.presets["lean"];
+        assert_eq!(e.provides.as_ref().map(|p| p.templates), Some(3));
+    }
+
+    #[test]
+    fn integration_cli_required_from_tags() {
+        let derive = |tags: &[&str]| !tags.iter().any(|t| *t == "ide");
+        assert!(derive(&["cli", "anthropic"]));
+        assert!(!derive(&["ide", "github"]));
+    }
+
+    #[test]
+    fn parses_installed_workflows() {
+        let out = "\
+Installed Workflows:
+
+  Full SDD Cycle (speckit) v1.0.0
+    Runs specify then plan then tasks then implement with review gates
+";
+        let wfs = parse_installed_workflows(out);
+        assert_eq!(wfs.len(), 1);
+        assert_eq!(wfs[0].id, "speckit");
+        assert_eq!(wfs[0].name.as_deref(), Some("Full SDD Cycle"));
+        assert_eq!(wfs[0].version.as_deref(), Some("1.0.0"));
+        assert!(wfs[0].installed);
+        assert!(!wfs[0].description.is_empty());
+    }
 }

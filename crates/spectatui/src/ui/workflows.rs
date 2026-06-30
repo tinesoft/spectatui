@@ -88,7 +88,9 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         let name_max = area.width.saturating_sub(10) as usize;
 
-        for (i, wf) in items.iter().enumerate() {
+        let per_page = area.height as usize;
+        let offset = super::scroll_offset(app.wf_index, per_page);
+        for (i, wf) in items.iter().enumerate().skip(offset).take(per_page) {
             let selected = i == app.wf_index;
             let row_style = if selected {
                 Style::default().fg(theme.sel_fg).bg(theme.sel)
@@ -139,7 +141,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled(version_text, version_style),
             ]));
 
-            let row_y = area.y + i as u16;
+            let row_y = area.y + (i - offset) as u16;
             if row_y < area.y + area.height {
                 app.register_click(
                     Rect::new(area.x, row_y, area.width, 1),
@@ -171,9 +173,13 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     let display_name = wf.name.as_deref().unwrap_or(&wf.id);
-    let mut name_spans = vec![Span::styled(format!(" {display_name} "), theme.accent_bold)];
+    let mut name_spans = vec![
+        Span::styled(format!(" {display_name} "), theme.accent_bold),
+        Span::styled(" ·  id · ", theme.faint_style),
+        Span::styled(wf.id.clone(), theme.dim_style),
+    ];
     if let Some(v) = &wf.version {
-        name_spans.push(Span::styled(format!("v{v}"), theme.dim_style));
+        name_spans.push(Span::styled(format!(" v{v}"), theme.dim_style));
     }
     let mut lines = vec![Line::from(name_spans), Line::default()];
 

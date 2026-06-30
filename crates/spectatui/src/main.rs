@@ -197,7 +197,7 @@ async fn run_loop(
                     }
                 }
                 AppEvent::Mouse(mouse) => {
-                    handle_mouse(app, mouse);
+                    handle_mouse(app, mouse, &cli_client);
                 }
                 AppEvent::FsChanged(fs_event) => {
                     match fs_event {
@@ -297,7 +297,18 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 }
             }
             KeyCode::Down => {
-                palette.selected += 1;
+                let count = palette_commands()
+                    .iter()
+                    .filter(|c| {
+                        palette.input.is_empty()
+                            || c.label
+                                .to_lowercase()
+                                .contains(&palette.input.to_lowercase())
+                    })
+                    .count();
+                if palette.selected + 1 < count {
+                    palette.selected += 1;
+                }
             }
             KeyCode::Char(c) => {
                 palette.input.push(c);
@@ -324,9 +335,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 KeyCode::Enter => {
                     if let Some(action) = app.pending_action.take() {
                         let (job, rx) = cli_client.spawn_job(&action);
-                        app.cli_job = Some(job);
-                        app.cli_rx = Some(rx);
-                        app.active_popup = Some(PopupKind::CliOutput);
+                        app.show_cli_job(job, rx);
                     }
                 }
                 KeyCode::Char('f') => {
@@ -339,6 +348,8 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 _ => {}
             },
             PopupKind::CliOutput => match key.code {
+                KeyCode::Up | KeyCode::Char('k') => app.cli_scroll_up(),
+                KeyCode::Down | KeyCode::Char('j') => app.cli_scroll_down(),
                 KeyCode::Esc => {
                     app.close_popup();
                 }
@@ -401,9 +412,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                                 if *installed {
                                     let (job, rx) = cli_client
                                         .spawn_job(&CliAction::IntegrationStatus { key: k.clone() });
-                                    app.cli_job = Some(job);
-                                    app.cli_rx = Some(rx);
-                                    app.active_popup = Some(PopupKind::CliOutput);
+                                    app.show_cli_job(job, rx);
                                 }
                             }
                         }
@@ -411,9 +420,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                             if let Some((k, _, _)) = &sel {
                                 let (job, rx) = cli_client
                                     .spawn_job(&CliAction::IntegrationGetInfo { key: k.clone() });
-                                app.cli_job = Some(job);
-                                app.cli_rx = Some(rx);
-                                app.active_popup = Some(PopupKind::CliOutput);
+                                app.show_cli_job(job, rx);
                             }
                         }
                         _ => {}
@@ -472,9 +479,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                             if let Some((id, _, _)) = &sel {
                                 let (job, rx) = cli_client
                                     .spawn_job(&CliAction::WorkflowGetInfo { id: id.clone() });
-                                app.cli_job = Some(job);
-                                app.cli_rx = Some(rx);
-                                app.active_popup = Some(PopupKind::CliOutput);
+                                app.show_cli_job(job, rx);
                             }
                         }
                         _ => {}
@@ -902,9 +907,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
             if let Some(id) = current_ext_id(app) {
                 let action = CliAction::Resolve { name: id };
                 let (job, rx) = cli_client.spawn_job(&action);
-                app.cli_job = Some(job);
-                app.cli_rx = Some(rx);
-                app.active_popup = Some(PopupKind::CliOutput);
+                app.show_cli_job(job, rx);
             }
         }
         _ => {}
@@ -923,12 +926,22 @@ fn handle_settings_key(app: &mut App, key: KeyEvent, _cli_client: &SpecifyCliCli
     }
 }
 
-fn handle_mouse(app: &mut App, mouse: MouseEvent) {
-    if mouse.kind != MouseEventKind::Down(MouseButton::Left) {
-        return;
-    }
-    if let Some(action) = app.hit_test(mouse.column, mouse.row) {
-        execute_click_action(app, action);
+fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient) {
+    match mouse.kind {
+        // Route the wheel through the keyboard nav so it scrolls whatever Up/Down
+        // currently affects (active popup, focused pane, or document view).
+        MouseEventKind::ScrollDown => {
+            handle_key(app, KeyEvent::new(KeyCode::Down, KeyModifiers::NONE), cli_client);
+        }
+        MouseEventKind::ScrollUp => {
+            handle_key(app, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE), cli_client);
+        }
+        MouseEventKind::Down(MouseButton::Left) => {
+            if let Some(action) = app.hit_test(mouse.column, mouse.row) {
+                execute_click_action(app, action);
+            }
+        }
+        _ => {}
     }
 }
 

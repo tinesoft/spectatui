@@ -92,7 +92,9 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
         let right_max = 13; // "★ default" = 9, "available" = 9, padded
         let name_max = col_w.saturating_sub(right_max + 4); // sel_bar + dot + padding
 
-        for (i, intg) in items.iter().enumerate() {
+        let per_page = area.height as usize;
+        let offset = super::scroll_offset(app.integration_index, per_page);
+        for (i, intg) in items.iter().enumerate().skip(offset).take(per_page) {
             let selected = i == app.integration_index;
             let bg = if selected { Some(theme.sel) } else { None };
             let row_style = if selected {
@@ -157,7 +159,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
                 Span::styled(right_text, right_style),
             ]));
 
-            let row_y = area.y + i as u16;
+            let row_y = area.y + (i - offset) as u16;
             if row_y < area.y + area.height {
                 app.register_click(
                     Rect::new(area.x, row_y, area.width, 1),
@@ -190,14 +192,14 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
 
     let mut name_spans = vec![
         Span::styled(format!(" {} ", intg.name), theme.accent_bold),
-        Span::styled(
-            intg.version
-                .as_deref()
-                .map(|v| format!("v{v}"))
-                .unwrap_or_default(),
-            theme.dim_style,
-        ),
+        Span::styled(" ·  id · ", theme.faint_style),
+        Span::styled(intg.key.clone(), theme.dim_style),
     ];
+    if intg.installed {
+        if let Some(v) = intg.version.as_deref() {
+            name_spans.push(Span::styled(format!(" v{v}"), theme.dim_style));
+        }
+    }
     if intg.is_default {
         name_spans.push(Span::styled("  ★ default", theme.accent_style));
     }

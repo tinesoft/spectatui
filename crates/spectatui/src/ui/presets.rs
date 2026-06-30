@@ -71,7 +71,9 @@ pub(super) fn draw_list(frame: &mut Frame, app: &App, list_area: Rect, detail_ar
     let mut lines: Vec<Line> = Vec::new();
 
     let items = app.filtered_presets();
-    for (i, preset) in items.iter().enumerate() {
+    let per_page = list_area.height as usize;
+    let offset = super::scroll_offset(app.preset_index, per_page);
+    for (i, preset) in items.iter().enumerate().skip(offset).take(per_page) {
         let selected = i == app.preset_index;
         let row_style = if selected {
             Style::default().fg(theme.sel_fg).bg(theme.sel)
@@ -92,18 +94,18 @@ pub(super) fn draw_list(frame: &mut Frame, app: &App, list_area: Rect, detail_ar
             .unwrap_or_else(|| "—".to_string());
         let ver = format!("v{}", preset.version);
         let list_w = list_area.width as usize;
-        let pad = list_w.saturating_sub(1 + 2 + preset.id.chars().count() + 5 + ver.chars().count() + 1);
+        let pad = list_w.saturating_sub(1 + 2 + preset.name.chars().count() + 5 + ver.chars().count() + 1);
 
         lines.push(Line::from(vec![
             sel_bar,
             status_dot(preset.status, theme),
-            Span::styled(preset.id.clone(), row_style),
+            Span::styled(preset.name.clone(), row_style),
             Span::styled(" ".repeat(pad), theme.base),
             Span::styled(format!("{pri:<5}"), theme.dim_style),
             Span::styled(ver, theme.faint_style),
         ]));
 
-        let row_y = list_area.y + i as u16;
+        let row_y = list_area.y + (i - offset) as u16;
         if row_y < list_area.y + list_area.height {
             app.register_click(
                 Rect::new(list_area.x, row_y, list_area.width, 1),
@@ -150,8 +152,10 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect, preset: &PresetInfo) {
 
     let mut lines = vec![
         Line::from(vec![
-            Span::styled(format!(" {} ", preset.id), theme.accent_bold),
-            Span::styled(format!("v{}", preset.version), theme.dim_style),
+            Span::styled(format!(" {} ", preset.name), theme.accent_bold),
+            Span::styled(" ·  id · ", theme.faint_style),
+            Span::styled(preset.id.clone(), theme.dim_style),
+            Span::styled(format!(" v{}", preset.version), theme.dim_style),
         ]),
         Line::default(),
         Line::from(vec![
