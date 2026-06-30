@@ -30,14 +30,15 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(border_style)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     if app.project.features.is_empty() {
         let empty = Paragraph::new(Line::from(vec![Span::styled(
-            "  No features found in specs/",
+            "No features found in specs/",
             theme.faint_style,
         )]))
         .style(theme.base);
@@ -89,7 +90,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let badge_text = format!(" {stage_label} ");
         let id_text = format!(" {}", feature.id);
 
-        let remaining = area
+        let remaining = inner
             .width
             .saturating_sub(1 + badge_text.len() as u16 + id_text.len() as u16 + 3);
         let pad = " ".repeat(remaining as usize);
@@ -104,7 +105,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         ]);
 
         let note = compute_feature_note(feature);
-        let note_pad_len = area.width.saturating_sub(note.len() as u16 + 9) as usize;
+        let note_pad_len = inner.width.saturating_sub(note.len() as u16 + 9) as usize;
         let row2 = Line::from(vec![
             Span::styled(if selected { "▌" } else { " " }, if selected { theme.accent_style } else { Style::default() }),
             Span::styled("       ", row_bg),
@@ -128,7 +129,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::default());
     }
     lines.push(Line::from(vec![
-        Span::styled(" + new feature  ", theme.faint_style),
+        Span::styled("+ new feature  ", theme.faint_style),
         Span::styled("[n]", theme.accent_bold),
     ]));
 

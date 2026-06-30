@@ -85,17 +85,17 @@ fn draw_features(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let mut lines = Vec::new();
-    lines.push(Line::default());
     if app.project.features.is_empty() {
         lines.push(Line::from(Span::styled(
             " No features found",
             theme.faint_style,
         )));
     } else {
-        let inner_width = area.width.saturating_sub(2) as usize;
+        let inner_width = area.width.saturating_sub(4) as usize;
 
         // Each feature occupies 2 rows. The body spans from area.y+2 (after the
         // top border and the blank line) down to the row above the footer, so
@@ -206,7 +206,8 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let groups: [(&str, &[(&str, &str)]); 3] = [
         (
@@ -274,10 +275,10 @@ fn draw_quit_confirm(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let lines = vec![
-        Line::default(),
         Line::from(Span::styled(
             "  Sessions keep running in tmux.",
             Style::default().fg(theme.fg),
@@ -309,7 +310,8 @@ fn draw_cli_confirm(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let cmd_text = app
         .pending_action
@@ -324,13 +326,12 @@ fn draw_cli_confirm(frame: &mut Frame, app: &App, area: Rect) {
     };
 
     // Command line highlighted on a panel_alt bar, padded to box width.
-    let inner_w = area.width.saturating_sub(2) as usize;
+    let inner_w = area.width.saturating_sub(4) as usize;
     let cmd_bar = format!("$ {cmd_text}");
     let cmd_pad = inner_w.saturating_sub(cmd_bar.len() + 2);
     let panel_alt_bg = Style::default().fg(theme.fg).bg(theme.panel_alt);
 
     let lines = vec![
-        Line::default(),
         Line::from(Span::styled(
             "  Spectatui will run this command:",
             theme.dim_style,
@@ -377,7 +378,8 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -389,12 +391,12 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
     // Top: command echo. Then output lines, leaving the last row for status.
     let mut lines: Vec<Line> = Vec::new();
     lines.push(Line::from(vec![
-        Span::styled(" $ ", theme.good_style),
+        Span::styled("$ ", theme.good_style),
         Span::styled(cmd_line, Style::default().fg(theme.fg).add_modifier(ratatui::style::Modifier::BOLD)),
     ]));
     lines.push(Line::default());
     for l in output.lines() {
-        lines.push(Line::from(Span::styled(format!(" {l}"), theme.dim_style)));
+        lines.push(Line::from(Span::styled(l.to_string(), theme.dim_style)));
     }
 
     // Scrollable content sits above the pinned status row.
@@ -432,11 +434,11 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
             let spinner = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏";
             let idx = (app.indexing_tick as usize) % spinner.chars().count();
             let ch = spinner.chars().nth(idx).unwrap_or('⠋');
-            (format!(" {ch} running…"), theme.warn_style)
+            (format!("{ch} running…"), theme.warn_style)
         }
-        Some(JobStatus::Succeeded) => (" ✓ succeeded · list refreshed   [esc] close".to_string(), theme.good_style),
-        Some(JobStatus::Failed) => (" ✗ failed   [esc] close".to_string(), theme.bad_style),
-        _ => (" pending".to_string(), theme.faint_style),
+        Some(JobStatus::Succeeded) => ("✓ succeeded · list refreshed   [esc] close".to_string(), theme.good_style),
+        Some(JobStatus::Failed) => ("✗ failed   [esc] close".to_string(), theme.bad_style),
+        _ => ("pending".to_string(), theme.faint_style),
     };
     if inner.height >= 1 {
         let status_y = inner.y + inner.height - 1;

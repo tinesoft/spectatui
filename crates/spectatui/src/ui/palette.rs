@@ -38,7 +38,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);

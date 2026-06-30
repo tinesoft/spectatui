@@ -19,13 +19,13 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let mut lines: Vec<Line> = vec![
-        Line::default(),
         Line::from(Span::styled(
             "  Adjust appearance, layout, and CLI behaviour. Persisted to config.toml.",
             theme.dim_style,
@@ -33,8 +33,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         Line::default(),
     ];
 
-    // Content rows begin after the 3 header lines rendered above.
-    let row0_y = inner.y + 3;
+    // Content rows begin after the 2 header lines rendered above.
+    let row0_y = inner.y + 2;
     let label_width: usize = 24;
     let value_col = 2 + label_width as u16; // sel_bar(2) + " " + label area
 

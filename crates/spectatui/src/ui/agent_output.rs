@@ -32,7 +32,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(border_style)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -63,7 +64,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let start = snapshot.len().saturating_sub(visible_lines);
         for line in &snapshot[start..] {
             lines.push(Line::from(Span::styled(
-                format!(" {line}"),
+                line.to_string(),
                 theme.dim_style,
             )));
         }
@@ -72,18 +73,18 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let start = app.agent_lines.len().saturating_sub(visible_lines);
         for line in &app.agent_lines[start..] {
             lines.push(Line::from(Span::styled(
-                format!(" {line}"),
+                line.to_string(),
                 theme.dim_style,
             )));
         }
     } else {
         lines.push(Line::from(Span::styled(
-            " No active session for this feature.",
+            "No active session for this feature.",
             theme.dim_style,
         )));
         lines.push(Line::default());
         lines.push(Line::from(vec![
-            Span::styled(" Press ", theme.faint_style),
+            Span::styled("Press ", theme.faint_style),
             Span::styled("[enter]", theme.accent_bold),
             Span::styled(" to start a coding-agent session.", theme.faint_style),
         ]));
@@ -95,7 +96,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::default());
     }
     lines.push(Line::from(vec![
-        Span::styled(" [", theme.faint_style),
+        Span::styled("[", theme.faint_style),
         Span::styled("a", theme.accent_bold),
         Span::styled("] attach  [", theme.faint_style),
         Span::styled("r", theme.accent_bold),

@@ -37,7 +37,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -46,11 +47,28 @@ pub fn draw(frame: &mut Frame, app: &App) {
         return;
     }
 
-    // Content starts one row below the title, leaving a blank line.
-    let body = Rect::new(inner.x, inner.y + 1, inner.width, inner.height.saturating_sub(2));
-    let cols =
-        Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).split(body);
-    draw_list(frame, app, cols[0], cols[1]);
+    let list_w = (inner.width as f32 * 0.46) as u16;
+    let cols = Layout::horizontal([Constraint::Length(list_w), Constraint::Min(0)]).split(inner);
+
+    // Content starts one row below the title, leaving a blank line; height reserves the
+    // footer row plus the 2-row gap above it.
+    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(3));
+
+    // Vertical divider between the list and the detail column.
+    for y in cols[1].y..cols[1].y + cols[1].height {
+        frame.render_widget(
+            Paragraph::new(Line::from(Span::styled("│", theme.border_focused))),
+            Rect::new(cols[1].x, y, 1, 1),
+        );
+    }
+
+    let detail_area = Rect::new(
+        cols[1].x + 1,
+        cols[1].y + 1,
+        cols[1].width.saturating_sub(1),
+        cols[1].height.saturating_sub(1),
+    );
+    draw_list(frame, app, list_area, detail_area);
 
     if area.height > 2 {
         let footer_y = area.y + area.height - 2;
@@ -116,7 +134,7 @@ pub(super) fn draw_list(frame: &mut Frame, app: &App, list_area: Rect, detail_ar
 
     if app.project.extensions.is_empty() {
         lines.push(Line::from(Span::styled(
-            " No extensions installed",
+            "No extensions installed",
             theme.faint_style,
         )));
     }

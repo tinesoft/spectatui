@@ -24,6 +24,11 @@ use ratatui::Frame;
 use crate::app::{App, DashboardLayout, Screen};
 use crate::theme::Theme;
 
+/// Consistent inner padding for every bordered panel/popup so content does not
+/// hug the frame borders.
+pub(super) const PANEL_PADDING: ratatui::widgets::Padding =
+    ratatui::widgets::Padding { left: 1, right: 1, top: 1, bottom: 1 };
+
 /// First visible row index for a 1-row-per-item list so `selected` stays on screen.
 pub(super) fn scroll_offset(selected: usize, visible_rows: usize) -> usize {
     if visible_rows == 0 || selected < visible_rows {
@@ -93,8 +98,10 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
     let outer = Layout::vertical([
         Constraint::Length(1), // header
+        Constraint::Length(1), // spacer
         Constraint::Min(0),   // content
         Constraint::Length(1), // keybinding hints
+        Constraint::Length(1), // spacer
         Constraint::Length(1), // status bar
     ])
     .split(frame.area());
@@ -102,19 +109,19 @@ pub fn draw(frame: &mut Frame, app: &App) {
     header::draw(frame, app, outer[0]);
 
     if app.layout_editor_active {
-        layout_editor::draw(frame, app, outer[1]);
+        layout_editor::draw(frame, app, outer[2]);
     } else {
         match app.screen {
-            Screen::Dashboard => draw_dashboard(frame, app, outer[1]),
-            Screen::SpecBrowser => spec_browser::draw(frame, app, outer[1]),
-            Screen::Constitution => spec_browser::draw_constitution(frame, app, outer[1]),
-            Screen::Settings => settings::draw(frame, app, outer[1]),
+            Screen::Dashboard => draw_dashboard(frame, app, outer[2]),
+            Screen::SpecBrowser => spec_browser::draw(frame, app, outer[2]),
+            Screen::Constitution => spec_browser::draw_constitution(frame, app, outer[2]),
+            Screen::Settings => settings::draw(frame, app, outer[2]),
             Screen::SessionAttach => unreachable!(),
         }
     }
 
-    statusbar::draw_hints(frame, app, outer[2]);
-    statusbar::draw_statusbar(frame, app, outer[3]);
+    statusbar::draw_hints(frame, app, outer[3]);
+    statusbar::draw_statusbar(frame, app, outer[5]);
 
     // Popups render on top
     if app.active_popup.is_some() {
@@ -259,7 +266,8 @@ fn draw_cli_output_pane(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_unfocused)
-        .title(title);
+        .title(title)
+        .padding(PANEL_PADDING);
 
     let output = app
         .cli_job
@@ -269,7 +277,7 @@ fn draw_cli_output_pane(frame: &mut Frame, app: &App, area: Rect) {
 
     let lines: Vec<Line> = output
         .lines()
-        .map(|l| Line::from(Span::styled(format!(" {l}"), theme.dim_style)))
+        .map(|l| Line::from(Span::styled(l.to_string(), theme.dim_style)))
         .collect();
 
     let content = Paragraph::new(lines)
@@ -297,7 +305,8 @@ fn draw_constitution_inline(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(border_style)
-        .title(title);
+        .title(title)
+        .padding(PANEL_PADDING);
 
     let content_text = app
         .constitution_content()

@@ -35,7 +35,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(theme.border_focused)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
@@ -48,7 +49,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let cols = Layout::horizontal([Constraint::Length(list_w), Constraint::Min(0)]).split(inner);
 
     // Content starts one row below the title, leaving a blank line.
-    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(1));
+    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(3));
     draw_list(frame, app, list_area);
 
     // Vertical divider
@@ -84,7 +85,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
     let items = app.filtered_integrations();
     if app.project.integrations.is_empty() {
         lines.push(Line::from(Span::styled(
-            " No integrations found",
+            "No integrations found",
             theme.faint_style,
         )));
     } else {

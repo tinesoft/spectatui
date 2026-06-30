@@ -47,14 +47,15 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .border_style(border_style)
-        .title(title);
+        .title(title)
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let Some(feature) = app.selected_feature() else {
         let empty = Paragraph::new(Line::from(Span::styled(
-            "  No feature selected",
+            "No feature selected",
             theme.faint_style,
         )))
         .style(theme.base);
@@ -95,7 +96,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
     let stepper_line = Line::from(stepper_spans);
 
-    let mut lines = vec![Line::default(), stepper_line, Line::default()];
+    let mut lines = vec![stepper_line, Line::default()];
 
     let available_height = inner.height as usize;
 
@@ -150,7 +151,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::default());
     }
     lines.push(Line::from(Span::styled(
-        " [enter] open spec   [s] sessions",
+        "[enter] open spec   [s] sessions",
         theme.faint_style,
     )));
 

@@ -24,7 +24,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
             Span::styled("─┤ ", theme.border_focused),
             Span::styled("Extensions & Presets", theme.title_focused),
             Span::styled(" ├", theme.border_focused),
-        ]));
+        ]))
+        .padding(super::PANEL_PADDING);
 
     let inner = block.inner(area);
     frame.render_widget(block, area);
