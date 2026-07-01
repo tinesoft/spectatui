@@ -20,6 +20,10 @@ pub struct AppConfig {
     pub agent_tail_follow: bool,
     #[serde(default = "default_true")]
     pub confirm_before_force: bool,
+    #[serde(default = "default_tmux_prefix")]
+    pub tmux_prefix: String,
+    #[serde(default = "default_config_location")]
+    pub config_location: String,
     #[serde(default)]
     pub custom_layout: Option<CustomLayout>,
 }
@@ -36,6 +40,19 @@ fn default_layout() -> String {
 fn default_true() -> bool {
     true
 }
+fn default_tmux_prefix() -> String {
+    "spectatui-".to_string()
+}
+fn default_config_location() -> String {
+    "./.spectatui.toml".to_string()
+}
+
+/// The selectable Config-location presets shown in Settings.
+pub const CONFIG_LOCATIONS: &[&str] = &[
+    "./.spectatui.toml",
+    "~/.spectatui.toml",
+    "~/.config/spectatui/config.toml",
+];
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -46,6 +63,8 @@ impl Default for AppConfig {
             mouse_support: false,
             agent_tail_follow: true,
             confirm_before_force: true,
+            tmux_prefix: default_tmux_prefix(),
+            config_location: default_config_location(),
             custom_layout: None,
         }
     }
@@ -85,18 +104,17 @@ impl AppConfig {
     }
 }
 
-fn config_dir() -> Option<PathBuf> {
-    directories::ProjectDirs::from("", "", "spectatui").map(|d| d.config_dir().to_path_buf())
-}
-
-fn config_path() -> Option<PathBuf> {
-    config_dir().map(|d| d.join("config.toml"))
-}
-
-pub fn config_path_display() -> String {
-    config_path()
-        .map(|p| p.display().to_string())
-        .unwrap_or_else(|| "unknown".to_string())
+/// Resolve one of the Config-location preset strings to an absolute path,
+/// expanding a leading `~/` (home dir) or `./` (current dir).
+pub fn resolve_config_location(loc: &str) -> Option<PathBuf> {
+    if let Some(rest) = loc.strip_prefix("~/") {
+        let home = directories::BaseDirs::new()?.home_dir().to_path_buf();
+        Some(home.join(rest))
+    } else if let Some(rest) = loc.strip_prefix("./") {
+        Some(std::env::current_dir().ok()?.join(rest))
+    } else {
+        Some(PathBuf::from(loc))
+    }
 }
 
 pub fn load_config(project_root: Option<&std::path::Path>) -> AppConfig {
@@ -109,10 +127,13 @@ pub fn load_config(project_root: Option<&std::path::Path>) -> AppConfig {
         }
     }
 
-    if let Some(path) = config_path() {
-        if let Ok(contents) = std::fs::read_to_string(&path) {
-            if let Ok(config) = toml::from_str(&contents) {
-                return config;
+    // Try each preset location in order; first that parses wins.
+    for loc in CONFIG_LOCATIONS {
+        if let Some(path) = resolve_config_location(loc) {
+            if let Ok(contents) = std::fs::read_to_string(&path) {
+                if let Ok(config) = toml::from_str(&contents) {
+                    return config;
+                }
             }
         }
     }
@@ -121,7 +142,7 @@ pub fn load_config(project_root: Option<&std::path::Path>) -> AppConfig {
 }
 
 pub fn save_config(config: &AppConfig) -> Result<()> {
-    let Some(path) = config_path() else {
+    let Some(path) = resolve_config_location(&config.config_location) else {
         return Ok(());
     };
 

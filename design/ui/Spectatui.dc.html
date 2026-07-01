@@ -135,7 +135,8 @@ class Component extends DCLogic {
     super(props);
     this.state = {
       theme:'dark', accent:'indigo', layout:'overview',
-      screen:'dashboard', focus:0, feat:0,
+      tailFollow:'on', mouseSupport:'on', confirmForce:'always', tmuxPrefix:'spectatui-', configPath:'./.spectatui.toml',
+      screen:'dashboard', focus:0, feat:0, setSel:0, editing:null,
       extTab:'extensions', extSel:0, extScroll:0,
       specTab:'spec', scroll:0,
       popup:null, palQuery:'', palSel:0, cliLines:[], cliStatus:'pending', cliCmd:'',
@@ -1027,13 +1028,13 @@ class Component extends DCLogic {
       {k:'Theme', v:this.state.theme, opts:['dark','light'], set:v=>this.setState({theme:v})},
       {k:'Accent palette', v:this.state.accent, opts:['indigo','teal','amber'], set:v=>this.setState({accent:v})},
       {k:'Dashboard layout', v:this.state.layout, opts:['overview','coding','audit'], set:v=>this.setState({layout:v})},
-      {k:'Agent tail follow', v:'on', opts:['on','off'], set:()=>{}},
-      {k:'Mouse support', v:'on', opts:['on','off'], set:()=>{}},
-      {k:'Confirm before --force', v:'always', opts:['always','never'], set:()=>{}},
-      {k:'tmux session prefix', v:'spectatui-', opts:[], set:()=>{}},
+      {k:'Agent tail follow', v:this.state.tailFollow, opts:['on','off'], set:v=>this.setState({tailFollow:v})},
+      {k:'Mouse support', v:this.state.mouseSupport, opts:['on','off'], set:v=>this.setState({mouseSupport:v})},
+      {k:'Confirm before --force', v:this.state.confirmForce, opts:['always','never'], set:v=>this.setState({confirmForce:v})},
+      {k:'tmux session prefix', v:this.state.tmuxPrefix, text:true, set:v=>this.setState({tmuxPrefix:v})},
       {k:'Customize panes', v:'open layout editor →', opts:[], set:()=>{}, action:()=>this.go('layouteditor')},
       {k:'Attach agent session', v:FEATURES[this.state.feat].id+' →', opts:[], set:()=>{}, action:()=>this.setState({screen:'attach'})},
-      {k:'Config location', v:'~/.config/spectatui/config.toml', opts:[], set:()=>{}},
+      {k:'Config location', v:this.state.configPath, opts:['./.spectatui.toml','~/.spectatui.toml','~/.config/spectatui/config.toml'], set:v=>this.setState({configPath:v})},
     ];
   }
   drawSettings(r){
@@ -1043,20 +1044,28 @@ class Component extends DCLogic {
     let y=r.y+2;
     this.text(r.x+3,y,'Adjust appearance, layout, and CLI behaviour. Persisted to config.toml.',C('dim')); y+=2;
     rows.forEach((row,i)=>{
-      const sel=(i===this.state.feat);
+      const sel=(i===this.state.setSel);
       if(sel){ this.fill(r.x+1,y,r.w-2,1,C('sel')); this.put(r.x+1,y,'▌',C('accent'),C('sel')); }
       this.text(r.x+4,y,row.k,sel?C('selFg'):C('fg'),sel?C('sel'):null,sel);
-      if(row.opts.length){
+      if(row.text){
+        const editing=(this.state.editing===i);
+        const bw=Math.max(24,row.v.length+3);
+        const bg=editing?C('panelAlt'):(sel?C('sel'):C('panel'));
+        this.fill(r.x+34,y,bw,1,bg);
+        this.text(r.x+35,y,row.v,editing?C('fg'):C('info'),bg,editing);
+        if(editing) this.put(r.x+35+row.v.length,y,'█',C('accent'),bg);
+      } else if(row.opts.length){
         let x=r.x+34;
-        row.opts.forEach(o=>{ const on=row.v===o; this.text(x,y,' '+o+' ',on?C('accent'):C('dim'),on?C('panelAlt'):(sel?C('sel'):null),on); this.reg(x,y,o.length+2,1,()=>{row.set(o);}); x+=o.length+3; });
+        row.opts.forEach(o=>{ const on=row.v===o; this.text(x,y,' '+o+' ',on?C('accent'):C('dim'),on?C('panelAlt'):(sel?C('sel'):null),on); this.reg(x,y,o.length+2,1,()=>{this.setState({setSel:i}); row.set(o);}); x+=o.length+3; });
       } else {
         this.text(r.x+34,y,row.v,row.action?C('accent'):C('info'),sel?C('sel'):null,!!row.action);
-        if(row.action) this.reg(r.x+34,y,row.v.length,1,()=>{ this.setState({feat:i}); row.action(); });
+        if(row.action) this.reg(r.x+34,y,row.v.length,1,()=>{ this.setState({setSel:i}); row.action(); });
       }
-      this.reg(r.x+1,y,r.w-2,1,()=>this.setState({feat:i}));
+      this.reg(r.x+1,y,r.w-2,1,()=>this.setState({setSel:i,editing:null}));
+      if(row.text) this.reg(r.x+34,y,Math.max(24,row.v.length+3),1,()=>this.setState({setSel:i,editing:i}));
       y+=2;
     });
-    this.text(r.x+3,r.y+r.h-2,'[↑↓] move   [enter/←→] change   [esc] back',C('faint'));
+    this.text(r.x+3,r.y+r.h-2, this.state.editing!=null?'[type] edit   [enter] save   [esc] cancel':'[↑↓] move   [enter/←→] change   [esc] back',C('faint'));
   }
 
   // ---- layout editor ----
@@ -1336,9 +1345,16 @@ class Component extends DCLogic {
     }
     if(st.screen==='settings'){
       const rows=this.settingsRows();
-      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({feat:Math.min(rows.length-1,st.feat+1)}); return; }
-      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({feat:Math.max(0,st.feat-1)}); return; }
-      if(k==='ArrowRight'||k==='ArrowLeft'||k==='Enter'||k===' '){ stop(); const row=rows[st.feat]; if(row.opts.length){ const idx=row.opts.indexOf(row.v); const d=(k==='ArrowLeft')?-1:1; row.set(row.opts[(idx+d+row.opts.length)%row.opts.length]); } else if(row.action&&(k==='Enter'||k==='ArrowRight')){ row.action(); } return; }
+      if(st.editing!=null){
+        const row=rows[st.editing];
+        if(k==='Enter'||k==='Escape'){ stop(); this.setState({editing:null}); return; }
+        if(k==='Backspace'){ stop(); row.set(row.v.slice(0,-1)); return; }
+        if(k.length===1){ stop(); row.set(row.v+k); return; }
+        stop(); return;
+      }
+      if(k==='ArrowDown'||k==='j'){ stop(); this.setState({setSel:Math.min(rows.length-1,st.setSel+1)}); return; }
+      if(k==='ArrowUp'||k==='k'){ stop(); this.setState({setSel:Math.max(0,st.setSel-1)}); return; }
+      if(k==='ArrowRight'||k==='ArrowLeft'||k==='Enter'||k===' '){ stop(); const row=rows[st.setSel]; if(row.text){ if(k==='Enter'||k==='ArrowRight') this.setState({editing:st.setSel}); } else if(row.opts.length){ const idx=row.opts.indexOf(row.v); const d=(k==='ArrowLeft')?-1:1; row.set(row.opts[(idx+d+row.opts.length)%row.opts.length]); } else if(row.action&&(k==='Enter'||k==='ArrowRight')){ row.action(); } return; }
     }
   }
   extKeys(k,stop,inPopup){

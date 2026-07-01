@@ -914,12 +914,20 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
 }
 
 fn handle_settings_key(app: &mut App, key: KeyEvent, _cli_client: &SpecifyCliClient) {
+    if app.settings_editing.is_some() {
+        match key.code {
+            KeyCode::Enter | KeyCode::Esc => app.settings_end_edit(),
+            KeyCode::Backspace => app.settings_edit_backspace(),
+            KeyCode::Char(c) => app.settings_edit_push(c),
+            _ => {}
+        }
+        return;
+    }
     match key.code {
         KeyCode::Up | KeyCode::Char('k') => app.settings_prev(),
         KeyCode::Down | KeyCode::Char('j') => app.settings_next(),
-        KeyCode::Left | KeyCode::Right | KeyCode::Enter => {
-            app.settings_cycle_value();
-        }
+        KeyCode::Left => app.settings_adjust(-1),
+        KeyCode::Right | KeyCode::Enter | KeyCode::Char(' ') => app.settings_primary_action(),
         KeyCode::Esc => app.go_back(),
         _ => {}
     }
@@ -990,6 +998,7 @@ fn execute_click_action(app: &mut App, action: ClickAction) {
         ClickAction::SettingsSelect(i) => {
             if i < SettingsRow::ALL.len() {
                 app.settings_index = i;
+                app.settings_editing = None;
             }
         }
         ClickAction::SettingsChip(row, opt_idx) => {
@@ -998,6 +1007,12 @@ fn execute_click_action(app: &mut App, action: ClickAction) {
             }
             if let Some(value) = row.options().get(opt_idx) {
                 app.settings_set_value(row, value);
+            }
+        }
+        ClickAction::SettingsEdit(i) => {
+            if i < SettingsRow::ALL.len() && SettingsRow::ALL[i].is_text() {
+                app.settings_index = i;
+                app.settings_editing = Some(i);
             }
         }
         ClickAction::LayoutEditorSelect(i) => {

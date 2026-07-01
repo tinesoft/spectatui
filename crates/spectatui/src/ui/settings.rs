@@ -64,7 +64,42 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let opts = row.options();
         let row_y = row0_y + (i as u16) * 2;
 
-        if !opts.is_empty() {
+        if row.is_text() {
+            // Inline-editable text field: a filled bar with a block cursor while editing.
+            let editing = app.settings_editing == Some(i);
+            let value = app.settings_value_str(*row);
+            let bw = 24usize.max(value.chars().count() + 3);
+            let field_bg = if editing {
+                theme.panel_alt
+            } else if selected {
+                theme.sel
+            } else {
+                theme.panel
+            };
+            let value_style = if editing {
+                Style::default().fg(theme.fg).bg(field_bg)
+            } else {
+                Style::default().fg(theme.info).bg(field_bg)
+            };
+            spans.push(Span::styled(format!(" {value}"), value_style));
+            let mut used = 1 + value.chars().count();
+            if editing {
+                spans.push(Span::styled(
+                    "█",
+                    Style::default().fg(theme.accent).bg(field_bg),
+                ));
+                used += 1;
+            }
+            spans.push(Span::styled(
+                " ".repeat(bw.saturating_sub(used)),
+                Style::default().bg(field_bg),
+            ));
+
+            app.register_click(
+                Rect::new(inner.x + value_col, row_y, bw as u16, 1),
+                crate::app::ClickAction::SettingsEdit(i),
+            );
+        } else if !opts.is_empty() {
             // Inline selectable chips, active one highlighted.
             let current = app.settings_value_str(*row);
             let mut chip_x = inner.x + value_col;
@@ -107,14 +142,26 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     lines.push(Line::default());
-    lines.push(Line::from(vec![
-        Span::styled("  [↑↓]", theme.accent_bold),
-        Span::styled(" move   ", theme.dim_style),
-        Span::styled("[enter/←→]", theme.accent_bold),
-        Span::styled(" change   ", theme.dim_style),
-        Span::styled("[esc]", theme.accent_bold),
-        Span::styled(" back", theme.dim_style),
-    ]));
+    let footer = if app.settings_editing.is_some() {
+        vec![
+            Span::styled("  [type]", theme.accent_bold),
+            Span::styled(" edit   ", theme.dim_style),
+            Span::styled("[enter]", theme.accent_bold),
+            Span::styled(" save   ", theme.dim_style),
+            Span::styled("[esc]", theme.accent_bold),
+            Span::styled(" cancel", theme.dim_style),
+        ]
+    } else {
+        vec![
+            Span::styled("  [↑↓]", theme.accent_bold),
+            Span::styled(" move   ", theme.dim_style),
+            Span::styled("[enter/←→]", theme.accent_bold),
+            Span::styled(" change   ", theme.dim_style),
+            Span::styled("[esc]", theme.accent_bold),
+            Span::styled(" back", theme.dim_style),
+        ]
+    };
+    lines.push(Line::from(footer));
 
     let content = Paragraph::new(lines).style(theme.base);
     frame.render_widget(content, inner);

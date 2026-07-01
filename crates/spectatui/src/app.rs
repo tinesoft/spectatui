@@ -149,8 +149,15 @@ impl SettingsRow {
             Self::AgentTailFollow => &["on", "off"],
             Self::MouseSupport => &["on", "off"],
             Self::ConfirmForce => &["always", "never"],
+            Self::ConfigPath => config::CONFIG_LOCATIONS,
             _ => &[],
         }
+    }
+
+    /// Whether this row is a free-text field (edited inline) rather than a
+    /// chip/option or action row.
+    pub fn is_text(&self) -> bool {
+        matches!(self, Self::TmuxPrefix)
     }
 }
 
@@ -210,6 +217,8 @@ pub struct App {
 
     // Settings
     pub settings_index: usize,
+    /// Row index currently being text-edited, if any.
+    pub settings_editing: Option<usize>,
 
     // Command palette
     pub palette: Option<PaletteState>,
@@ -300,6 +309,7 @@ impl App {
             tmux_session: None,
 
             settings_index: 0,
+            settings_editing: None,
 
             palette: None,
 
@@ -506,6 +516,7 @@ impl App {
     pub fn enter_settings(&mut self) {
         self.screen = Screen::Settings;
         self.settings_index = 0;
+        self.settings_editing = None;
     }
 
     pub fn go_back(&mut self) {
@@ -586,11 +597,13 @@ impl App {
     }
 
     pub fn settings_next(&mut self) {
+        self.settings_editing = None;
         let len = SettingsRow::ALL.len();
         self.settings_index = (self.settings_index + 1) % len;
     }
 
     pub fn settings_prev(&mut self) {
+        self.settings_editing = None;
         let len = SettingsRow::ALL.len();
         self.settings_index = if self.settings_index == 0 {
             len - 1
@@ -599,40 +612,67 @@ impl App {
         };
     }
 
-    pub fn settings_cycle_value(&mut self) {
+    /// Cycle the selected option row by `delta` (+1 forward, -1 back). No-op for
+    /// text/action rows.
+    pub fn settings_adjust(&mut self, delta: i32) {
         let row = SettingsRow::ALL[self.settings_index];
-        match row {
-            SettingsRow::Theme => self.toggle_theme(),
-            SettingsRow::Accent => self.cycle_accent(),
-            SettingsRow::DashboardLayout => {
-                self.layout = match self.layout {
-                    DashboardLayout::Overview => DashboardLayout::Coding,
-                    DashboardLayout::Coding => DashboardLayout::Audit,
-                    DashboardLayout::Audit => DashboardLayout::Custom,
-                    DashboardLayout::Custom => DashboardLayout::Overview,
-                };
+        let opts = row.options();
+        if opts.is_empty() {
+            return;
+        }
+        let current = self.settings_value_str(row);
+        let idx = opts.iter().position(|o| *o == current).unwrap_or(0) as i32;
+        let n = opts.len() as i32;
+        let next = (idx + delta).rem_euclid(n) as usize;
+        self.settings_set_value(row, opts[next]);
+    }
+
+    /// Enter/→ on the selected row: text → begin editing, option → cycle forward,
+    /// action → run its action.
+    pub fn settings_primary_action(&mut self) {
+        let row = SettingsRow::ALL[self.settings_index];
+        if row.is_text() {
+            self.settings_begin_edit();
+        } else if !row.options().is_empty() {
+            self.settings_adjust(1);
+        } else {
+            match row {
+                SettingsRow::CustomizePanes => {
+                    self.layout_editor_active = true;
+                    self.layout_editor_index = 0;
+                }
+                SettingsRow::AttachSession => {
+                    self.screen = Screen::SessionAttach;
+                }
+                _ => {}
             }
-            SettingsRow::AgentTailFollow => {
-                self.config.agent_tail_follow = !self.config.agent_tail_follow;
-                let _ = config::save_config(&self.config);
-            }
-            SettingsRow::MouseSupport => {
-                self.config.mouse_support = !self.config.mouse_support;
-                let _ = config::save_config(&self.config);
-            }
-            SettingsRow::ConfirmForce => {
-                self.config.confirm_before_force = !self.config.confirm_before_force;
-                let _ = config::save_config(&self.config);
-            }
-            SettingsRow::TmuxPrefix => {}
-            SettingsRow::CustomizePanes => {
-                self.layout_editor_active = true;
-                self.layout_editor_index = 0;
-            }
-            SettingsRow::AttachSession => {
-                self.screen = Screen::SessionAttach;
-            }
-            SettingsRow::ConfigPath => {}
+        }
+    }
+
+    pub fn settings_begin_edit(&mut self) {
+        if SettingsRow::ALL[self.settings_index].is_text() {
+            self.settings_editing = Some(self.settings_index);
+        }
+    }
+
+    pub fn settings_end_edit(&mut self) {
+        let _ = config::save_config(&self.config);
+        self.settings_editing = None;
+    }
+
+    pub fn settings_edit_push(&mut self, c: char) {
+        if self.settings_editing.is_some()
+            && SettingsRow::ALL[self.settings_index] == SettingsRow::TmuxPrefix
+        {
+            self.config.tmux_prefix.push(c);
+        }
+    }
+
+    pub fn settings_edit_backspace(&mut self) {
+        if self.settings_editing.is_some()
+            && SettingsRow::ALL[self.settings_index] == SettingsRow::TmuxPrefix
+        {
+            self.config.tmux_prefix.pop();
         }
     }
 
@@ -670,6 +710,21 @@ impl App {
                 self.config.confirm_before_force = value == "always";
                 let _ = config::save_config(&self.config);
             }
+            SettingsRow::ConfigPath => {
+                if value == self.config.config_location {
+                    return;
+                }
+                let old_path = config::resolve_config_location(&self.config.config_location);
+                self.config.config_location = value.to_string();
+                let _ = config::save_config(&self.config);
+                // Migrate: drop the previous config file so loading stays deterministic.
+                let new_path = config::resolve_config_location(&self.config.config_location);
+                if let Some(old) = old_path {
+                    if Some(&old) != new_path.as_ref() && old.exists() {
+                        let _ = std::fs::remove_file(&old);
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -687,13 +742,13 @@ impl App {
             SettingsRow::AgentTailFollow => if self.config.agent_tail_follow { "on" } else { "off" }.to_string(),
             SettingsRow::MouseSupport => if self.config.mouse_support { "on" } else { "off" }.to_string(),
             SettingsRow::ConfirmForce => if self.config.confirm_before_force { "always" } else { "never" }.to_string(),
-            SettingsRow::TmuxPrefix => "spectatui-".to_string(),
+            SettingsRow::TmuxPrefix => self.config.tmux_prefix.clone(),
             SettingsRow::CustomizePanes => "open layout editor →".to_string(),
             SettingsRow::AttachSession => format!(
                 "{} →",
                 self.selected_feature().map(|f| f.id.as_str()).unwrap_or("none")
             ),
-            SettingsRow::ConfigPath => config::config_path_display(),
+            SettingsRow::ConfigPath => self.config.config_location.clone(),
         }
     }
 
@@ -995,6 +1050,7 @@ pub enum ClickAction {
     SetSpecTab(SpecTab),
     SettingsSelect(usize),
     SettingsChip(SettingsRow, usize),
+    SettingsEdit(usize),
     LayoutEditorSelect(usize),
     PaletteRun(usize),
     JumpToFeature(usize),
