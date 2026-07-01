@@ -2,6 +2,15 @@
 name = "spectatui-core"
 version = "0.1.0"
 edition = "2021"
+description = "Core library for spectatui — filesystem watching and Spec-Kit integration"
+license = "MIT"
+repository = "https://github.com/tinesoft/spectatui"
+homepage = "https://github.com/tinesoft/spectatui"
+readme = "README.md"
+keywords = ["speckit", "tui", "terminal"]
+categories = ["development-tools"]
+authors = ["Tine Kondo <kondotine@gmail.com>"]
+rust-version = "1.75"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

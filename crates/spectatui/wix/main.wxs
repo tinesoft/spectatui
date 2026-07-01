@@ -1,0 +1,95 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<!--
+  WiX 3 source for the spectatui MSI installer.
+  Built with: cargo wix (see the release workflow for the exact invocation).
+  Note: "double hyphen" is illegal inside XML comments, so no flags here.
+  DO NOT change the UpgradeCode GUID — it must stay stable across all versions.
+-->
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+  <Product
+    Id='*'
+    Name='Spectatui'
+    UpgradeCode='06F822CC-27F1-4F89-AA4B-5A4F1F4E6FE0'
+    Manufacturer='Tine Kondo'
+    Language='1033'
+    Codepage='1252'
+    Version='!(bind.FileVersion.ExeFile)'>
+
+    <Package
+      Id='*'
+      Keywords='Installer'
+      Description='Spectatui - TUI dashboard for GitHub Spec-Kit'
+      Manufacturer='Tine Kondo'
+      InstallerVersion='450'
+      Languages='1033'
+      Compressed='yes'
+      InstallScope='perMachine'
+      SummaryCodepage='1252' />
+
+    <MajorUpgrade
+      Schedule='afterInstallInitialize'
+      DowngradeErrorMessage='A newer version of [ProductName] is already installed. Setup will now exit.' />
+
+    <Media Id='1' Cabinet='media1.cab' EmbedCab='yes' DiskPrompt='CD-ROM #1' />
+    <Property Id='DiskPrompt' Value='Spectatui Installation' />
+
+    <!-- Relative to the linker bindpath (the package dir), like WixUILicenseRtf below -->
+    <Icon Id='ProductIcon' SourceFile='wix\icon.ico' />
+    <Property Id='ARPPRODUCTICON'  Value='ProductIcon' />
+    <Property Id='ARPHELPLINK'     Value='https://github.com/tinesoft/spectatui' />
+    <Property Id='ARPURLINFOABOUT' Value='https://github.com/tinesoft/spectatui' />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <Directory Id='ProgramFilesFolder'>
+        <Directory Id='INSTALLDIR' Name='spectatui' />
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id='INSTALLDIR'>
+      <!-- The executable -->
+      <Component Id='CmpExe' Guid='F38EE4C0-5EA8-4827-836B-FCF4EF25C395'>
+        <File
+          Id='ExeFile'
+          Name='spectatui.exe'
+          DiskId='1'
+          Source='$(var.CargoTargetBinDir)\spectatui.exe'
+          KeyPath='yes' />
+      </Component>
+
+      <!-- System-wide PATH entry — removed on uninstall -->
+      <Component Id='CmpPath' Guid='5A1C306F-2BD6-4AC8-9C73-E6C0D01F5BD2'>
+        <Environment
+          Id='PATH'
+          Name='PATH'
+          Value='[INSTALLDIR]'
+          Permanent='no'
+          Part='last'
+          Action='set'
+          System='yes' />
+        <RegistryValue
+          Root='HKLM'
+          Key='Software\Spectatui'
+          Name='PathConfigured'
+          Type='integer'
+          Value='1'
+          KeyPath='yes' />
+      </Component>
+    </DirectoryRef>
+
+    <Feature
+      Id='MainProgram'
+      Title='Spectatui'
+      Description='Installs the Spectatui TUI executable and adds it to PATH.'
+      Level='1'
+      ConfigurableDirectory='INSTALLDIR'>
+      <ComponentRef Id='CmpExe' />
+      <ComponentRef Id='CmpPath' />
+    </Feature>
+
+    <UIRef Id='WixUI_Minimal' />
+    <UIRef Id='WixUI_ErrorProgressText' />
+    <WixVariable Id='WixUILicenseRtf' Value='wix\License.rtf' />
+
+  </Product>
+</Wix>

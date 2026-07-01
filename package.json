@@ -2,6 +2,7 @@
   "name": "spectatui",
   "version": "0.0.0",
   "private": true,
+  "packageManager": "pnpm@11.7.0",
   "description": "A TUI dashboard for Github Spec-Kit",
   "author": {
     "name": "Tine Kondo"
@@ -20,7 +21,8 @@
     "reset": "nx reset && rm -rf dist",
     "release": "nx release",
     "release:first": "nx release --first-release",
-    "release:dry": "nx release --dry-run"
+    "release:dry": "nx release --dry-run",
+    "artifacts": "sh scripts/build-artifacts.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",

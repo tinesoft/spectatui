@@ -33,12 +33,7 @@
       "pattern": "v{version}"
     },
     "version": {
-      "conventionalCommits": true,
-      "git": {
-        "commit": true,
-        "commitMessage": "chore(release): v{version}",
-        "tag": true
-      }
+      "conventionalCommits": true
     },
     "changelog": {
       "projectChangelogs": false,
@@ -48,7 +43,10 @@
       }
     },
     "git": {
-      "push": false
+      "commit": true,
+      "commitMessage": "chore(release): v{version} [skip ci]",
+      "tag": true,
+      "push": true
     }
   },
   "analytics": false

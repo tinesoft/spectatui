@@ -1,2 +1,4 @@
 allowBuilds:
   nx: true
+patchedDependencies:
+  '@monodon/rust@3.0.0': patches/@monodon__rust@3.0.0.patch

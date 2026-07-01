@@ -1,0 +1,52 @@
+diff --git a/src/executors/release-publish/executor.js b/src/executors/release-publish/executor.js
+index 4621a9d676ba136efc2749dc03c2828e27febe85..ae2b0aaacb9b2bc060697d850dfbdd970d171229 100644
+--- a/src/executors/release-publish/executor.js
++++ b/src/executors/release-publish/executor.js
+@@ -32,8 +32,27 @@ async function runExecutor(options, context) {
+     const cargoTomlContents = (0, node_fs_1.readFileSync)(cargoTomlPath, 'utf-8');
+     const cargoToml = (0, toml_1.parseCargoToml)(cargoTomlContents);
+     const crateName = cargoToml.package.name;
++    const crateVersion = cargoToml.package.version;
++    // Skip crates whose exact version is already on the registry, so a re-run
++    // after a partial publish can complete instead of hard-failing on cargo's
++    // "version already uploaded" error (which would also skip dependents via
++    // dependsOn). Best-effort: on registry errors, fall through to cargo.
++    if (!isDryRun) {
++        try {
++            const res = await fetch(`https://crates.io/api/v1/crates/${crateName}/${crateVersion}`);
++            if (res.ok) {
++                console.log(`${crateName}@${crateVersion} is already published — skipping.`);
++                return {
++                    success: true,
++                };
++            }
++        }
++        catch { }
++    }
++    // --locked: publish exactly what Cargo.lock pins, instead of letting the
++    // verify build re-resolve dependencies newer than what was built/tested.
+     const cargoPublishCommandSegments = [
+-        `cargo publish --allow-dirty -p ${crateName}`,
++        `cargo publish --locked --allow-dirty -p ${crateName}`,
+     ];
+     if (isDryRun) {
+         cargoPublishCommandSegments.push(`--dry-run`);
+diff --git a/src/release/version-actions.js b/src/release/version-actions.js
+index 002b5b4e5d8c672ce26c45e162fe0e14cacfab51..eb4052fce09d962689bc4f9ad74ae4273a92bb22 100644
+--- a/src/release/version-actions.js
++++ b/src/release/version-actions.js
+@@ -19,9 +19,11 @@ const afterAllProjectsVersioned = async (cwd, { dryRun, rootVersionActionsOption
+             stdio: 'pipe',
+         });
+     }
+-    catch {
+-        // cargo update failures are non-fatal for the release flow; the user can re-run manually
+-        return { changedFiles: [], deletedFiles: [] };
++    catch (e) {
++        // Upstream swallows this, but a stale Cargo.lock would be committed and
++        // tagged, then break every downstream `cargo build --locked`. Failing
++        // here aborts nx release before anything is committed, tagged or pushed.
++        throw new Error(`cargo update --workspace failed after versioning: ${e?.message ?? e}`);
+     }
+     return {
+         changedFiles: hasGitDiff(cwd, 'Cargo.lock') ? ['Cargo.lock'] : [],

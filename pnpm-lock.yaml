@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@monodon/rust@3.0.0': 431af3f0ada238c1d0600872e7d690c3e76a8e65c7b32048efb844dbf08a0e7e
+
 importers:
 
   .:
@@ -16,7 +19,7 @@ importers:
         version: 21.0.2
       '@monodon/rust':
         specifier: ^3.0.0
-        version: 3.0.0(@napi-rs/cli@3.7.2(@emnapi/core@1.4.5)(@emnapi/runtime@1.4.5)(@types/node@26.0.0))(nx@23.0.0)
+        version: 3.0.0(patch_hash=431af3f0ada238c1d0600872e7d690c3e76a8e65c7b32048efb844dbf08a0e7e)(@napi-rs/cli@3.7.2(@emnapi/core@1.4.5)(@emnapi/runtime@1.4.5)(@types/node@26.0.0))(nx@23.0.0)
       husky:
         specifier: ^9.1.7
         version: 9.1.7
@@ -1068,6 +1071,7 @@ packages:
   git-raw-commits@5.0.1:
     resolution: {integrity: sha512-Y+csSm2GD/PCSh6Isd/WiMjNAydu0VBiG9J7EdQsNA5P9uXvLayqjmTsNlK5Gs9IhblFZqOU0yid5Il5JPoLiQ==}
     engines: {node: '>=18'}
+    deprecated: Deprecated and no longer maintained. Use @conventional-changelog/git-client instead.
     hasBin: true
 
   global-directory@5.0.0:
@@ -1719,7 +1723,7 @@ snapshots:
 
   '@ltd/j-toml@1.38.0': {}
 
-  '@monodon/rust@3.0.0(@napi-rs/cli@3.7.2(@emnapi/core@1.4.5)(@emnapi/runtime@1.4.5)(@types/node@26.0.0))(nx@23.0.0)':
+  '@monodon/rust@3.0.0(patch_hash=431af3f0ada238c1d0600872e7d690c3e76a8e65c7b32048efb844dbf08a0e7e)(@napi-rs/cli@3.7.2(@emnapi/core@1.4.5)(@emnapi/runtime@1.4.5)(@types/node@26.0.0))(nx@23.0.0)':
     dependencies:
       '@ltd/j-toml': 1.38.0
       '@napi-rs/cli': 3.7.2(@emnapi/core@1.4.5)(@emnapi/runtime@1.4.5)(@types/node@26.0.0)

@@ -1,0 +1,258 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_TARGET_DIR: target
+
+jobs:
+  # ── 1. Test the exact tree being released ─────────────────────────────────────
+  # CI only runs on develop, so this is the only test gate before a release.
+  test:
+    name: Check & Test
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Test
+        run: cargo test --workspace
+
+  # ── 2. Version bump, changelog, tag ───────────────────────────────────────────
+  version:
+    name: Version & changelog
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Required for @monodon/rust's post-version `cargo update --workspace`,
+      # which refreshes Cargo.lock to the bumped versions. A failure there
+      # aborts nx release before anything is committed, tagged or pushed
+      # (patches/@monodon__rust@3.0.0.patch — upstream swallows the error).
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Version bump, changelog, git tag/push, GitHub Release, and the
+      # released/tag step outputs. See tools/check-release.sh.
+      - name: Run nx release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: tools/check-release.sh
+
+  # ── 3. Build release binaries for all targets ─────────────────────────────────
+  build:
+    name: Build ${{ matrix.target }}
+    needs: version
+    if: needs.version.outputs.released == 'true'
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            use_cross: true
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-latest
+            use_cross: true
+          - target: x86_64-apple-darwin
+            runner: macos-13
+            use_cross: false
+          - target: aarch64-apple-darwin
+            runner: macos-14
+            use_cross: false
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            use_cross: false
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
+
+      # Pinned: a new cross release can move the default Docker images to a
+      # newer Ubuntu base, silently raising the glibc floor of our binaries.
+      - name: Install cross
+        if: matrix.use_cross
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cross@0.2.5
+
+      - name: Build release binary
+        shell: bash
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --locked --target ${{ matrix.target }} -p spectatui
+          else
+            cargo build --release --locked --target ${{ matrix.target }} -p spectatui
+          fi
+
+      - name: Package artifact
+        shell: bash
+        run: sh scripts/build-artifacts.sh --target ${{ matrix.target }} --target-dir target
+
+      - name: Install cargo-wix
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wix@0.3.9
+
+      - name: Read version for MSI name
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        id: msi_version
+        shell: bash
+        run: |
+          tag="${{ needs.version.outputs.tag }}"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      # --output must be the full file path: with --name + a directory output,
+      # cargo-wix appends "-{version}-{arch}" and double-versions the filename.
+      - name: Build MSI installer
+        if: matrix.target == 'x86_64-pc-windows-msvc'
+        shell: bash
+        run: |
+          cargo wix \
+            --package spectatui \
+            --no-build \
+            --nocapture \
+            --target x86_64-pc-windows-msvc \
+            --output "dist/artifacts/spectatui-v${{ steps.msi_version.outputs.version }}-x86_64-pc-windows-msvc.msi"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spectatui-${{ matrix.target }}
+          path: dist/artifacts/spectatui-*
+
+  # ── 4. Attach artifacts to the GitHub Release created by nx ───────────────────
+  upload:
+    name: Upload release assets
+    needs: [version, build]
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd dist/artifacts
+          sha256sum spectatui-* > sha256sums.txt
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload --clobber "${{ needs.version.outputs.tag }}" \
+            dist/artifacts/spectatui-* \
+            dist/artifacts/sha256sums.txt
+
+  # ── 5. Publish crates to crates.io ────────────────────────────────────────────
+  publish:
+    name: Publish to crates.io
+    needs: [version, upload]
+    if: needs.version.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.version.outputs.tag }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      # Also applies patches/@monodon__rust@3.0.0.patch, which makes the publish
+      # executor pass --locked and skip already-published crate versions (so a
+      # re-run after a partial publish can complete).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Publishes the crates in dependency order via @monodon/rust
+      # (nx-release-publish targets depend on ^nx-release-publish).
+      - name: Publish to crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: pnpm nx release publish
