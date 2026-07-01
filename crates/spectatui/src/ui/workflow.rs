@@ -151,7 +151,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::default());
     }
     lines.push(Line::from(Span::styled(
-        "[enter] open spec   [s] sessions",
+        "[enter] open spec   [a] sessions",
         theme.faint_style,
     )));
 

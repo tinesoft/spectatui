@@ -98,11 +98,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     lines.push(Line::from(vec![
         Span::styled("[", theme.faint_style),
         Span::styled("a", theme.accent_bold),
-        Span::styled("] attach  [", theme.faint_style),
-        Span::styled("r", theme.accent_bold),
-        Span::styled("] refresh tail  [", theme.faint_style),
-        Span::styled("k", theme.accent_bold),
-        Span::styled("] kill", theme.faint_style),
+        Span::styled("] attach", theme.faint_style),
     ]));
 
     let content = Paragraph::new(lines).style(theme.base);

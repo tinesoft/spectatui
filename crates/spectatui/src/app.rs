@@ -762,6 +762,20 @@ impl App {
             .filter(|f| sessions.iter().any(|s| s.contains(&f.id)))
             .map(|f| f.id.clone())
             .collect();
+
+        // When "agent tail follow" is off, freeze the visible tail: keep the previous
+        // snapshot for the same session instead of adopting the freshly captured one.
+        let session = match session {
+            Some(mut new) if !self.config.agent_tail_follow => {
+                if let Some(old) = &self.tmux_session {
+                    if old.name == new.name {
+                        new.last_snapshot = old.last_snapshot.clone();
+                    }
+                }
+                Some(new)
+            }
+            other => other,
+        };
         self.tmux_session = session;
     }
 

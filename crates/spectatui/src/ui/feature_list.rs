@@ -129,8 +129,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         lines.push(Line::default());
     }
     lines.push(Line::from(vec![
-        Span::styled("+ new feature  ", theme.faint_style),
-        Span::styled("[n]", theme.accent_bold),
+        Span::styled("[enter]", theme.accent_bold),
+        Span::styled(" open spec", theme.faint_style),
     ]));
 
     let list = Paragraph::new(lines).style(theme.base);

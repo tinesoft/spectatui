@@ -190,7 +190,22 @@ async fn run_loop(
         if let Some(event) = events.next().await {
             match event {
                 AppEvent::Key(key) => {
+                    let mouse_before = app.config.mouse_support;
                     handle_key(app, key, &cli_client);
+                    // Apply a Mouse-support setting change immediately (no restart needed).
+                    if app.config.mouse_support != mouse_before {
+                        if app.config.mouse_support {
+                            let _ = execute!(
+                                terminal.backend_mut(),
+                                crossterm::event::EnableMouseCapture
+                            );
+                        } else {
+                            let _ = execute!(
+                                terminal.backend_mut(),
+                                crossterm::event::DisableMouseCapture
+                            );
+                        }
+                    }
                     if app.attach_request {
                         app.attach_request = false;
                         attach_session(terminal, app).await?;
@@ -340,6 +355,11 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                 }
                 KeyCode::Char('f') => {
                     app.force_flag = !app.force_flag;
+                    // Only Remove carries a --force flag in the command; sync it so the
+                    // previewed command line and the spawned command both reflect the toggle.
+                    if let Some(CliAction::Remove { force, .. }) = &mut app.pending_action {
+                        *force = app.force_flag;
+                    }
                 }
                 KeyCode::Esc => {
                     app.pending_action = None;
@@ -363,11 +383,8 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         .filtered_integrations()
                         .get(app.integration_index)
                         .map(|it| (it.key.clone(), it.installed, it.is_default));
-                    let confirm = |app: &mut App, action: CliAction| {
-                        app.pending_action = Some(action);
-                        app.force_flag = false;
-                        app.active_popup = Some(PopupKind::CliConfirm);
-                    };
+                    let confirm =
+                        |app: &mut App, action: CliAction| request_cli_action(app, action, cli_client);
                     match key.code {
                         KeyCode::Esc => app.close_popup(),
                         KeyCode::Up | KeyCode::Char('k') => app.integration_select_prev(),
@@ -435,11 +452,8 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         .filtered_workflows()
                         .get(app.wf_index)
                         .map(|wf| (wf.id.clone(), wf.installed, wf.last_run.clone()));
-                    let confirm = |app: &mut App, action: CliAction| {
-                        app.pending_action = Some(action);
-                        app.force_flag = false;
-                        app.active_popup = Some(PopupKind::CliConfirm);
-                    };
+                    let confirm =
+                        |app: &mut App, action: CliAction| request_cli_action(app, action, cli_client);
                     match key.code {
                         KeyCode::Esc => app.close_popup(),
                         KeyCode::Up | KeyCode::Char('k') => app.wf_select_prev(),
@@ -747,6 +761,19 @@ fn handle_constitution_key(app: &mut App, key: KeyEvent) {
     }
 }
 
+/// Run a CLI action, gated by the `Confirm before --force` setting: when enabled
+/// (default) open the confirm dialog first; otherwise spawn the job immediately.
+fn request_cli_action(app: &mut App, action: CliAction, cli_client: &SpecifyCliClient) {
+    if app.config.confirm_before_force {
+        app.pending_action = Some(action);
+        app.force_flag = false;
+        app.active_popup = Some(PopupKind::CliConfirm);
+    } else {
+        let (job, rx) = cli_client.spawn_job(&action);
+        app.show_cli_job(job, rx);
+    }
+}
+
 fn current_ext_id(app: &App) -> Option<String> {
     match app.ext_tab {
         ExtTab::Extensions => app.filtered_extensions().get(app.ext_index).map(|e| e.id.clone()),
@@ -832,9 +859,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
                     dev_path: None,
                     from_url: None,
                 };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('x') => {
@@ -849,9 +874,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
                     keep_config: false,
                     force: false,
                 };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('e') => {
@@ -861,9 +884,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
             };
             if let Some(id) = current_ext_id(app) {
                 let action = CliAction::Enable { target, id };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('d') => {
@@ -873,17 +894,13 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
             };
             if let Some(id) = current_ext_id(app) {
                 let action = CliAction::Disable { target, id };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('u') if app.ext_tab == ExtTab::Extensions => {
             if let Some(id) = current_ext_id(app) {
                 let action = CliAction::Update { target: CliTarget::Extension, id: Some(id) };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('p') => {
@@ -897,9 +914,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
                     id,
                     priority: 75,
                 };
-                app.pending_action = Some(action);
-                app.force_flag = false;
-                app.active_popup = Some(PopupKind::CliConfirm);
+                request_cli_action(app, action, cli_client);
             }
         }
         KeyCode::Char('r') if app.ext_tab == ExtTab::Presets => {
@@ -1052,9 +1067,13 @@ fn execute_palette_action(app: &mut App, action: PaletteAction) {
             app.layout = layout;
             app.screen = Screen::Dashboard;
         }
-        PaletteAction::SetScreen(screen) => {
-            app.screen = screen;
-        }
+        PaletteAction::SetScreen(screen) => match screen {
+            // Route guarded screens through their helpers so they no-op when there is
+            // no selected feature / no constitution instead of opening an empty screen.
+            Screen::SpecBrowser => app.enter_spec_browser(),
+            Screen::Constitution => app.enter_constitution(),
+            other => app.screen = other,
+        },
         PaletteAction::ToggleTheme => app.toggle_theme(),
         PaletteAction::CycleAccent => app.cycle_accent(),
         PaletteAction::OpenPopup(kind) => app.open_popup(kind),
