@@ -67,6 +67,14 @@ pub(super) fn draw_search_footer(
             Span::styled(tail, Style::default().fg(theme.faint).bg(theme.panel_alt)),
         ]);
         frame.render_widget(Paragraph::new(line).style(bar), area);
+    } else if !query.is_empty() {
+        // Filter validated with Enter: keep the entered text visible, dimmed.
+        let line = Line::from(vec![
+            Span::styled("[/] ", theme.accent_bold),
+            Span::styled(query.to_string(), theme.dim_style),
+            Span::styled("   esc close", theme.faint_style),
+        ]);
+        frame.render_widget(Paragraph::new(line).style(theme.base), area);
     } else {
         let line = Line::from(vec![
             Span::styled("[/] ", theme.accent_bold),

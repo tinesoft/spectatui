@@ -792,7 +792,6 @@ fn handle_filter_key(app: &mut App, key: KeyEvent) -> FilterKey {
         }
     } else if key.code == KeyCode::Char('/') {
         app.filter_active = true;
-        app.filter_query.clear();
         FilterKey::ConsumedReset
     } else {
         FilterKey::NotConsumed
