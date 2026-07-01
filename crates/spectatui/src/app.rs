@@ -829,7 +829,7 @@ impl App {
             .iter()
             .filter(|e| {
                 let by = e.author.as_deref().unwrap_or("");
-                self.matches_filter(&format!("{} {} {}", e.id, by, e.description))
+                self.matches_filter(&format!("{} {} {} {}", e.name, e.id, by, e.description))
             })
             .collect()
     }
@@ -841,7 +841,7 @@ impl App {
             .filter(|p| {
                 let by = p.author.as_deref().unwrap_or("");
                 let src = p.source_label.as_deref().unwrap_or("");
-                self.matches_filter(&format!("{} {} {} {}", p.id, by, src, p.description))
+                self.matches_filter(&format!("{} {} {} {} {}", p.name, p.id, by, src, p.description))
             })
             .collect()
     }
