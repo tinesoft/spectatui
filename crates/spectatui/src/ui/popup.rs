@@ -25,22 +25,22 @@ pub fn draw(frame: &mut Frame, app: &App) {
         }
         PopupKind::Features => draw_features(frame, app),
         PopupKind::Help => {
-            let area = fixed_centered_rect(70, 24, frame.area());
+            let area = fixed_centered_rect(70, 26, frame.area());
             draw_help(frame, app, area);
         }
         PopupKind::QuitConfirm => {
-            let area = fixed_centered_rect(44, 7, frame.area());
+            let area = fixed_centered_rect(44, 9, frame.area());
             draw_quit_confirm(frame, app, area);
         }
         PopupKind::Extensions => super::extensions::draw(frame, app),
         PopupKind::Presets => super::presets::draw(frame, app),
         PopupKind::CommandPalette => {}
         PopupKind::CliConfirm => {
-            let area = fixed_centered_rect(72, 11, frame.area());
+            let area = fixed_centered_rect(72, 13, frame.area());
             draw_cli_confirm(frame, app, area);
         }
         PopupKind::CliOutput => {
-            let area = fixed_centered_rect(84, 20, frame.area());
+            let area = fixed_centered_rect(84, 22, frame.area());
             draw_cli_output(frame, app, area);
         }
     }
