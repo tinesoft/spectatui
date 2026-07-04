@@ -1,0 +1,16 @@
+# Add files here to ignore them from prettier formatting
+/dist
+/coverage
+/.nx/cache
+/.nx/workspace-data
+
+# Spec-kit managed content and reference material - not formatted by prettier
+/specs
+/.specify
+/design
+/tmp
+/CHANGELOG.md
+
+# Lockfile has its own formatting; prettier's YAML style diverges and would
+# rewrite the whole file on every dependency change
+/pnpm-lock.yaml

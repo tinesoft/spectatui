@@ -1,0 +1,4 @@
+{
+  "*.rs": "rustfmt --edition 2021",
+  "*.{js,jsx,ts,tsx,json,md,mjs,cjs,yml,yaml,html,css,scss}": "prettier --write"
+}

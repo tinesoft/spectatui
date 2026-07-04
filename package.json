@@ -17,6 +17,7 @@
     "build": "nx run-many -t build",
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
+    "format": "nx format && cargo fmt --all",
     "ci": "pnpm install --frozen-lockfile",
     "reset": "nx reset && rm -rf dist",
     "release": "nx release",
@@ -28,7 +29,10 @@
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^21.0.2",
     "@monodon/rust": "^3.0.0",
+    "@nx/js": "23.0.0",
     "husky": "^9.1.7",
-    "nx": "^23.0.0"
+    "lint-staged": "^17.0.8",
+    "nx": "^23.0.0",
+    "prettier": "~3.6.2"
   }
 }

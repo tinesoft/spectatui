@@ -1,14 +1,9 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "defaultBase": "main",
+  "defaultBase": "develop",
   "namedInputs": {
-    "default": [
-      "{projectRoot}/**/*"
-    ],
-    "production": [
-      "default",
-      "!{projectRoot}/**/*.spec.rs"
-    ]
+    "default": ["{projectRoot}/**/*"],
+    "production": ["default", "!{projectRoot}/**/*.spec.rs"]
   },
   "targetDefaults": {
     "build": {
@@ -21,13 +16,9 @@
       "cache": true
     }
   },
-  "plugins": [
-    "@monodon/rust"
-  ],
+  "plugins": ["@monodon/rust"],
   "release": {
-    "projects": [
-      "crates/*"
-    ],
+    "projects": ["crates/*"],
     "projectsRelationship": "fixed",
     "releaseTag": {
       "pattern": "v{version}"
