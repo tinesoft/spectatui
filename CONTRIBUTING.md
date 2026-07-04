@@ -77,6 +77,10 @@ Commits must follow [Conventional Commits](https://www.conventionalcommits.org/)
 | `refactor` | Code restructuring without behavior change |
 | `test` | Adding or fixing tests |
 | `ci` | CI/CD configuration changes |
+| `perf` | A performance improvement |
+| `style` | Formatting/whitespace changes with no code meaning change |
+| `build` | Changes to the build system or external dependencies |
+| `revert` | Reverts a previous commit |
 
 ### Examples
 

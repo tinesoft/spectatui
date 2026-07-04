@@ -9,7 +9,7 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+**Tests**: The examples below include test tasks. Per the project constitution (Principle II — Testing Standards), unit tests are REQUIRED for new logic in `spectatui-core` and for non-trivial UI branching, and regression tests are REQUIRED for bug fixes; omit test tasks only for changes that add no new behavior (e.g. pure refactors, docs).
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
