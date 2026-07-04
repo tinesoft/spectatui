@@ -56,6 +56,10 @@ run_command "sudo apt-get update"
 run_command "sudo apt-get install -y sox"
 echo "✅ Done"
 
+echo -e "\n📋 Installing Specify CLI (Spec Kit)..."
+run_command "bash tools/init_specify.sh"
+echo "✅ Done"
+
 # Cleaning up apt cache to reduce image size
 
 echo -e "\n🧹 Cleaning cache..."

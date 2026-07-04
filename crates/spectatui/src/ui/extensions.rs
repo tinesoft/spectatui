@@ -139,10 +139,7 @@ pub(super) fn draw_list(frame: &mut Frame, app: &App, list_area: Rect, detail_ar
     }
 
     if app.project.extensions.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "No extensions installed",
-            theme.faint_style,
-        )));
+        lines.extend(super::empty_list_lines(app, "No extensions installed"));
     }
 
     let list = Paragraph::new(lines).style(theme.base);

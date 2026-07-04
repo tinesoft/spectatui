@@ -246,6 +246,10 @@ pub struct App {
     // Async catalog indexing
     pub indexing: bool,
     pub indexing_tick: u8,
+    /// Whether the `specify` CLI was runnable during catalog indexing. `false` means
+    /// the "available" items couldn't be loaded — the popups show a notice instead of
+    /// a silently empty list. Starts `true` so no error flashes before the probe runs.
+    pub cli_available: bool,
     /// Last async catalog results, re-applied after every project refresh so a
     /// re-discovery (file watcher / CLI job) doesn't drop the "available" items.
     pub catalog_cache: Option<CatalogResults>,
@@ -256,6 +260,7 @@ pub struct App {
     // Session attach
     pub attach_input: String,
     pub attach_request: bool,
+    pub launch_request: bool,
 
     // Click regions registered during the current frame (cleared each draw).
     pub click_regions: RefCell<Vec<(Rect, ClickAction)>>,
@@ -327,10 +332,12 @@ impl App {
             filter_active: false,
             indexing: true,
             indexing_tick: 0,
+            cli_available: true,
             catalog_cache: None,
             running_features: HashSet::new(),
             attach_input: String::new(),
             attach_request: false,
+            launch_request: false,
             click_regions: RefCell::new(Vec::new()),
         }
     }
@@ -343,6 +350,20 @@ impl App {
             .find(|i| i.is_default)
             .map(|i| i.name.clone())
             .unwrap_or_else(|| "agent".to_string())
+    }
+
+    /// Invokable command for the default integration's coding agent, e.g. "claude".
+    pub fn default_agent_key(&self) -> Option<String> {
+        self.project
+            .integrations
+            .iter()
+            .find(|i| i.is_default)
+            .map(|i| i.key.clone())
+    }
+
+    /// tmux session name spectatui creates/looks for a feature's coding-agent session.
+    pub fn session_name_for(&self, feature_id: &str) -> String {
+        format!("{}{}", self.config.tmux_prefix, feature_id)
     }
 
     /// Register a clickable region for the current frame. Last-registered wins
@@ -497,6 +518,17 @@ impl App {
         self.cli_rx = Some(rx);
         self.cli_scroll = 0;
         self.active_popup = Some(PopupKind::CliOutput);
+    }
+
+    /// At most one CLI-mediated action may run at a time (spec FR-019a) — `false` while
+    /// a previous job hasn't reached a terminal status yet. A freshly spawned job starts
+    /// as `Pending` and only flips to `Running` once its first output line arrives (or
+    /// never, if it completes with no output), so both non-terminal states must block.
+    pub fn can_start_cli_action(&self) -> bool {
+        !matches!(
+            &self.cli_job,
+            Some(job) if matches!(job.status, JobStatus::Pending | JobStatus::Running)
+        )
     }
 
     pub fn enter_spec_browser(&mut self) {
@@ -1207,4 +1239,58 @@ pub fn palette_commands() -> Vec<PaletteCommand> {
             action: PaletteAction::Quit,
         },
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use spectatui_core::speckit::cli::CliAction;
+    use spectatui_core::speckit::Project;
+
+    fn test_app() -> App {
+        let project = Project {
+            root: std::path::PathBuf::from("."),
+            constitution: None,
+            features: Vec::new(),
+            extensions: Vec::new(),
+            presets: Vec::new(),
+            integrations: Vec::new(),
+            workflows: Vec::new(),
+        };
+        App::new(project, AppConfig::default())
+    }
+
+    #[test]
+    fn can_start_when_no_job() {
+        let app = test_app();
+        assert!(app.can_start_cli_action());
+    }
+
+    #[test]
+    fn cannot_start_when_job_pending_or_running() {
+        let mut app = test_app();
+        // Pending: freshly spawned, before the first output line (or completion) has
+        // been polled — must already block, not just once status flips to Running.
+        app.cli_job = Some(CliJob::new(CliAction::SelfCheck));
+        assert!(!app.can_start_cli_action());
+
+        let mut job = CliJob::new(CliAction::SelfCheck);
+        job.status = JobStatus::Running;
+        app.cli_job = Some(job);
+        assert!(!app.can_start_cli_action());
+    }
+
+    #[test]
+    fn can_start_again_after_job_succeeded_or_failed() {
+        let mut app = test_app();
+        let mut job = CliJob::new(CliAction::SelfCheck);
+        job.status = JobStatus::Succeeded;
+        app.cli_job = Some(job);
+        assert!(app.can_start_cli_action());
+
+        let mut job = CliJob::new(CliAction::SelfCheck);
+        job.status = JobStatus::Failed;
+        app.cli_job = Some(job);
+        assert!(app.can_start_cli_action());
+    }
 }

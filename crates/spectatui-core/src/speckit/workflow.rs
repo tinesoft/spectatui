@@ -12,6 +12,10 @@ pub enum WorkflowStage {
     Analyzed,
     Implementing,
     Implemented,
+    /// Artifacts exist but don't match any recognized Spec-Kit template convention
+    /// (e.g. produced by an incompatible template version) — a terminal degraded
+    /// display state, not a step in the lifecycle sequence.
+    Unknown,
 }
 
 impl WorkflowStage {
@@ -25,11 +29,43 @@ impl WorkflowStage {
             Self::Analyzed => "anly",
             Self::Implementing => "impl",
             Self::Implemented => "impl",
+            Self::Unknown => "unk",
         }
     }
 }
 
+/// A `tasks.md`/`spec.md` is considered recognizable if it's either empty (freshly
+/// generated, not yet populated) or contains at least one Markdown heading or
+/// checklist line — the minimal shape every Spec-Kit template produces. Content
+/// matching neither means the file wasn't produced by a template this version knows
+/// how to read.
+fn has_recognized_markdown_structure(path: &std::path::Path) -> bool {
+    let Ok(content) = fs::read_to_string(path) else {
+        return true; // unreadable is a separate concern from unrecognized content
+    };
+    if content.trim().is_empty() {
+        return true;
+    }
+    content.lines().any(|line| {
+        let trimmed = line.trim_start();
+        trimmed.starts_with('#')
+            || trimmed.starts_with("- [ ]")
+            || trimmed.starts_with("- [x]")
+            || trimmed.starts_with("- [X]")
+    })
+}
+
 pub fn infer_stage(artifacts: &FeatureArtifacts) -> WorkflowStage {
+    if let Some(tasks_path) = &artifacts.tasks {
+        if !has_recognized_markdown_structure(tasks_path) {
+            return WorkflowStage::Unknown;
+        }
+    } else if let Some(spec_path) = &artifacts.spec {
+        if artifacts.plan.is_none() && !has_recognized_markdown_structure(spec_path) {
+            return WorkflowStage::Unknown;
+        }
+    }
+
     let tasks_status = artifacts
         .tasks
         .as_ref()
@@ -220,6 +256,51 @@ mod tests {
             ..Default::default()
         };
         assert_eq!(infer_stage(&artifacts), WorkflowStage::Implemented);
+    }
+
+    #[test]
+    fn unknown_when_tasks_file_unrecognized() {
+        let tmp = TempDir::new().unwrap();
+        let spec = write_file(tmp.path(), "spec.md", "# Feature\n");
+        let tasks = write_file(
+            tmp.path(),
+            "tasks.md",
+            "this is not a task list at all, just prose with no heading or checkboxes",
+        );
+        let artifacts = FeatureArtifacts {
+            spec: Some(spec),
+            tasks: Some(tasks),
+            ..Default::default()
+        };
+        assert_eq!(infer_stage(&artifacts), WorkflowStage::Unknown);
+    }
+
+    #[test]
+    fn unknown_when_spec_file_unrecognized() {
+        let tmp = TempDir::new().unwrap();
+        let spec = write_file(
+            tmp.path(),
+            "spec.md",
+            "this is not a spec document, no headings or checklists here",
+        );
+        let artifacts = FeatureArtifacts {
+            spec: Some(spec),
+            ..Default::default()
+        };
+        assert_eq!(infer_stage(&artifacts), WorkflowStage::Unknown);
+    }
+
+    #[test]
+    fn tasks_generated_when_empty_tasks_file() {
+        let tmp = TempDir::new().unwrap();
+        let spec = write_file(tmp.path(), "spec.md", "# Feature\n");
+        let tasks = write_file(tmp.path(), "tasks.md", "");
+        let artifacts = FeatureArtifacts {
+            spec: Some(spec),
+            tasks: Some(tasks),
+            ..Default::default()
+        };
+        assert_eq!(infer_stage(&artifacts), WorkflowStage::TasksGenerated);
     }
 
     #[test]

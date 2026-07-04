@@ -187,6 +187,7 @@ fn stage_note(stage: spectatui_core::speckit::WorkflowStage) -> &'static str {
         WorkflowStage::Analyzed => "analyzed, ready to implement",
         WorkflowStage::Implementing => "implementation in progress",
         WorkflowStage::Implemented => "implemented",
+        WorkflowStage::Unknown => "unrecognized artifact format",
     }
 }
 

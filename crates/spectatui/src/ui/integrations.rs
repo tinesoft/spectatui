@@ -94,10 +94,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
 
     let items = app.filtered_integrations();
     if app.project.integrations.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "No integrations found",
-            theme.faint_style,
-        )));
+        lines.extend(super::empty_list_lines(app, "No integrations found"));
     } else {
         let col_w = area.width as usize;
         let right_max = 13; // "★ default" = 9, "available" = 9, padded

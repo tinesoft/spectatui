@@ -23,8 +23,8 @@ use spectatui_core::speckit::Project;
 use spectatui_core::tmux::TmuxClient;
 
 use app::{
-    palette_commands, App, ClickAction, DashboardLayout, ExtTab, PaletteAction, PopupKind, Screen,
-    SettingsRow,
+    palette_commands, App, ClickAction, DashboardLayout, ExtTab, PaletteAction, Pane, PopupKind,
+    Screen, SettingsRow,
 };
 use event::{AppEvent, EventStream};
 
@@ -159,6 +159,7 @@ async fn run_loop(
         let catalog_tx = event_tx.clone();
         let catalog_root = root.to_path_buf();
         tokio::spawn(async move {
+            let cli_available = registry::specify_cli_available(&catalog_root).await;
             let (integrations, extensions, presets, workflows) = tokio::join!(
                 registry::fetch_available_integrations(&catalog_root),
                 registry::fetch_available_extensions(&catalog_root),
@@ -166,6 +167,7 @@ async fn run_loop(
                 registry::fetch_workflows(&catalog_root),
             );
             let _ = catalog_tx.send(AppEvent::CatalogIndexed {
+                cli_available,
                 integrations,
                 extensions,
                 presets,
@@ -210,6 +212,10 @@ async fn run_loop(
                         app.attach_request = false;
                         attach_session(terminal, app).await?;
                     }
+                    if app.launch_request {
+                        app.launch_request = false;
+                        launch_session(terminal, app).await?;
+                    }
                 }
                 AppEvent::Mouse(mouse) => {
                     handle_mouse(app, mouse, &cli_client);
@@ -223,11 +229,13 @@ async fn run_loop(
                     // ratatui handles resize automatically
                 }
                 AppEvent::CatalogIndexed {
+                    cli_available,
                     integrations,
                     extensions,
                     presets,
                     workflows,
                 } => {
+                    app.cli_available = cli_available;
                     app.merge_catalog_results(integrations, extensions, presets, workflows);
                 }
                 AppEvent::TmuxChanged { sessions, session } => {
@@ -241,8 +249,37 @@ async fn run_loop(
     }
 }
 
-/// Suspend the TUI, attach to the selected tmux session as a foreground
-/// process, then restore the alternate screen / raw mode on detach.
+/// Suspend the TUI, run a foreground tmux attach to `target`, then restore
+/// the alternate screen / raw mode when the tmux process exits (on detach).
+async fn attach_to(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    target: &str,
+    mouse_support: bool,
+) -> Result<()> {
+    // Leave the TUI.
+    if mouse_support {
+        execute!(
+            terminal.backend_mut(),
+            crossterm::event::DisableMouseCapture
+        )?;
+    }
+    terminal::disable_raw_mode()?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
+
+    let attach_result = TmuxClient::attach(target).await;
+
+    // Restore the TUI.
+    terminal::enable_raw_mode()?;
+    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    if mouse_support {
+        execute!(terminal.backend_mut(), crossterm::event::EnableMouseCapture)?;
+    }
+    terminal.clear()?;
+
+    attach_result
+}
+
+/// Attach to the currently selected feature's live tmux session, if any.
 async fn attach_session(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
@@ -253,28 +290,34 @@ async fn attach_session(
     if !app.tmux_available {
         return Ok(());
     }
+    attach_to(terminal, &target, app.config.mouse_support).await
+}
 
-    // Leave the TUI.
-    if app.config.mouse_support {
-        execute!(
-            terminal.backend_mut(),
-            crossterm::event::DisableMouseCapture
-        )?;
+/// Create a tmux session running the default coding agent for the selected
+/// feature, then attach to it. No-ops if tmux is unavailable, no feature is
+/// selected, or no default coding agent is configured.
+async fn launch_session(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    app: &mut App,
+) -> Result<()> {
+    if !app.tmux_available {
+        return Ok(());
     }
-    terminal::disable_raw_mode()?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
-
-    let attach_result = TmuxClient::attach(&target).await;
-
-    // Restore the TUI.
-    terminal::enable_raw_mode()?;
-    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
-    if app.config.mouse_support {
-        execute!(terminal.backend_mut(), crossterm::event::EnableMouseCapture)?;
+    let Some(feature_id) = app.selected_feature().map(|f| f.id.clone()) else {
+        return Ok(());
+    };
+    let Some(agent_cmd) = app.default_agent_key() else {
+        return Ok(());
+    };
+    let session_name = app.session_name_for(&feature_id);
+    let cwd = app.project.root.clone();
+    if TmuxClient::launch_session(&session_name, &cwd, &agent_cmd)
+        .await
+        .is_err()
+    {
+        return Ok(());
     }
-    terminal.clear()?;
-
-    attach_result
+    attach_to(terminal, &session_name, app.config.mouse_support).await
 }
 
 fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
@@ -350,8 +393,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             PopupKind::CliConfirm => match key.code {
                 KeyCode::Enter => {
                     if let Some(action) = app.pending_action.take() {
-                        let (job, rx) = cli_client.spawn_job(&action);
-                        app.show_cli_job(job, rx);
+                        spawn_and_show_cli_job(app, cli_client, &action);
                     }
                 }
                 KeyCode::Char('f') => {
@@ -440,19 +482,21 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         KeyCode::Char('v') => {
                             if let Some((k, installed, _)) = &sel {
                                 if *installed {
-                                    let (job, rx) =
-                                        cli_client.spawn_job(&CliAction::IntegrationStatus {
-                                            key: k.clone(),
-                                        });
-                                    app.show_cli_job(job, rx);
+                                    spawn_and_show_cli_job(
+                                        app,
+                                        cli_client,
+                                        &CliAction::IntegrationStatus { key: k.clone() },
+                                    );
                                 }
                             }
                         }
                         KeyCode::Char('n') => {
                             if let Some((k, _, _)) = &sel {
-                                let (job, rx) = cli_client
-                                    .spawn_job(&CliAction::IntegrationGetInfo { key: k.clone() });
-                                app.show_cli_job(job, rx);
+                                spawn_and_show_cli_job(
+                                    app,
+                                    cli_client,
+                                    &CliAction::IntegrationGetInfo { key: k.clone() },
+                                );
                             }
                         }
                         _ => {}
@@ -512,9 +556,11 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         }
                         KeyCode::Char('i') => {
                             if let Some((id, _, _)) = &sel {
-                                let (job, rx) = cli_client
-                                    .spawn_job(&CliAction::WorkflowGetInfo { id: id.clone() });
-                                app.show_cli_job(job, rx);
+                                spawn_and_show_cli_job(
+                                    app,
+                                    cli_client,
+                                    &CliAction::WorkflowGetInfo { id: id.clone() },
+                                );
                             }
                         }
                         _ => {}
@@ -733,6 +779,9 @@ fn handle_dashboard_key(app: &mut App, key: KeyEvent, _cli_client: &SpecifyCliCl
         KeyCode::BackTab => app.cycle_tab_backward(),
         KeyCode::Up | KeyCode::Char('k') => app.select_prev_feature(),
         KeyCode::Down | KeyCode::Char('j') => app.select_next_feature(),
+        KeyCode::Enter if app.focused_pane == Pane::AgentOutput && app.tmux_session.is_none() => {
+            app.launch_request = true;
+        }
         KeyCode::Enter => app.enter_spec_browser(),
         KeyCode::Char('a') => {
             app.screen = Screen::SessionAttach;
@@ -791,9 +840,20 @@ fn request_cli_action(app: &mut App, action: CliAction, cli_client: &SpecifyCliC
         app.force_flag = false;
         app.active_popup = Some(PopupKind::CliConfirm);
     } else {
-        let (job, rx) = cli_client.spawn_job(&action);
-        app.show_cli_job(job, rx);
+        spawn_and_show_cli_job(app, cli_client, &action);
     }
+}
+
+/// Spawn a CLI action and show its output — unless another action is already running
+/// (spec FR-019a), in which case the new action is blocked and the in-flight job's
+/// output is brought back into view instead of being silently overwritten.
+fn spawn_and_show_cli_job(app: &mut App, cli_client: &SpecifyCliClient, action: &CliAction) {
+    if !app.can_start_cli_action() {
+        app.active_popup = Some(PopupKind::CliOutput);
+        return;
+    }
+    let (job, rx) = cli_client.spawn_job(action);
+    app.show_cli_job(job, rx);
 }
 
 fn current_ext_id(app: &App) -> Option<String> {
@@ -951,8 +1011,7 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
         KeyCode::Char('r') if app.ext_tab == ExtTab::Presets => {
             if let Some(id) = current_ext_id(app) {
                 let action = CliAction::Resolve { name: id };
-                let (job, rx) = cli_client.spawn_job(&action);
-                app.show_cli_job(job, rx);
+                spawn_and_show_cli_job(app, cli_client, &action);
             }
         }
         _ => {}

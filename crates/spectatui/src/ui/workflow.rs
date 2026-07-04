@@ -74,7 +74,14 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         }
 
         let badge_text = format!(" {label} ");
-        let style = if current_stage > *min_stage
+        let style = if current_stage == WorkflowStage::Unknown {
+            // Unknown sorts after every real stage (declared last for Ord), which would
+            // otherwise make every badge below look "done" — show the stepper as neutral
+            // instead; the distinct "unk" badge is shown separately below.
+            ratatui::style::Style::default()
+                .fg(theme.faint)
+                .bg(theme.bg)
+        } else if current_stage > *min_stage
             || (matches!(current_stage, WorkflowStage::Implemented) && *label == "impl")
         {
             done_style
@@ -167,5 +174,6 @@ fn stage_verb(stage: WorkflowStage) -> &'static str {
         WorkflowStage::Analyzed => "analyze",
         WorkflowStage::Implementing => "implement",
         WorkflowStage::Implemented => "implement",
+        WorkflowStage::Unknown => "unrecognized artifact format",
     }
 }

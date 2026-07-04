@@ -65,6 +65,14 @@ impl Project {
             workflows: Vec::new(),
         })
     }
+
+    /// `false` when `root` has no `.specify/` directory at all — every collection above
+    /// degrades to empty in that case with no error, so callers must check this
+    /// separately to distinguish "not a recognized Spec-Kit project" from "a valid,
+    /// freshly initialized one with nothing in it yet".
+    pub fn has_speckit_structure(&self) -> bool {
+        self.root.join(".specify").is_dir()
+    }
 }
 
 fn discover_features(root: &Path) -> Result<Vec<Feature>> {
@@ -129,5 +137,27 @@ fn discover_artifacts(dir: &Path) -> FeatureArtifacts {
         data_model: file_if_exists("data-model.md"),
         quickstart: file_if_exists("quickstart.md"),
         contracts_dir: dir_if_exists("contracts"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn discover_on_plain_directory_has_no_speckit_structure() {
+        let tmp = TempDir::new().unwrap();
+        let project = Project::discover(tmp.path()).unwrap();
+        assert!(project.features.is_empty());
+        assert!(!project.has_speckit_structure());
+    }
+
+    #[test]
+    fn discover_on_speckit_project_has_speckit_structure() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir_all(tmp.path().join(".specify/memory")).unwrap();
+        let project = Project::discover(tmp.path()).unwrap();
+        assert!(project.has_speckit_structure());
     }
 }

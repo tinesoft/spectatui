@@ -37,11 +37,13 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(block, area);
 
     if app.project.features.is_empty() {
-        let empty = Paragraph::new(Line::from(vec![Span::styled(
-            "No features found in specs/",
-            theme.faint_style,
-        )]))
-        .style(theme.base);
+        let message = if app.project.has_speckit_structure() {
+            "No features found in specs/"
+        } else {
+            "Not a recognized Spec-Kit project (no .specify/ found)"
+        };
+        let empty = Paragraph::new(Line::from(vec![Span::styled(message, theme.faint_style)]))
+            .style(theme.base);
         frame.render_widget(empty, inner);
         return;
     }
@@ -165,5 +167,6 @@ fn compute_feature_note(feature: &spectatui_core::speckit::Feature) -> String {
         WorkflowStage::Analyzed => "analysis report clean".to_string(),
         WorkflowStage::Implementing => "in progress".to_string(),
         WorkflowStage::Implemented => "complete".to_string(),
+        WorkflowStage::Unknown => "unrecognized artifact format".to_string(),
     }
 }

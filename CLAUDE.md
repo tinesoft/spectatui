@@ -1,8 +1,10 @@
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-<!-- SPECKIT END -->
 
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan:
+specs/001-spectatui-dashboard-mvp/plan.md
+
+<!-- SPECKIT END -->
 
 <!-- nx configuration start-->
 <!-- Leave the start & end comments to automatically receive updates. -->
@@ -25,6 +27,5 @@ shell commands, and other important information, read the current plan
 - USE for: advanced config options, unfamiliar flags, migration guides, plugin configuration, edge cases
 - DON'T USE for: basic generator syntax (`nx g @nx/react:app`), standard commands, things you already know
 - The `nx-generate` skill handles generator discovery internally - don't call nx_docs just to look up generator syntax
-
 
 <!-- nx configuration end-->

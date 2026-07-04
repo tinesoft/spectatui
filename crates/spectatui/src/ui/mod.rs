@@ -42,6 +42,29 @@ pub(super) fn scroll_offset(selected: usize, visible_rows: usize) -> usize {
     }
 }
 
+/// Placeholder for an empty manager-popup list: the plain empty message, or a
+/// two-line warning when the `specify` CLI wasn't runnable during catalog
+/// indexing — in that case the "available" items simply couldn't be loaded, so
+/// the emptiness must not read as "nothing exists". Split across two lines so it
+/// fits the narrow list column without truncation.
+pub(super) fn empty_list_lines<'a>(app: &'a App, empty_msg: &'a str) -> Vec<Line<'a>> {
+    let theme = &app.theme;
+    if app.cli_available {
+        vec![Line::from(Span::styled(empty_msg, theme.faint_style))]
+    } else {
+        vec![
+            Line::from(Span::styled(
+                "specify CLI not found on PATH",
+                theme.warn_style,
+            )),
+            Line::from(Span::styled(
+                "available items can't be loaded",
+                theme.warn_style,
+            )),
+        ]
+    }
+}
+
 /// Footer for filterable popups: an active filter bar (`/ query ▌ … enter keep ·
 /// esc clear`) or the idle `[/] filter <noun>   esc close` prompt.
 pub(super) fn draw_search_footer(

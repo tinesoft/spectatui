@@ -256,6 +256,21 @@ pub fn load_integrations(root: &Path) -> Result<Vec<IntegrationInfo>> {
 
 // ---- Catalog discovery & fetching --------------------------------------------
 
+/// Whether the `specify` CLI is runnable from `root`. Catalog fetching degrades to
+/// empty lists when it isn't, so callers use this to surface the failure instead of
+/// silently showing nothing (spec FR edge case: missing CLI must fail visibly).
+pub async fn specify_cli_available(root: &Path) -> bool {
+    tokio::process::Command::new("specify")
+        .arg("--help")
+        .current_dir(root)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .await
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
 /// Which catalog family to query via `specify <kind> catalog list`.
 #[derive(Debug, Clone, Copy)]
 enum CatalogKind {

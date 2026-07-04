@@ -19,6 +19,9 @@ pub enum AppEvent {
     },
     Resize(u16, u16),
     CatalogIndexed {
+        /// `false` when the `specify` CLI wasn't runnable, meaning the lists below
+        /// degraded to empty rather than reflecting the actual catalogs.
+        cli_available: bool,
         integrations: Vec<IntegrationInfo>,
         extensions: Vec<ExtensionInfo>,
         presets: Vec<PresetInfo>,

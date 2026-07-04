@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::process::Stdio;
 
 use anyhow::{Context, Result};
@@ -120,6 +121,22 @@ impl TmuxClient {
             .await
             .context("failed to send Enter to tmux pane")?;
 
+        Ok(())
+    }
+
+    /// Create a new detached tmux session running `command` in `cwd`.
+    ///
+    /// The session is left detached (`-d`); the caller attaches separately.
+    pub async fn launch_session(session_name: &str, cwd: &Path, command: &str) -> Result<()> {
+        Command::new("tmux")
+            .args(["new-session", "-d", "-s", session_name, "-c"])
+            .arg(cwd)
+            .arg(command)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .await
+            .context("failed to create tmux session")?;
         Ok(())
     }
 

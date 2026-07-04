@@ -92,10 +92,7 @@ fn draw_list(frame: &mut Frame, app: &App, area: Rect) {
 
     let items = app.filtered_workflows();
     if app.project.workflows.is_empty() {
-        lines.push(Line::from(Span::styled(
-            "No workflows found",
-            theme.faint_style,
-        )));
+        lines.extend(super::empty_list_lines(app, "No workflows found"));
     } else {
         let name_max = area.width.saturating_sub(10) as usize;
 
