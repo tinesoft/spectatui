@@ -188,7 +188,7 @@ jobs:
           name: spectatui-${{ matrix.target }}
           path: dist/artifacts/spectatui-*
 
-  # ── 4. Attach artifacts to the GitHub Release created by nx ───────────────────
+  # ── 4. Attest & upload release assets ─────────────────────────────────────────
   upload:
     name: Upload release assets
     needs: [version, build]
@@ -196,6 +196,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -211,6 +213,13 @@ jobs:
         run: |
           cd dist/artifacts
           sha256sum spectatui-* > sha256sums.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/artifacts/spectatui-*
+            dist/artifacts/sha256sums.txt
 
       - name: Upload to GitHub Release
         env:

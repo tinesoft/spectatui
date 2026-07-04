@@ -45,7 +45,8 @@ A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/tinesoft/specki
 
 ## Installation
 
-### Shell script (Linux / macOS — recommended)
+<details>
+<summary><strong>Linux / macOS</strong></summary>
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh | sh
@@ -57,13 +58,17 @@ Pass `--version` to pin a specific release, or `--to <dir>` to choose an install
 curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh | sh -s -- --version 0.1.0
 ```
 
-### Windows
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
 
 **Option 1 — MSI installer (recommended):**
 
 Download `spectatui-*-x86_64-pc-windows-msvc.msi` from the [Releases page](https://github.com/tinesoft/spectatui/releases) and run it. The installer adds `spectatui` to your system `PATH` automatically and appears in Add/Remove Programs for easy uninstall.
 
 Silent install (no UI):
+
 ```powershell
 msiexec /i spectatui-*-x86_64-pc-windows-msvc.msi /quiet /norestart
 ```
@@ -77,25 +82,45 @@ Expand-Archive spectatui-*-x86_64-pc-windows-msvc.zip -DestinationPath spectatui
 Move-Item spectatui\spectatui.exe "$env:USERPROFILE\.cargo\bin\"
 ```
 
-### GitHub Releases (all platforms)
+</details>
+
+<details>
+<summary><strong>GitHub Releases (all platforms)</strong></summary>
 
 Download the pre-built binary for your platform from the [Releases page](https://github.com/tinesoft/spectatui/releases), extract the archive, and place the binary on your `PATH`.
 
-| Platform | Archive |
-|----------|---------|
-| Linux x86_64 | `spectatui-*-x86_64-unknown-linux-gnu.tar.gz` |
-| Linux aarch64 | `spectatui-*-aarch64-unknown-linux-gnu.tar.gz` |
-| macOS Intel | `spectatui-*-x86_64-apple-darwin.tar.gz` |
-| macOS Apple Silicon | `spectatui-*-aarch64-apple-darwin.tar.gz` |
-| Windows x86_64 | `spectatui-*-x86_64-pc-windows-msvc.zip` |
+| Platform            | Archive                                        |
+| ------------------- | ---------------------------------------------- |
+| Linux x86_64        | `spectatui-*-x86_64-unknown-linux-gnu.tar.gz`  |
+| Linux aarch64       | `spectatui-*-aarch64-unknown-linux-gnu.tar.gz` |
+| macOS Intel         | `spectatui-*-x86_64-apple-darwin.tar.gz`       |
+| macOS Apple Silicon | `spectatui-*-aarch64-apple-darwin.tar.gz`      |
+| Windows x86_64      | `spectatui-*-x86_64-pc-windows-msvc.zip`       |
 
-### Cargo (all platforms)
+</details>
+
+<details>
+<summary><strong>Verifying release provenance</strong></summary>
+
+Every release binary carries a [GitHub Artifact Attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) proving it was built by this repo's `release.yml` workflow from the corresponding tagged commit. Verify a downloaded archive with the [GitHub CLI](https://cli.github.com/):
+
+```sh
+gh attestation verify spectatui-v0.1.0-x86_64-unknown-linux-gnu.tar.gz --owner tinesoft
+```
+
+</details>
+
+<details>
+<summary><strong>Cargo (all platforms)</strong></summary>
 
 ```sh
 cargo install spectatui
 ```
 
-### Build from source
+</details>
+
+<details>
+<summary><strong>Build from source</strong></summary>
 
 ```sh
 git clone https://github.com/tinesoft/spectatui.git
@@ -103,6 +128,8 @@ cd spectatui
 cargo build --release -p spectatui
 # Binary is at: dist/target/spectatui/release/spectatui
 ```
+
+</details>
 
 ---
 
@@ -122,60 +149,60 @@ Options:
 
 **Global** (active on every screen):
 
-| Key | Action |
-|-----|--------|
-| `t` | Toggle dark / light theme |
-| `T` | Cycle accent (Indigo → Teal → Amber) |
-| `:` or `Ctrl-K` | Open command palette |
-| `?` | Open help |
-| `i` | Open Integrations popup |
-| `f` | Open Features popup |
-| `w` | Open Workflows popup |
-| `q` | Quit (with confirm) |
-| `Ctrl-C` | Force quit |
+| Key             | Action                               |
+| --------------- | ------------------------------------ |
+| `t`             | Toggle dark / light theme            |
+| `T`             | Cycle accent (Indigo → Teal → Amber) |
+| `:` or `Ctrl-K` | Open command palette                 |
+| `?`             | Open help                            |
+| `i`             | Open Integrations popup              |
+| `f`             | Open Features popup                  |
+| `w`             | Open Workflows popup                 |
+| `q`             | Quit (with confirm)                  |
+| `Ctrl-C`        | Force quit                           |
 
 **Dashboard**:
 
-| Key | Action |
-|-----|--------|
+| Key                   | Action                                             |
+| --------------------- | -------------------------------------------------- |
 | `1` / `2` / `3` / `4` | Switch layout (Overview / Coding / Audit / Custom) |
-| `Tab` / `Shift-Tab` | Cycle pane focus |
-| `↑` / `k`  ·  `↓` / `j` | Navigate feature list |
-| `Enter` | Open Spec browser for selected feature |
-| `e` | Open Extensions & Presets popup |
-| `p` | Open Presets popup |
-| `s` | Open Settings |
-| `c` | Open Constitution viewer |
-| `a` | Go to Session attach |
+| `Tab` / `Shift-Tab`   | Cycle pane focus                                   |
+| `↑` / `k` · `↓` / `j` | Navigate feature list                              |
+| `Enter`               | Open Spec browser for selected feature             |
+| `e`                   | Open Extensions & Presets popup                    |
+| `p`                   | Open Presets popup                                 |
+| `s`                   | Open Settings                                      |
+| `c`                   | Open Constitution viewer                           |
+| `a`                   | Go to Session attach                               |
 
 **Spec browser**:
 
-| Key | Action |
-|-----|--------|
-| `Tab` / `Shift-Tab` | Switch document tab (Spec / Plan / Tasks / Research) |
-| `↑` / `k`  ·  `↓` / `j` | Scroll |
-| `←` / `→` | Previous / next feature |
-| `Esc` | Back to Dashboard |
+| Key                   | Action                                               |
+| --------------------- | ---------------------------------------------------- |
+| `Tab` / `Shift-Tab`   | Switch document tab (Spec / Plan / Tasks / Research) |
+| `↑` / `k` · `↓` / `j` | Scroll                                               |
+| `←` / `→`             | Previous / next feature                              |
+| `Esc`                 | Back to Dashboard                                    |
 
 **Popups** (Integrations, Extensions, Presets, Workflows):
 
-| Key | Action |
-|-----|--------|
-| `↑` / `k`  ·  `↓` / `j` | Navigate list |
-| `/` | Filter |
-| `a` | Add |
-| `x` | Remove |
-| `e` / `d` | Enable / Disable |
-| `u` | Update |
-| `Esc` | Close |
+| Key                   | Action           |
+| --------------------- | ---------------- |
+| `↑` / `k` · `↓` / `j` | Navigate list    |
+| `/`                   | Filter           |
+| `a`                   | Add              |
+| `x`                   | Remove           |
+| `e` / `d`             | Enable / Disable |
+| `u`                   | Update           |
+| `Esc`                 | Close            |
 
 **Settings**:
 
-| Key | Action |
-|-----|--------|
-| `↑` / `k`  ·  `↓` / `j` | Navigate rows |
-| `←` / `→` or `Enter` | Adjust value / enter edit mode |
-| `Esc` | Back to Dashboard |
+| Key                   | Action                         |
+| --------------------- | ------------------------------ |
+| `↑` / `k` · `↓` / `j` | Navigate rows                  |
+| `←` / `→` or `Enter`  | Adjust value / enter edit mode |
+| `Esc`                 | Back to Dashboard              |
 
 ---
 
