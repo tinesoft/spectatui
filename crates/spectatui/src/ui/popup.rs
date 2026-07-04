@@ -137,8 +137,8 @@ fn draw_features(frame: &mut Frame, app: &App) {
             };
 
             let left = format!("{run_dot} {} {}", feat.stage.label(), feat.id);
-            let pad = inner_width
-                .saturating_sub(2 + left.chars().count() + 3 + run_label.len() + 1);
+            let pad =
+                inner_width.saturating_sub(2 + left.chars().count() + 3 + run_label.len() + 1);
 
             lines.push(Line::from(vec![
                 sel_bar,
@@ -231,7 +231,10 @@ fn draw_help(frame: &mut Frame, app: &App, area: Rect) {
         ),
         (
             "Appearance",
-            &[("t", "cycle theme (dark/light)"), ("T", "cycle accent palette")],
+            &[
+                ("t", "cycle theme (dark/light)"),
+                ("T", "cycle accent palette"),
+            ],
         ),
     ];
 
@@ -339,7 +342,10 @@ fn draw_cli_confirm(frame: &mut Frame, app: &App, area: Rect) {
         Line::default(),
         Line::from(vec![
             Span::styled("  $ ", Style::default().fg(theme.good).bg(theme.panel_alt)),
-            Span::styled(cmd_text, panel_alt_bg.add_modifier(ratatui::style::Modifier::BOLD)),
+            Span::styled(
+                cmd_text,
+                panel_alt_bg.add_modifier(ratatui::style::Modifier::BOLD),
+            ),
             Span::styled(" ".repeat(cmd_pad), panel_alt_bg),
         ]),
         Line::default(),
@@ -392,7 +398,12 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
     let mut lines: Vec<Line> = Vec::new();
     lines.push(Line::from(vec![
         Span::styled("$ ", theme.good_style),
-        Span::styled(cmd_line, Style::default().fg(theme.fg).add_modifier(ratatui::style::Modifier::BOLD)),
+        Span::styled(
+            cmd_line,
+            Style::default()
+                .fg(theme.fg)
+                .add_modifier(ratatui::style::Modifier::BOLD),
+        ),
     ]));
     lines.push(Line::default());
     for l in output.lines() {
@@ -403,7 +414,10 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
     let view_h = inner.height.saturating_sub(1);
     let content_area = Rect::new(inner.x, inner.y, inner.width, view_h);
     let wrap_w = content_area.width.max(1) as usize;
-    let total_rows: usize = lines.iter().map(|l| l.width().max(1).div_ceil(wrap_w)).sum();
+    let total_rows: usize = lines
+        .iter()
+        .map(|l| l.width().max(1).div_ceil(wrap_w))
+        .sum();
     let max_scroll = (total_rows as u16).saturating_sub(view_h);
     app.cli_scroll_max.set(max_scroll);
     let scroll = app.cli_scroll.min(max_scroll);
@@ -436,7 +450,10 @@ fn draw_cli_output(frame: &mut Frame, app: &App, area: Rect) {
             let ch = spinner.chars().nth(idx).unwrap_or('⠋');
             (format!("{ch} running…"), theme.warn_style)
         }
-        Some(JobStatus::Succeeded) => ("✓ succeeded · list refreshed   [esc] close".to_string(), theme.good_style),
+        Some(JobStatus::Succeeded) => (
+            "✓ succeeded · list refreshed   [esc] close".to_string(),
+            theme.good_style,
+        ),
         Some(JobStatus::Failed) => ("✗ failed   [esc] close".to_string(), theme.bad_style),
         _ => ("pending".to_string(), theme.faint_style),
     };

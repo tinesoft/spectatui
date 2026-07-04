@@ -70,7 +70,12 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     // Content sits below the tab row and a blank line.
-    let body = Rect::new(inner.x, inner.y + 2, inner.width, inner.height.saturating_sub(3));
+    let body = Rect::new(
+        inner.x,
+        inner.y + 2,
+        inner.width,
+        inner.height.saturating_sub(3),
+    );
     let cols =
         Layout::horizontal([Constraint::Percentage(45), Constraint::Percentage(55)]).split(body);
 
@@ -83,7 +88,10 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let footer_y = area.y + area.height - 2;
         let footer_area = Rect::new(area.x + 2, footer_y, area.width.saturating_sub(4), 1);
         frame.render_widget(
-            Paragraph::new(Line::from(Span::styled("[enter] manage", theme.faint_style))),
+            Paragraph::new(Line::from(Span::styled(
+                "[enter] manage",
+                theme.faint_style,
+            ))),
             footer_area,
         );
     }

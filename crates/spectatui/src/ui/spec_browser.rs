@@ -1,7 +1,9 @@
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap};
+use ratatui::widgets::{
+    Block, BorderType, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap,
+};
 use ratatui::Frame;
 
 use crate::app::{App, SpecTab};
@@ -58,13 +60,15 @@ pub fn draw_constitution(frame: &mut Frame, app: &App, area: Rect) {
     frame.render_widget(content, area);
 
     if total_lines > inner_height {
-        let mut scrollbar_state = ScrollbarState::new(total_lines as usize)
-            .position(scroll as usize);
+        let mut scrollbar_state =
+            ScrollbarState::new(total_lines as usize).position(scroll as usize);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("│"))
             .thumb_symbol("┃");
         frame.render_stateful_widget(
-            scrollbar.style(theme.border_unfocused).thumb_style(theme.accent_style),
+            scrollbar
+                .style(theme.border_unfocused)
+                .thumb_style(theme.accent_style),
             area,
             &mut scrollbar_state,
         );
@@ -125,7 +129,9 @@ fn draw_feature_sidebar(frame: &mut Frame, app: &App, area: Rect) {
         };
 
         let id_text = format!(" {}", feature.id);
-        let remaining = inner.width.saturating_sub(1 + stage_label.len() as u16 + 2 + id_text.len() as u16);
+        let remaining = inner
+            .width
+            .saturating_sub(1 + stage_label.len() as u16 + 2 + id_text.len() as u16);
         let pad = " ".repeat(remaining as usize);
 
         lines.push(Line::from(vec![
@@ -162,7 +168,12 @@ fn draw_doc_pane(frame: &mut Frame, app: &App, area: Rect, focused: bool) {
     // Register clickable tab regions (title starts with "─┤ " = 3 cells, tabs
     // separated by " │ " = 3 cells).
     {
-        let tab_kinds = [SpecTab::Spec, SpecTab::Plan, SpecTab::Tasks, SpecTab::Research];
+        let tab_kinds = [
+            SpecTab::Spec,
+            SpecTab::Plan,
+            SpecTab::Tasks,
+            SpecTab::Research,
+        ];
         let mut tx = area.x + 3;
         for tab in tab_kinds {
             let len = tab.label().len() as u16;
@@ -215,13 +226,15 @@ fn draw_doc_pane(frame: &mut Frame, app: &App, area: Rect, focused: bool) {
     frame.render_widget(content, area);
 
     if total_lines > inner_area.height {
-        let mut scrollbar_state = ScrollbarState::new(total_lines as usize)
-            .position(scroll as usize);
+        let mut scrollbar_state =
+            ScrollbarState::new(total_lines as usize).position(scroll as usize);
         let scrollbar = Scrollbar::new(ScrollbarOrientation::VerticalRight)
             .track_symbol(Some("│"))
             .thumb_symbol("┃");
         frame.render_stateful_widget(
-            scrollbar.style(theme.border_unfocused).thumb_style(theme.accent_style),
+            scrollbar
+                .style(theme.border_unfocused)
+                .thumb_style(theme.accent_style),
             area,
             &mut scrollbar_state,
         );
@@ -230,7 +243,12 @@ fn draw_doc_pane(frame: &mut Frame, app: &App, area: Rect, focused: bool) {
 
 fn build_tabs<'a>(app: &App, border_style: Style) -> Vec<Span<'a>> {
     let theme = &app.theme;
-    let tabs = [SpecTab::Spec, SpecTab::Plan, SpecTab::Tasks, SpecTab::Research];
+    let tabs = [
+        SpecTab::Spec,
+        SpecTab::Plan,
+        SpecTab::Tasks,
+        SpecTab::Research,
+    ];
 
     let mut spans = vec![Span::styled("─┤ ", border_style)];
 
@@ -241,10 +259,22 @@ fn build_tabs<'a>(app: &App, border_style: Style) -> Vec<Span<'a>> {
 
         let label = tab.label();
         let available = match tab {
-            SpecTab::Spec => app.selected_feature().and_then(|f| f.artifacts.spec.as_ref()).is_some(),
-            SpecTab::Plan => app.selected_feature().and_then(|f| f.artifacts.plan.as_ref()).is_some(),
-            SpecTab::Tasks => app.selected_feature().and_then(|f| f.artifacts.tasks.as_ref()).is_some(),
-            SpecTab::Research => app.selected_feature().and_then(|f| f.artifacts.research.as_ref()).is_some(),
+            SpecTab::Spec => app
+                .selected_feature()
+                .and_then(|f| f.artifacts.spec.as_ref())
+                .is_some(),
+            SpecTab::Plan => app
+                .selected_feature()
+                .and_then(|f| f.artifacts.plan.as_ref())
+                .is_some(),
+            SpecTab::Tasks => app
+                .selected_feature()
+                .and_then(|f| f.artifacts.tasks.as_ref())
+                .is_some(),
+            SpecTab::Research => app
+                .selected_feature()
+                .and_then(|f| f.artifacts.research.as_ref())
+                .is_some(),
         };
 
         let style = if *tab == app.spec_tab {
@@ -263,22 +293,22 @@ fn build_tabs<'a>(app: &App, border_style: Style) -> Vec<Span<'a>> {
 }
 
 fn render_md_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
-    if line.starts_with("# ") {
+    if let Some(rest) = line.strip_prefix("# ") {
         Line::from(Span::styled(
-            line[2..].to_string(),
+            rest.to_string(),
             Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
         ))
-    } else if line.starts_with("## ") {
+    } else if let Some(rest) = line.strip_prefix("## ") {
         Line::from(vec![
             Span::styled("▍ ", theme.accent_style),
             Span::styled(
-                line[3..].to_string(),
+                rest.to_string(),
                 Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
             ),
         ])
-    } else if line.starts_with("### ") {
+    } else if let Some(rest) = line.strip_prefix("### ") {
         Line::from(Span::styled(
-            line[4..].to_string(),
+            rest.to_string(),
             Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
         ))
     } else if line.starts_with("- ") || line.starts_with("* ") {
@@ -302,10 +332,7 @@ fn render_md_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
             Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
         ))
     } else if line.starts_with("---") {
-        Line::from(Span::styled(
-            "─".repeat(40),
-            theme.faint_style,
-        ))
+        Line::from(Span::styled("─".repeat(40), theme.faint_style))
     } else if line.trim().is_empty() {
         Line::default()
     } else {
@@ -316,16 +343,16 @@ fn render_md_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
 fn render_tasks_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
     let trimmed = line.trim();
 
-    if trimmed.starts_with("# ") {
+    if let Some(rest) = trimmed.strip_prefix("# ") {
         Line::from(Span::styled(
-            trimmed[2..].to_string(),
+            rest.to_string(),
             Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
         ))
-    } else if trimmed.starts_with("## ") {
+    } else if let Some(rest) = trimmed.strip_prefix("## ") {
         Line::from(vec![
             Span::styled("▍ ", theme.accent_style),
             Span::styled(
-                trimmed[3..].to_string(),
+                rest.to_string(),
                 Style::default().fg(theme.fg).add_modifier(Modifier::BOLD),
             ),
         ])
@@ -337,8 +364,7 @@ fn render_tasks_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
             Span::styled(task_id.to_string(), theme.info_style),
             Span::styled(desc.to_string(), theme.dim_style),
         ])
-    } else if trimmed.starts_with("- [ ]") {
-        let rest = &trimmed[5..];
+    } else if let Some(rest) = trimmed.strip_prefix("- [ ]") {
         let (task_id, desc) = split_task_id(rest);
 
         if desc.contains("[P]") {
@@ -356,10 +382,10 @@ fn render_tasks_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
                 Span::styled(desc.to_string(), theme.dim_style),
             ])
         }
-    } else if trimmed.starts_with("- ") {
+    } else if let Some(rest) = trimmed.strip_prefix("- ") {
         Line::from(vec![
             Span::styled("  • ", theme.accent_style),
-            Span::styled(trimmed[2..].to_string(), theme.dim_style),
+            Span::styled(rest.to_string(), theme.dim_style),
         ])
     } else if trimmed.starts_with("**") {
         Line::from(Span::styled(
@@ -377,7 +403,7 @@ fn render_tasks_line<'a>(line: &str, theme: &Theme) -> Line<'a> {
 
 fn split_task_id(s: &str) -> (&str, &str) {
     let s = s.trim_start();
-    if let Some(idx) = s.find(|c: char| c == ' ' || c == '\t') {
+    if let Some(idx) = s.find([' ', '\t']) {
         let potential_id = &s[..idx];
         if potential_id.starts_with('T') && potential_id.len() <= 5 {
             return (potential_id, &s[idx..]);

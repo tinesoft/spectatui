@@ -122,7 +122,10 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         } else {
             // Value-only / action rows.
             let value = app.settings_value_str(*row);
-            let is_action = matches!(row, SettingsRow::CustomizePanes | SettingsRow::AttachSession);
+            let is_action = matches!(
+                row,
+                SettingsRow::CustomizePanes | SettingsRow::AttachSession
+            );
             let value_style = if is_action {
                 theme.accent_bold
             } else {

@@ -106,8 +106,8 @@ impl CustomLayout {
             .collect();
 
         if let Some(pos) = visible.iter().position(|&i| i == idx) {
-            let new_pos = (pos as i64 + direction as i64).clamp(0, visible.len() as i64 - 1)
-                as usize;
+            let new_pos =
+                (pos as i64 + direction as i64).clamp(0, visible.len() as i64 - 1) as usize;
             if pos != new_pos {
                 let a = visible[pos];
                 let b = visible[new_pos];

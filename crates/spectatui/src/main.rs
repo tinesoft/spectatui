@@ -10,8 +10,8 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use clap::Parser;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers, MouseButton, MouseEvent, MouseEventKind};
+use crossterm::execute;
 use crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
-use crossterm::{execute};
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use tokio::sync::mpsc;
@@ -23,8 +23,8 @@ use spectatui_core::speckit::Project;
 use spectatui_core::tmux::TmuxClient;
 
 use app::{
-    App, ClickAction, DashboardLayout, ExtTab, PaletteAction, PopupKind, Screen, SettingsRow,
-    palette_commands,
+    palette_commands, App, ClickAction, DashboardLayout, ExtTab, PaletteAction, PopupKind, Screen,
+    SettingsRow,
 };
 use event::{AppEvent, EventStream};
 
@@ -214,13 +214,11 @@ async fn run_loop(
                 AppEvent::Mouse(mouse) => {
                     handle_mouse(app, mouse, &cli_client);
                 }
-                AppEvent::FsChanged(fs_event) => {
-                    match fs_event {
-                        FsEvent::SpecsChanged | FsEvent::SpecifyChanged => {
-                            app.refresh_project();
-                        }
+                AppEvent::FsChanged(fs_event) => match fs_event {
+                    FsEvent::SpecsChanged | FsEvent::SpecifyChanged => {
+                        app.refresh_project();
                     }
-                }
+                },
                 AppEvent::Resize(_, _) => {
                     // ratatui handles resize automatically
                 }
@@ -258,7 +256,10 @@ async fn attach_session(
 
     // Leave the TUI.
     if app.config.mouse_support {
-        execute!(terminal.backend_mut(), crossterm::event::DisableMouseCapture)?;
+        execute!(
+            terminal.backend_mut(),
+            crossterm::event::DisableMouseCapture
+        )?;
     }
     terminal::disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
@@ -383,8 +384,9 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         .filtered_integrations()
                         .get(app.integration_index)
                         .map(|it| (it.key.clone(), it.installed, it.is_default));
-                    let confirm =
-                        |app: &mut App, action: CliAction| request_cli_action(app, action, cli_client);
+                    let confirm = |app: &mut App, action: CliAction| {
+                        request_cli_action(app, action, cli_client)
+                    };
                     match key.code {
                         KeyCode::Esc => app.close_popup(),
                         KeyCode::Up | KeyCode::Char('k') => app.integration_select_prev(),
@@ -406,29 +408,42 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         KeyCode::Char('d') => {
                             if let Some((k, installed, is_default)) = &sel {
                                 if *installed && !is_default {
-                                    confirm(app, CliAction::IntegrationUseDefault { key: k.clone() });
+                                    confirm(
+                                        app,
+                                        CliAction::IntegrationUseDefault { key: k.clone() },
+                                    );
                                 }
                             }
                         }
                         KeyCode::Char('x') => {
                             if let Some((k, installed, _)) = &sel {
                                 if *installed {
-                                    confirm(app, CliAction::IntegrationUninstall { key: k.clone() });
+                                    confirm(
+                                        app,
+                                        CliAction::IntegrationUninstall { key: k.clone() },
+                                    );
                                 }
                             }
                         }
                         KeyCode::Char('g') => {
                             if let Some((k, installed, _)) = &sel {
                                 if *installed {
-                                    confirm(app, CliAction::IntegrationUpgrade { key: Some(k.clone()) });
+                                    confirm(
+                                        app,
+                                        CliAction::IntegrationUpgrade {
+                                            key: Some(k.clone()),
+                                        },
+                                    );
                                 }
                             }
                         }
                         KeyCode::Char('v') => {
                             if let Some((k, installed, _)) = &sel {
                                 if *installed {
-                                    let (job, rx) = cli_client
-                                        .spawn_job(&CliAction::IntegrationStatus { key: k.clone() });
+                                    let (job, rx) =
+                                        cli_client.spawn_job(&CliAction::IntegrationStatus {
+                                            key: k.clone(),
+                                        });
                                     app.show_cli_job(job, rx);
                                 }
                             }
@@ -452,8 +467,9 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         .filtered_workflows()
                         .get(app.wf_index)
                         .map(|wf| (wf.id.clone(), wf.installed, wf.last_run.clone()));
-                    let confirm =
-                        |app: &mut App, action: CliAction| request_cli_action(app, action, cli_client);
+                    let confirm = |app: &mut App, action: CliAction| {
+                        request_cli_action(app, action, cli_client)
+                    };
                     match key.code {
                         KeyCode::Esc => app.close_popup(),
                         KeyCode::Up | KeyCode::Char('k') => app.wf_select_prev(),
@@ -481,7 +497,12 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         }
                         KeyCode::Char('R') => {
                             if let Some((_, _, Some(run_id))) = &sel {
-                                confirm(app, CliAction::WorkflowResume { run_id: run_id.clone() });
+                                confirm(
+                                    app,
+                                    CliAction::WorkflowResume {
+                                        run_id: run_id.clone(),
+                                    },
+                                );
                             }
                         }
                         KeyCode::Char('s') => {
@@ -513,10 +534,11 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             PopupKind::Extensions | PopupKind::Presets => {
                 handle_ext_preset_popup_key(app, key, cli_client);
             }
-            _ => match key.code {
-                KeyCode::Esc => app.close_popup(),
-                _ => {}
-            },
+            _ => {
+                if key.code == KeyCode::Esc {
+                    app.close_popup()
+                }
+            }
         }
         return;
     }
@@ -776,8 +798,14 @@ fn request_cli_action(app: &mut App, action: CliAction, cli_client: &SpecifyCliC
 
 fn current_ext_id(app: &App) -> Option<String> {
     match app.ext_tab {
-        ExtTab::Extensions => app.filtered_extensions().get(app.ext_index).map(|e| e.id.clone()),
-        ExtTab::Presets => app.filtered_presets().get(app.preset_index).map(|p| p.id.clone()),
+        ExtTab::Extensions => app
+            .filtered_extensions()
+            .get(app.ext_index)
+            .map(|e| e.id.clone()),
+        ExtTab::Presets => app
+            .filtered_presets()
+            .get(app.preset_index)
+            .map(|p| p.id.clone()),
     }
 }
 
@@ -899,7 +927,10 @@ fn handle_ext_preset_popup_key(app: &mut App, key: KeyEvent, cli_client: &Specif
         }
         KeyCode::Char('u') if app.ext_tab == ExtTab::Extensions => {
             if let Some(id) = current_ext_id(app) {
-                let action = CliAction::Update { target: CliTarget::Extension, id: Some(id) };
+                let action = CliAction::Update {
+                    target: CliTarget::Extension,
+                    id: Some(id),
+                };
                 request_cli_action(app, action, cli_client);
             }
         }
@@ -953,10 +984,18 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient)
         // Route the wheel through the keyboard nav so it scrolls whatever Up/Down
         // currently affects (active popup, focused pane, or document view).
         MouseEventKind::ScrollDown => {
-            handle_key(app, KeyEvent::new(KeyCode::Down, KeyModifiers::NONE), cli_client);
+            handle_key(
+                app,
+                KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
+                cli_client,
+            );
         }
         MouseEventKind::ScrollUp => {
-            handle_key(app, KeyEvent::new(KeyCode::Up, KeyModifiers::NONE), cli_client);
+            handle_key(
+                app,
+                KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
+                cli_client,
+            );
         }
         MouseEventKind::Down(MouseButton::Left) => {
             if let Some(action) = app.hit_test(mouse.column, mouse.row) {
@@ -1037,12 +1076,15 @@ fn execute_click_action(app: &mut App, action: ClickAction) {
         }
         ClickAction::PaletteRun(i) => {
             let commands = palette_commands();
-            let input = app.palette.as_ref().map(|p| p.input.clone()).unwrap_or_default();
+            let input = app
+                .palette
+                .as_ref()
+                .map(|p| p.input.clone())
+                .unwrap_or_default();
             let filtered: Vec<_> = commands
                 .into_iter()
                 .filter(|c| {
-                    input.is_empty()
-                        || c.label.to_lowercase().contains(&input.to_lowercase())
+                    input.is_empty() || c.label.to_lowercase().contains(&input.to_lowercase())
                 })
                 .collect();
             if let Some(cmd) = filtered.into_iter().nth(i) {

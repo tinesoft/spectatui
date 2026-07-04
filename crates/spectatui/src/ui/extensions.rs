@@ -52,7 +52,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
 
     // Content starts one row below the title, leaving a blank line; height reserves the
     // footer row plus the 2-row gap above it.
-    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(3));
+    let list_area = Rect::new(
+        cols[0].x,
+        cols[0].y + 1,
+        cols[0].width,
+        cols[0].height.saturating_sub(3),
+    );
 
     // Vertical divider between the list and the detail column.
     for y in cols[1].y..cols[1].y + cols[1].height {
@@ -112,7 +117,8 @@ pub(super) fn draw_list(frame: &mut Frame, app: &App, list_area: Rect, detail_ar
             .unwrap_or_else(|| "—".to_string());
         let ver = format!("v{}", ext.version);
         let list_w = list_area.width as usize;
-        let pad = list_w.saturating_sub(1 + 2 + ext.name.chars().count() + 5 + ver.chars().count() + 1);
+        let pad =
+            list_w.saturating_sub(1 + 2 + ext.name.chars().count() + 5 + ver.chars().count() + 1);
 
         lines.push(Line::from(vec![
             sel_bar,

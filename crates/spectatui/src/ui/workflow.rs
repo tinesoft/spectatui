@@ -75,8 +75,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
         let badge_text = format!(" {label} ");
         let style = if current_stage > *min_stage
-            || (matches!(current_stage, WorkflowStage::Implemented)
-                && *label == "impl")
+            || (matches!(current_stage, WorkflowStage::Implemented) && *label == "impl")
         {
             done_style
         } else if current_stage == *min_stage
@@ -115,22 +114,21 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     if available_height > 5 {
         if let Some(progress) = app.selected_tasks_progress() {
             let bar_w = (inner.width as usize).saturating_sub(26).clamp(7, 40);
-            let filled = if progress.total > 0 {
-                (progress.done * bar_w) / progress.total
-            } else {
-                0
-            };
+            let filled = (progress.done * bar_w)
+                .checked_div(progress.total)
+                .unwrap_or(0);
             let empty = bar_w - filled;
-            let bar = format!(
-                "{}{}",
-                "█".repeat(filled),
-                "░".repeat(empty)
-            );
+            let bar = format!("{}{}", "█".repeat(filled), "░".repeat(empty));
             lines.push(Line::from(vec![
                 Span::styled("  Tasks [", theme.dim_style),
                 Span::styled(bar, theme.accent_style),
                 Span::styled(
-                    format!("] {}/{} {}%", progress.done, progress.total, progress.percent()),
+                    format!(
+                        "] {}/{} {}%",
+                        progress.done,
+                        progress.total,
+                        progress.percent()
+                    ),
                     theme.dim_style,
                 ),
             ]));

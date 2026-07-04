@@ -228,10 +228,7 @@ impl CliAction {
                 id,
                 priority,
             } => {
-                format!(
-                    "specify {} set-priority {id} {priority}",
-                    target.cmd_noun()
-                )
+                format!("specify {} set-priority {id} {priority}", target.cmd_noun())
             }
             Self::Update { target, id } => {
                 let mut cmd = format!("specify {} update", target.cmd_noun());

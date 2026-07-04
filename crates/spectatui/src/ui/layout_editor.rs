@@ -25,8 +25,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let cols = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(inner);
+    let cols =
+        Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).split(inner);
 
     draw_pane_list(frame, app, cols[0]);
     draw_preview(frame, app, cols[1]);
@@ -134,7 +134,10 @@ fn draw_preview(frame: &mut Frame, app: &App, area: Rect) {
     if visible.is_empty() {
         let content = Paragraph::new(vec![
             Line::default(),
-            Line::from(Span::styled("  toggle a pane on to preview the grid.", theme.faint_style)),
+            Line::from(Span::styled(
+                "  toggle a pane on to preview the grid.",
+                theme.faint_style,
+            )),
         ])
         .style(theme.base);
         frame.render_widget(content, inner);
@@ -163,22 +166,29 @@ fn draw_preview(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     // The selected pane (from the sorted list) for highlight.
-    let mut sorted: Vec<&spectatui_core::layout::PaneConfig> = app.custom_layout.panes.iter().collect();
+    let mut sorted: Vec<&spectatui_core::layout::PaneConfig> =
+        app.custom_layout.panes.iter().collect();
     sorted.sort_by_key(|p| p.order);
-    let selected_kind = sorted
-        .get(app.layout_editor_index)
-        .map(|p| p.kind);
+    let selected_kind = sorted.get(app.layout_editor_index).map(|p| p.kind);
 
     for (kind, rect) in super::custom_pane_rects(&app.custom_layout, grid_area) {
         let is_sel = Some(kind) == selected_kind;
-        let border = if is_sel { theme.border_focused } else { theme.border_unfocused };
+        let border = if is_sel {
+            theme.border_focused
+        } else {
+            theme.border_unfocused
+        };
         let block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(border);
         let box_inner = block.inner(rect);
         frame.render_widget(block, rect);
-        let label_style = if is_sel { theme.accent_bold } else { theme.dim_style };
+        let label_style = if is_sel {
+            theme.accent_bold
+        } else {
+            theme.dim_style
+        };
         let bg = if is_sel {
             Style::default().bg(theme.sel)
         } else {
@@ -188,14 +198,20 @@ fn draw_preview(frame: &mut Frame, app: &App, area: Rect) {
         if is_sel {
             for y in box_inner.y..box_inner.y + box_inner.height {
                 frame.render_widget(
-                    Paragraph::new(Line::from(Span::styled(" ".repeat(box_inner.width as usize), bg))),
+                    Paragraph::new(Line::from(Span::styled(
+                        " ".repeat(box_inner.width as usize),
+                        bg,
+                    ))),
                     Rect::new(box_inner.x, y, box_inner.width, 1),
                 );
             }
         }
         if box_inner.height >= 1 {
             frame.render_widget(
-                Paragraph::new(Line::from(Span::styled(format!(" {}", kind.label()), label_style))),
+                Paragraph::new(Line::from(Span::styled(
+                    format!(" {}", kind.label()),
+                    label_style,
+                ))),
                 Rect::new(box_inner.x, box_inner.y, box_inner.width, 1),
             );
         }

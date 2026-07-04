@@ -42,9 +42,7 @@ impl TmuxClient {
 
     pub async fn find_session(feature_id: &str) -> Option<TmuxSession> {
         let sessions = Self::list_sessions().await.ok()?;
-        let name = sessions
-            .into_iter()
-            .find(|s| s.contains(feature_id))?;
+        let name = sessions.into_iter().find(|s| s.contains(feature_id))?;
 
         let panes = Command::new("tmux")
             .args([
@@ -61,11 +59,7 @@ impl TmuxClient {
 
         let pane_text = String::from_utf8_lossy(&panes.stdout);
         let first_line = pane_text.lines().next().unwrap_or("");
-        let pane_id = first_line
-            .split(':')
-            .next()
-            .unwrap_or("")
-            .to_string();
+        let pane_id = first_line.split(':').next().unwrap_or("").to_string();
 
         let status = if first_line.contains("bash") || first_line.contains("zsh") {
             SessionStatus::Idle

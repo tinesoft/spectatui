@@ -49,10 +49,10 @@ impl EventStream {
                                 return;
                             }
                         }
-                        Ok(CtEvent::Resize(w, h)) => {
-                            if tx_clone.send(AppEvent::Resize(w, h)).is_err() {
-                                return;
-                            }
+                        Ok(CtEvent::Resize(w, h))
+                            if tx_clone.send(AppEvent::Resize(w, h)).is_err() =>
+                        {
+                            return;
                         }
                         _ => {}
                     }

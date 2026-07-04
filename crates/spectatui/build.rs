@@ -5,7 +5,10 @@ fn main() {
         // root so it ships in the published package (`cargo install` on Windows
         // needs it too, not just repo builds).
         res.set_icon("wix/icon.ico");
-        res.set("FileDescription", "Spectatui - GitHub Spec-Kit TUI dashboard");
+        res.set(
+            "FileDescription",
+            "Spectatui - GitHub Spec-Kit TUI dashboard",
+        );
         res.set("ProductName", "Spectatui");
         res.set("LegalCopyright", "Copyright © 2026 Tine Kondo");
         res.compile().expect("Failed to compile Windows resources");

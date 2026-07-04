@@ -24,28 +24,49 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
     let left = vec![
         Span::styled(" spectatui ", theme.accent_bold),
-        Span::styled("› ", ratatui::style::Style::default().fg(theme.faint).bg(theme.header_bg)),
-        Span::styled(format!(" {project_name}  "), ratatui::style::Style::default().fg(theme.fg).bg(theme.header_bg)),
-        Span::styled(&app.project_path, ratatui::style::Style::default().fg(theme.dim).bg(theme.header_bg)),
+        Span::styled(
+            "› ",
+            ratatui::style::Style::default()
+                .fg(theme.faint)
+                .bg(theme.header_bg),
+        ),
+        Span::styled(
+            format!(" {project_name}  "),
+            ratatui::style::Style::default()
+                .fg(theme.fg)
+                .bg(theme.header_bg),
+        ),
+        Span::styled(
+            &app.project_path,
+            ratatui::style::Style::default()
+                .fg(theme.dim)
+                .bg(theme.header_bg),
+        ),
     ];
 
     let theme_icon = match app.theme_mode {
         crate::theme::ThemeMode::Dark => "◖",
         crate::theme::ThemeMode::Light => "◗",
     };
-    let right_text = format!("{screen_name}   {theme_icon} {}  ◆ {} ", app.theme_label(), app.accent_label());
+    let right_text = format!(
+        "{screen_name}   {theme_icon} {}  ◆ {} ",
+        app.theme_label(),
+        app.accent_label()
+    );
     let right_width = right_text.len() as u16;
 
-    let pad = area.width.saturating_sub(
-        left.iter().map(|s| s.width() as u16).sum::<u16>() + right_width,
-    );
+    let pad = area
+        .width
+        .saturating_sub(left.iter().map(|s| s.width() as u16).sum::<u16>() + right_width);
 
     let mut spans = left;
+    spans.push(Span::styled(" ".repeat(pad as usize), theme.header_style));
     spans.push(Span::styled(
-        " ".repeat(pad as usize),
-        theme.header_style,
+        right_text,
+        ratatui::style::Style::default()
+            .fg(theme.dim)
+            .bg(theme.header_bg),
     ));
-    spans.push(Span::styled(right_text, ratatui::style::Style::default().fg(theme.dim).bg(theme.header_bg)));
 
     let line = Line::from(spans);
     let header = Paragraph::new(line).style(theme.header_style);

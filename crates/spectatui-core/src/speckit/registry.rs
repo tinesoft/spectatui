@@ -536,7 +536,9 @@ async fn fetch_installed_workflows(root: &Path) -> Vec<WorkflowInfo> {
         .await;
 
     match output {
-        Ok(o) if o.status.success() => parse_installed_workflows(&String::from_utf8_lossy(&o.stdout)),
+        Ok(o) if o.status.success() => {
+            parse_installed_workflows(&String::from_utf8_lossy(&o.stdout))
+        }
         _ => Vec::new(),
     }
 }
@@ -553,9 +555,7 @@ fn parse_installed_workflows(output: &str) -> Vec<WorkflowInfo> {
 
         // Header "<name> (<id>) v<ver>" — id is the last parenthesised token before " v".
         if let Some((before_v, ver)) = line.rsplit_once(" v") {
-            if before_v.ends_with(')')
-                && ver.chars().next().is_some_and(|c| c.is_ascii_digit())
-            {
+            if before_v.ends_with(')') && ver.chars().next().is_some_and(|c| c.is_ascii_digit()) {
                 if let Some(open) = before_v.rfind('(') {
                     let id = before_v[open + 1..before_v.len() - 1].trim().to_string();
                     let name = before_v[..open].trim().to_string();

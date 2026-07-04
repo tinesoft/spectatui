@@ -49,7 +49,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let cols = Layout::horizontal([Constraint::Length(list_w), Constraint::Min(0)]).split(inner);
 
     // Content starts one row below the title, leaving a blank line.
-    let list_area = Rect::new(cols[0].x, cols[0].y + 1, cols[0].width, cols[0].height.saturating_sub(3));
+    let list_area = Rect::new(
+        cols[0].x,
+        cols[0].y + 1,
+        cols[0].width,
+        cols[0].height.saturating_sub(3),
+    );
     draw_list(frame, app, list_area);
 
     // Vertical divider
@@ -60,7 +65,12 @@ pub fn draw(frame: &mut Frame, app: &App) {
         );
     }
 
-    let detail_area = Rect::new(cols[1].x + 1, cols[1].y + 1, cols[1].width.saturating_sub(1), cols[1].height.saturating_sub(1));
+    let detail_area = Rect::new(
+        cols[1].x + 1,
+        cols[1].y + 1,
+        cols[1].width.saturating_sub(1),
+        cols[1].height.saturating_sub(1),
+    );
     draw_detail(frame, app, detail_area);
 
     // Footer

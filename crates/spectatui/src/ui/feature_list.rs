@@ -107,9 +107,21 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let note = compute_feature_note(feature);
         let note_pad_len = inner.width.saturating_sub(note.len() as u16 + 9) as usize;
         let row2 = Line::from(vec![
-            Span::styled(if selected { "▌" } else { " " }, if selected { theme.accent_style } else { Style::default() }),
+            Span::styled(
+                if selected { "▌" } else { " " },
+                if selected {
+                    theme.accent_style
+                } else {
+                    Style::default()
+                },
+            ),
             Span::styled("       ", row_bg),
-            Span::styled(note.to_string(), Style::default().fg(theme.dim).bg(if selected { theme.sel } else { theme.bg })),
+            Span::styled(
+                note.to_string(),
+                Style::default()
+                    .fg(theme.dim)
+                    .bg(if selected { theme.sel } else { theme.bg }),
+            ),
             Span::styled(" ".repeat(note_pad_len), row_bg),
         ]);
 

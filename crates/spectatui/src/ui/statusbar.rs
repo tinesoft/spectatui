@@ -50,7 +50,10 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
             ("a", "add"),
             ("esc", "close"),
         ]
-    } else if matches!(app.active_popup, Some(PopupKind::Extensions) | Some(PopupKind::Presets)) {
+    } else if matches!(
+        app.active_popup,
+        Some(PopupKind::Extensions) | Some(PopupKind::Presets)
+    ) {
         vec![
             ("tab", "ext/presets"),
             ("↑↓", "select"),
@@ -75,11 +78,7 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
         vec![("esc", "close & refresh")]
     } else if app.active_popup.is_some() {
         // Extensions/Presets popup and any other popup use the generic fallback.
-        vec![
-            ("↑↓", "navigate"),
-            ("enter", "select"),
-            ("esc", "close"),
-        ]
+        vec![("↑↓", "navigate"), ("enter", "select"), ("esc", "close")]
     } else {
         match app.screen {
             Screen::Dashboard => vec![
@@ -92,26 +91,12 @@ pub fn draw_hints(frame: &mut Frame, app: &App, area: Rect) {
                 ("?", "help"),
                 ("q", "quit"),
             ],
-            Screen::SpecBrowser => vec![
-                ("tab", "switch doc"),
-                ("↑↓", "scroll"),
-                ("esc", "back"),
-            ],
-            Screen::Constitution => vec![
-                ("↑↓", "navigate"),
-                ("enter", "toggle"),
-                ("esc", "back"),
-            ],
-            Screen::Settings => vec![
-                ("↑↓", "navigate"),
-                ("enter", "toggle"),
-                ("esc", "back"),
-            ],
-            Screen::SessionAttach => vec![
-                ("ctrl-b d", "detach"),
-                ("esc", "back"),
-                ("↑↓", "scroll"),
-            ],
+            Screen::SpecBrowser => vec![("tab", "switch doc"), ("↑↓", "scroll"), ("esc", "back")],
+            Screen::Constitution => vec![("↑↓", "navigate"), ("enter", "toggle"), ("esc", "back")],
+            Screen::Settings => vec![("↑↓", "navigate"), ("enter", "toggle"), ("esc", "back")],
+            Screen::SessionAttach => {
+                vec![("ctrl-b d", "detach"), ("esc", "back"), ("↑↓", "scroll")]
+            }
         }
     };
 
@@ -135,10 +120,25 @@ pub fn draw_statusbar(frame: &mut Frame, app: &App, area: Rect) {
 
     use spectatui_core::speckit::InstallStatus;
 
-    let int_count = app.project.integrations.iter().filter(|i| i.installed).count();
+    let int_count = app
+        .project
+        .integrations
+        .iter()
+        .filter(|i| i.installed)
+        .count();
     let feat_count = app.project.features.len();
-    let ext_count = app.project.extensions.iter().filter(|e| e.status != InstallStatus::Available).count();
-    let preset_count = app.project.presets.iter().filter(|p| p.status != InstallStatus::Available).count();
+    let ext_count = app
+        .project
+        .extensions
+        .iter()
+        .filter(|e| e.status != InstallStatus::Available)
+        .count();
+    let preset_count = app
+        .project
+        .presets
+        .iter()
+        .filter(|p| p.status != InstallStatus::Available)
+        .count();
     let wf_count = app.project.workflows.iter().filter(|w| w.installed).count();
 
     use crate::app::{ClickAction, PopupKind};
@@ -146,11 +146,41 @@ pub fn draw_statusbar(frame: &mut Frame, app: &App, area: Rect) {
     let mut spans: Vec<Span> = vec![Span::styled(" ", theme.statusbar_style)];
 
     let stats: &[(&str, usize, &str, &str, ClickAction)] = &[
-        ("◈", int_count, "integrations", "i", ClickAction::OpenPopup(PopupKind::Integrations)),
-        ("❖", feat_count, "features", "f", ClickAction::OpenPopup(PopupKind::Features)),
-        ("◰", ext_count, "extensions", "e", ClickAction::OpenPopup(PopupKind::Extensions)),
-        ("≣", preset_count, "presets", "p", ClickAction::OpenPopup(PopupKind::Presets)),
-        ("◷", wf_count, "workflows", "w", ClickAction::OpenPopup(PopupKind::Workflows)),
+        (
+            "◈",
+            int_count,
+            "integrations",
+            "i",
+            ClickAction::OpenPopup(PopupKind::Integrations),
+        ),
+        (
+            "❖",
+            feat_count,
+            "features",
+            "f",
+            ClickAction::OpenPopup(PopupKind::Features),
+        ),
+        (
+            "◰",
+            ext_count,
+            "extensions",
+            "e",
+            ClickAction::OpenPopup(PopupKind::Extensions),
+        ),
+        (
+            "≣",
+            preset_count,
+            "presets",
+            "p",
+            ClickAction::OpenPopup(PopupKind::Presets),
+        ),
+        (
+            "◷",
+            wf_count,
+            "workflows",
+            "w",
+            ClickAction::OpenPopup(PopupKind::Workflows),
+        ),
     ];
 
     // Track the cell x to register clickable regions per stat.

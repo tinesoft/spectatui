@@ -30,7 +30,10 @@ impl WorkflowStage {
 }
 
 pub fn infer_stage(artifacts: &FeatureArtifacts) -> WorkflowStage {
-    let tasks_status = artifacts.tasks.as_ref().and_then(|p| parse_tasks_progress(p));
+    let tasks_status = artifacts
+        .tasks
+        .as_ref()
+        .and_then(|p| parse_tasks_progress(p));
 
     if let Some((done, total)) = tasks_status {
         if total > 0 && done >= total {

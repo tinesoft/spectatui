@@ -5,8 +5,10 @@ use std::collections::HashSet;
 
 use ratatui::layout::Rect;
 use spectatui_core::layout::CustomLayout;
-use spectatui_core::speckit::cli::{CliAction, CliJob, JobStatus, CliEvent};
-use spectatui_core::speckit::{ExtensionInfo, IntegrationInfo, PresetInfo, Project, TasksProgress, WorkflowInfo};
+use spectatui_core::speckit::cli::{CliAction, CliEvent, CliJob, JobStatus};
+use spectatui_core::speckit::{
+    ExtensionInfo, IntegrationInfo, PresetInfo, Project, TasksProgress, WorkflowInfo,
+};
 use spectatui_core::tmux::TmuxSession;
 use tokio::sync::mpsc;
 
@@ -360,9 +362,7 @@ impl App {
             .borrow()
             .iter()
             .rev()
-            .find(|(r, _)| {
-                col >= r.x && col < r.x + r.width && row >= r.y && row < r.y + r.height
-            })
+            .find(|(r, _)| col >= r.x && col < r.x + r.width && row >= r.y && row < r.y + r.height)
             .map(|(_, a)| *a)
     }
 
@@ -529,7 +529,10 @@ impl App {
             return;
         }
         match self.screen {
-            Screen::SpecBrowser | Screen::Constitution | Screen::Settings | Screen::SessionAttach => {
+            Screen::SpecBrowser
+            | Screen::Constitution
+            | Screen::Settings
+            | Screen::SessionAttach => {
                 self.screen = Screen::Dashboard;
                 self.spec_scroll = 0;
             }
@@ -587,10 +590,18 @@ impl App {
         if len > 0 {
             match self.ext_tab {
                 ExtTab::Extensions => {
-                    self.ext_index = if self.ext_index == 0 { len - 1 } else { self.ext_index - 1 }
+                    self.ext_index = if self.ext_index == 0 {
+                        len - 1
+                    } else {
+                        self.ext_index - 1
+                    }
                 }
                 ExtTab::Presets => {
-                    self.preset_index = if self.preset_index == 0 { len - 1 } else { self.preset_index - 1 }
+                    self.preset_index = if self.preset_index == 0 {
+                        len - 1
+                    } else {
+                        self.preset_index - 1
+                    }
                 }
             }
         }
@@ -739,14 +750,31 @@ impl App {
                 DashboardLayout::Audit => "audit".to_string(),
                 DashboardLayout::Custom => "custom".to_string(),
             },
-            SettingsRow::AgentTailFollow => if self.config.agent_tail_follow { "on" } else { "off" }.to_string(),
-            SettingsRow::MouseSupport => if self.config.mouse_support { "on" } else { "off" }.to_string(),
-            SettingsRow::ConfirmForce => if self.config.confirm_before_force { "always" } else { "never" }.to_string(),
+            SettingsRow::AgentTailFollow => if self.config.agent_tail_follow {
+                "on"
+            } else {
+                "off"
+            }
+            .to_string(),
+            SettingsRow::MouseSupport => if self.config.mouse_support {
+                "on"
+            } else {
+                "off"
+            }
+            .to_string(),
+            SettingsRow::ConfirmForce => if self.config.confirm_before_force {
+                "always"
+            } else {
+                "never"
+            }
+            .to_string(),
             SettingsRow::TmuxPrefix => self.config.tmux_prefix.clone(),
             SettingsRow::CustomizePanes => "open layout editor →".to_string(),
             SettingsRow::AttachSession => format!(
                 "{} →",
-                self.selected_feature().map(|f| f.id.as_str()).unwrap_or("none")
+                self.selected_feature()
+                    .map(|f| f.id.as_str())
+                    .unwrap_or("none")
             ),
             SettingsRow::ConfigPath => self.config.config_location.clone(),
         }
@@ -910,7 +938,10 @@ impl App {
             .filter(|p| {
                 let by = p.author.as_deref().unwrap_or("");
                 let src = p.source_label.as_deref().unwrap_or("");
-                self.matches_filter(&format!("{} {} {} {} {}", p.name, p.id, by, src, p.description))
+                self.matches_filter(&format!(
+                    "{} {} {} {} {}",
+                    p.name, p.id, by, src, p.description
+                ))
             })
             .collect()
     }
@@ -955,7 +986,12 @@ impl App {
         // Merge integrations: append new, else backfill catalog metadata into the
         // installed entry (name/description) without overriding local state.
         for avail in cache.integrations {
-            if let Some(existing) = self.project.integrations.iter_mut().find(|i| i.key == avail.key) {
+            if let Some(existing) = self
+                .project
+                .integrations
+                .iter_mut()
+                .find(|i| i.key == avail.key)
+            {
                 if existing.name == existing.key && !avail.name.is_empty() {
                     existing.name = avail.name;
                 }
@@ -969,7 +1005,12 @@ impl App {
 
         // Merge extensions: append new, else backfill catalog metadata.
         for avail in cache.extensions {
-            if let Some(existing) = self.project.extensions.iter_mut().find(|e| e.id == avail.id) {
+            if let Some(existing) = self
+                .project
+                .extensions
+                .iter_mut()
+                .find(|e| e.id == avail.id)
+            {
                 if existing.name == existing.id {
                     existing.name = avail.name;
                 }
@@ -981,7 +1022,10 @@ impl App {
                 }
                 // Registry marks bundled extensions as `Local`; prefer the catalog
                 // provenance when we have it.
-                if matches!(existing.source, spectatui_core::speckit::ExtensionSource::Local) {
+                if matches!(
+                    existing.source,
+                    spectatui_core::speckit::ExtensionSource::Local
+                ) {
                     existing.source = avail.source;
                 }
             } else {
@@ -1072,23 +1116,95 @@ pub enum ClickAction {
 
 pub fn palette_commands() -> Vec<PaletteCommand> {
     vec![
-        PaletteCommand { label: "Go to Dashboard", hint: "d", action: PaletteAction::SetScreen(Screen::Dashboard) },
-        PaletteCommand { label: "Go to Spec Browser", hint: "s", action: PaletteAction::SetScreen(Screen::SpecBrowser) },
-        PaletteCommand { label: "Go to Constitution", hint: "c", action: PaletteAction::SetScreen(Screen::Constitution) },
-        PaletteCommand { label: "Show Features", hint: "f", action: PaletteAction::OpenPopup(PopupKind::Features) },
-        PaletteCommand { label: "Manage Integrations", hint: "i", action: PaletteAction::OpenPopup(PopupKind::Integrations) },
-        PaletteCommand { label: "Manage Extensions", hint: "e", action: PaletteAction::OpenPopup(PopupKind::Extensions) },
-        PaletteCommand { label: "Manage Presets", hint: "p", action: PaletteAction::OpenPopup(PopupKind::Presets) },
-        PaletteCommand { label: "Manage Workflows", hint: "w", action: PaletteAction::OpenPopup(PopupKind::Workflows) },
-        PaletteCommand { label: "Open Settings", hint: "⚙", action: PaletteAction::SetScreen(Screen::Settings) },
-        PaletteCommand { label: "Layout: Overview", hint: "1", action: PaletteAction::SetLayout(DashboardLayout::Overview) },
-        PaletteCommand { label: "Layout: Coding", hint: "2", action: PaletteAction::SetLayout(DashboardLayout::Coding) },
-        PaletteCommand { label: "Layout: Audit", hint: "3", action: PaletteAction::SetLayout(DashboardLayout::Audit) },
-        PaletteCommand { label: "Layout: Custom (edited)", hint: "4", action: PaletteAction::SetLayout(DashboardLayout::Custom) },
-        PaletteCommand { label: "Attach agent session", hint: "a", action: PaletteAction::SetScreen(Screen::SessionAttach) },
-        PaletteCommand { label: "Toggle theme (dark / light)", hint: "t", action: PaletteAction::ToggleTheme },
-        PaletteCommand { label: "Cycle accent palette", hint: "T", action: PaletteAction::CycleAccent },
-        PaletteCommand { label: "Help", hint: "?", action: PaletteAction::OpenPopup(PopupKind::Help) },
-        PaletteCommand { label: "Quit", hint: "q", action: PaletteAction::Quit },
+        PaletteCommand {
+            label: "Go to Dashboard",
+            hint: "d",
+            action: PaletteAction::SetScreen(Screen::Dashboard),
+        },
+        PaletteCommand {
+            label: "Go to Spec Browser",
+            hint: "s",
+            action: PaletteAction::SetScreen(Screen::SpecBrowser),
+        },
+        PaletteCommand {
+            label: "Go to Constitution",
+            hint: "c",
+            action: PaletteAction::SetScreen(Screen::Constitution),
+        },
+        PaletteCommand {
+            label: "Show Features",
+            hint: "f",
+            action: PaletteAction::OpenPopup(PopupKind::Features),
+        },
+        PaletteCommand {
+            label: "Manage Integrations",
+            hint: "i",
+            action: PaletteAction::OpenPopup(PopupKind::Integrations),
+        },
+        PaletteCommand {
+            label: "Manage Extensions",
+            hint: "e",
+            action: PaletteAction::OpenPopup(PopupKind::Extensions),
+        },
+        PaletteCommand {
+            label: "Manage Presets",
+            hint: "p",
+            action: PaletteAction::OpenPopup(PopupKind::Presets),
+        },
+        PaletteCommand {
+            label: "Manage Workflows",
+            hint: "w",
+            action: PaletteAction::OpenPopup(PopupKind::Workflows),
+        },
+        PaletteCommand {
+            label: "Open Settings",
+            hint: "⚙",
+            action: PaletteAction::SetScreen(Screen::Settings),
+        },
+        PaletteCommand {
+            label: "Layout: Overview",
+            hint: "1",
+            action: PaletteAction::SetLayout(DashboardLayout::Overview),
+        },
+        PaletteCommand {
+            label: "Layout: Coding",
+            hint: "2",
+            action: PaletteAction::SetLayout(DashboardLayout::Coding),
+        },
+        PaletteCommand {
+            label: "Layout: Audit",
+            hint: "3",
+            action: PaletteAction::SetLayout(DashboardLayout::Audit),
+        },
+        PaletteCommand {
+            label: "Layout: Custom (edited)",
+            hint: "4",
+            action: PaletteAction::SetLayout(DashboardLayout::Custom),
+        },
+        PaletteCommand {
+            label: "Attach agent session",
+            hint: "a",
+            action: PaletteAction::SetScreen(Screen::SessionAttach),
+        },
+        PaletteCommand {
+            label: "Toggle theme (dark / light)",
+            hint: "t",
+            action: PaletteAction::ToggleTheme,
+        },
+        PaletteCommand {
+            label: "Cycle accent palette",
+            hint: "T",
+            action: PaletteAction::CycleAccent,
+        },
+        PaletteCommand {
+            label: "Help",
+            hint: "?",
+            action: PaletteAction::OpenPopup(PopupKind::Help),
+        },
+        PaletteCommand {
+            label: "Quit",
+            hint: "q",
+            action: PaletteAction::Quit,
+        },
     ]
 }

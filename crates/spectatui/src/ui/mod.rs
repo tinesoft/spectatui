@@ -2,12 +2,12 @@ mod agent_output;
 mod extensions;
 mod extensions_presets;
 mod feature_list;
-mod presets;
 mod header;
 mod integrations;
 mod layout_editor;
 mod palette;
 mod popup;
+mod presets;
 mod session_attach;
 mod settings;
 mod spec_browser;
@@ -26,8 +26,12 @@ use crate::theme::Theme;
 
 /// Consistent inner padding for every bordered panel/popup so content does not
 /// hug the frame borders.
-pub(super) const PANEL_PADDING: ratatui::widgets::Padding =
-    ratatui::widgets::Padding { left: 1, right: 1, top: 1, bottom: 1 };
+pub(super) const PANEL_PADDING: ratatui::widgets::Padding = ratatui::widgets::Padding {
+    left: 1,
+    right: 1,
+    top: 1,
+    bottom: 1,
+};
 
 /// First visible row index for a 1-row-per-item list so `selected` stays on screen.
 pub(super) fn scroll_offset(selected: usize, visible_rows: usize) -> usize {
@@ -51,15 +55,27 @@ pub(super) fn draw_search_footer(
     if active {
         let bar = Style::default().bg(theme.panel_alt);
         let (text, text_style) = if query.is_empty() {
-            (format!("filter {noun}…"), Style::default().fg(theme.faint).bg(theme.panel_alt))
+            (
+                format!("filter {noun}…"),
+                Style::default().fg(theme.faint).bg(theme.panel_alt),
+            )
         } else {
-            (query.to_string(), Style::default().fg(theme.fg).bg(theme.panel_alt))
+            (
+                query.to_string(),
+                Style::default().fg(theme.fg).bg(theme.panel_alt),
+            )
         };
         let tail = "enter keep · esc clear";
         let used = 2 + text.chars().count() + 1 + tail.chars().count();
         let pad = (area.width as usize).saturating_sub(used);
         let line = Line::from(vec![
-            Span::styled("/", Style::default().fg(theme.accent).bg(theme.panel_alt).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                "/",
+                Style::default()
+                    .fg(theme.accent)
+                    .bg(theme.panel_alt)
+                    .add_modifier(Modifier::BOLD),
+            ),
             Span::styled(" ", bar),
             Span::styled(text, text_style),
             Span::styled("▌", Style::default().fg(theme.accent).bg(theme.panel_alt)),
@@ -107,7 +123,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
     let outer = Layout::vertical([
         Constraint::Length(1), // header
         Constraint::Length(1), // spacer
-        Constraint::Min(0),   // content
+        Constraint::Min(0),    // content
         Constraint::Length(1), // keybinding hints
         Constraint::Length(1), // spacer
         Constraint::Length(1), // status bar
@@ -146,8 +162,7 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
     use crate::app::{ClickAction, Pane};
     match app.layout {
         DashboardLayout::Overview => {
-            let cols =
-                Layout::horizontal([Constraint::Length(38), Constraint::Min(0)]).split(area);
+            let cols = Layout::horizontal([Constraint::Length(38), Constraint::Min(0)]).split(area);
 
             app.register_click(cols[0], ClickAction::FocusPane(Pane::FeatureList));
             feature_list::draw(frame, app, cols[0]);
@@ -170,8 +185,8 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
             agent_output::draw(frame, app, cols[1]);
         }
         DashboardLayout::Audit => {
-            let cols = Layout::horizontal([Constraint::Percentage(54), Constraint::Min(0)])
-                .split(area);
+            let cols =
+                Layout::horizontal([Constraint::Percentage(54), Constraint::Min(0)]).split(area);
 
             app.register_click(cols[0], ClickAction::FocusPane(Pane::ExtensionsPresets));
             app.register_click(cols[1], ClickAction::FocusPane(Pane::Constitution));
@@ -189,7 +204,10 @@ fn draw_custom_layout(frame: &mut Frame, app: &App, area: Rect) {
     if rects.is_empty() {
         let theme = &app.theme;
         let msg = ratatui::widgets::Paragraph::new(ratatui::text::Line::from(
-            ratatui::text::Span::styled("  No visible panes. Press 4 or s for settings.", theme.faint_style),
+            ratatui::text::Span::styled(
+                "  No visible panes. Press 4 or s for settings.",
+                theme.faint_style,
+            ),
         ))
         .style(theme.base);
         frame.render_widget(msg, area);
@@ -337,26 +355,26 @@ fn render_md_line<'a>(line: &str, theme: &crate::theme::Theme) -> ratatui::text:
     use ratatui::style::Modifier;
     use ratatui::text::{Line, Span};
 
-    if line.starts_with("# ") {
+    if let Some(rest) = line.strip_prefix("# ") {
         Line::from(Span::styled(
-            line[2..].to_string(),
+            rest.to_string(),
             ratatui::style::Style::default()
                 .fg(theme.fg)
                 .add_modifier(Modifier::BOLD),
         ))
-    } else if line.starts_with("## ") {
+    } else if let Some(rest) = line.strip_prefix("## ") {
         Line::from(vec![
             Span::styled("▍ ", theme.accent_style),
             Span::styled(
-                line[3..].to_string(),
+                rest.to_string(),
                 ratatui::style::Style::default()
                     .fg(theme.fg)
                     .add_modifier(Modifier::BOLD),
             ),
         ])
-    } else if line.starts_with("### ") {
+    } else if let Some(rest) = line.strip_prefix("### ") {
         Line::from(Span::styled(
-            line[4..].to_string(),
+            rest.to_string(),
             ratatui::style::Style::default()
                 .fg(theme.fg)
                 .add_modifier(Modifier::BOLD),

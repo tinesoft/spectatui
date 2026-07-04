@@ -16,24 +16,49 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let branch = feature.and_then(|f| f.branch.as_deref()).unwrap_or("");
     let agent_name = app.default_agent_name();
 
-    let is_running = match app.tmux_session.as_ref().map(|s| s.status) {
-        Some(SessionStatus::Running) => true,
-        _ => false,
-    };
+    let is_running = matches!(
+        app.tmux_session.as_ref().map(|s| s.status),
+        Some(SessionStatus::Running)
+    );
 
     // Top bar (row 0)
     let mut top_spans = vec![
         Span::styled(" ", theme.header_style),
-        Span::styled("● ", if is_running { theme.good_style } else { theme.faint_style }),
-        Span::styled("attached", ratatui::style::Style::default().fg(if is_running { theme.good } else { theme.faint }).bg(theme.header_bg).add_modifier(ratatui::style::Modifier::BOLD)),
-        Span::styled(format!("  {feature_id}  ·  {agent_name}  ·  tmux"), ratatui::style::Style::default().fg(theme.dim).bg(theme.header_bg)),
+        Span::styled(
+            "● ",
+            if is_running {
+                theme.good_style
+            } else {
+                theme.faint_style
+            },
+        ),
+        Span::styled(
+            "attached",
+            ratatui::style::Style::default()
+                .fg(if is_running { theme.good } else { theme.faint })
+                .bg(theme.header_bg)
+                .add_modifier(ratatui::style::Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("  {feature_id}  ·  {agent_name}  ·  tmux"),
+            ratatui::style::Style::default()
+                .fg(theme.dim)
+                .bg(theme.header_bg),
+        ),
     ];
 
     let right_text = "Ctrl-b d detach  ·  esc back to spectatui";
     let left_width: u16 = top_spans.iter().map(|s| s.width() as u16).sum();
-    let pad = full.width.saturating_sub(left_width + right_text.len() as u16 + 1);
+    let pad = full
+        .width
+        .saturating_sub(left_width + right_text.len() as u16 + 1);
     top_spans.push(Span::styled(" ".repeat(pad as usize), theme.header_style));
-    top_spans.push(Span::styled(right_text, ratatui::style::Style::default().fg(theme.dim).bg(theme.header_bg)));
+    top_spans.push(Span::styled(
+        right_text,
+        ratatui::style::Style::default()
+            .fg(theme.dim)
+            .bg(theme.header_bg),
+    ));
 
     let top_bar = Paragraph::new(Line::from(top_spans)).style(theme.header_style);
     frame.render_widget(top_bar, Rect::new(full.x, full.y, full.width, 1));
@@ -108,21 +133,50 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     };
     frame.render_widget(
         Paragraph::new(input_line),
-        Rect::new(input_area.x + 2, input_box_y + 1, input_area.width.saturating_sub(4), 1),
+        Rect::new(
+            input_area.x + 2,
+            input_box_y + 1,
+            input_area.width.saturating_sub(4),
+            1,
+        ),
     );
 
     // Status bar (ROWS-2)
     let status_y = full.height.saturating_sub(2);
     let mut status_spans = vec![
         Span::styled(" ", theme.statusbar_style),
-        Span::styled(agent_name, ratatui::style::Style::default().fg(theme.fg).bg(theme.panel).add_modifier(ratatui::style::Modifier::BOLD)),
-        Span::styled(format!("  ·  {branch}"), ratatui::style::Style::default().fg(theme.info).bg(theme.panel)),
+        Span::styled(
+            agent_name,
+            ratatui::style::Style::default()
+                .fg(theme.fg)
+                .bg(theme.panel)
+                .add_modifier(ratatui::style::Modifier::BOLD),
+        ),
+        Span::styled(
+            format!("  ·  {branch}"),
+            ratatui::style::Style::default()
+                .fg(theme.info)
+                .bg(theme.panel),
+        ),
     ];
-    let session_text = if is_running { "● session live in tmux" } else { "○ no session" };
-    let session_style = if is_running { theme.good_style } else { theme.faint_style };
+    let session_text = if is_running {
+        "● session live in tmux"
+    } else {
+        "○ no session"
+    };
+    let session_style = if is_running {
+        theme.good_style
+    } else {
+        theme.faint_style
+    };
     let status_left_w: u16 = status_spans.iter().map(|s| s.width() as u16).sum();
-    let status_pad = full.width.saturating_sub(status_left_w + session_text.len() as u16 + 1);
-    status_spans.push(Span::styled(" ".repeat(status_pad as usize), theme.statusbar_style));
+    let status_pad = full
+        .width
+        .saturating_sub(status_left_w + session_text.len() as u16 + 1);
+    status_spans.push(Span::styled(
+        " ".repeat(status_pad as usize),
+        theme.statusbar_style,
+    ));
     status_spans.push(Span::styled(session_text, session_style));
 
     let status_bar = Paragraph::new(Line::from(status_spans)).style(theme.statusbar_style);
@@ -130,7 +184,7 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
 
     // Key hints (ROWS-1)
     let hints_y = full.height.saturating_sub(1);
-    let hints = vec![
+    let hints = [
         ("Ctrl-b d", "detach (keeps running)"),
         ("esc", "back to dashboard"),
         ("↑↓", "scroll"),

@@ -23,29 +23,30 @@ pub fn start_watcher(
     let mut debouncer = new_debouncer(
         Duration::from_millis(500),
         move |res: Result<Vec<notify_debouncer_mini::DebouncedEvent>, notify::Error>| {
-        if let Ok(events) = res {
-            let mut specs_changed = false;
-            let mut specify_changed = false;
+            if let Ok(events) = res {
+                let mut specs_changed = false;
+                let mut specify_changed = false;
 
-            for event in &events {
-                if event.kind == DebouncedEventKind::Any {
-                    if event.path.starts_with(&specs_prefix) {
-                        specs_changed = true;
-                    }
-                    if event.path.starts_with(&specify_prefix) {
-                        specify_changed = true;
+                for event in &events {
+                    if event.kind == DebouncedEventKind::Any {
+                        if event.path.starts_with(&specs_prefix) {
+                            specs_changed = true;
+                        }
+                        if event.path.starts_with(&specify_prefix) {
+                            specify_changed = true;
+                        }
                     }
                 }
-            }
 
-            if specs_changed {
-                let _ = tx.send(FsEvent::SpecsChanged);
+                if specs_changed {
+                    let _ = tx.send(FsEvent::SpecsChanged);
+                }
+                if specify_changed {
+                    let _ = tx.send(FsEvent::SpecifyChanged);
+                }
             }
-            if specify_changed {
-                let _ = tx.send(FsEvent::SpecifyChanged);
-            }
-        }
-    })
+        },
+    )
     .context("failed to create file watcher")?;
 
     if specs_dir.is_dir() {

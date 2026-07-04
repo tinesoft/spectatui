@@ -38,7 +38,8 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let (status_dot, status_text, status_style) = match app.tmux_session.as_ref().map(|s| s.status) {
+    let (status_dot, status_text, status_style) = match app.tmux_session.as_ref().map(|s| s.status)
+    {
         Some(SessionStatus::Running) => ("●", "running", theme.good_style),
         Some(SessionStatus::Idle) => ("○", "idle", theme.faint_style),
         Some(SessionStatus::Exited) => ("○", "exited", theme.bad_style),
@@ -63,19 +64,13 @@ pub fn draw(frame: &mut Frame, app: &App, area: Rect) {
         let snapshot = &session.last_snapshot;
         let start = snapshot.len().saturating_sub(visible_lines);
         for line in &snapshot[start..] {
-            lines.push(Line::from(Span::styled(
-                line.to_string(),
-                theme.dim_style,
-            )));
+            lines.push(Line::from(Span::styled(line.to_string(), theme.dim_style)));
         }
     } else if !app.agent_lines.is_empty() {
         let visible_lines = inner.height.saturating_sub(3) as usize;
         let start = app.agent_lines.len().saturating_sub(visible_lines);
         for line in &app.agent_lines[start..] {
-            lines.push(Line::from(Span::styled(
-                line.to_string(),
-                theme.dim_style,
-            )));
+            lines.push(Line::from(Span::styled(line.to_string(), theme.dim_style)));
         }
     } else {
         lines.push(Line::from(Span::styled(
