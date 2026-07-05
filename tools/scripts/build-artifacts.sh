@@ -2,8 +2,8 @@
 # Build and package a spectatui release artifact for the current or specified platform.
 #
 # Usage:
-#   sh scripts/build-artifacts.sh                              # local: auto-detect + build
-#   sh scripts/build-artifacts.sh --target x86_64-unknown-linux-gnu --target-dir target  # CI: package only
+#   sh tools/scripts/build-artifacts.sh                              # local: auto-detect + build
+#   sh tools/scripts/build-artifacts.sh --target x86_64-unknown-linux-gnu --target-dir target  # CI: package only
 #
 # Options:
 #   --target <triple>    Target triple (e.g. x86_64-unknown-linux-gnu).

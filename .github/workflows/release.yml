@@ -82,12 +82,12 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       # Version bump, changelog, git tag/push, GitHub Release, and the
-      # released/tag step outputs. See tools/check-release.sh.
+      # released/tag step outputs. See tools/scripts/check-release.sh.
       - name: Run nx release
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: tools/check-release.sh
+        run: tools/scripts/check-release.sh
 
   # ── 3. Build release binaries for all targets ─────────────────────────────────
   build:
@@ -153,7 +153,7 @@ jobs:
 
       - name: Package artifact
         shell: bash
-        run: sh scripts/build-artifacts.sh --target ${{ matrix.target }} --target-dir target
+        run: sh tools/scripts/build-artifacts.sh --target ${{ matrix.target }} --target-dir target
 
       - name: Install cargo-wix
         if: matrix.target == 'x86_64-pc-windows-msvc'

@@ -23,7 +23,7 @@
     "release": "nx release",
     "release:first": "nx release --first-release",
     "release:dry": "nx release --dry-run",
-    "artifacts": "sh scripts/build-artifacts.sh"
+    "artifacts": "sh tools/scripts/build-artifacts.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
