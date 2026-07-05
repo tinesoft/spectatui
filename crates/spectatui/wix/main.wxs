@@ -41,7 +41,7 @@
     <Property Id='ARPURLINFOABOUT' Value='https://github.com/tinesoft/spectatui' />
 
     <Directory Id='TARGETDIR' Name='SourceDir'>
-      <Directory Id='ProgramFilesFolder'>
+      <Directory Id='ProgramFiles64Folder'>
         <Directory Id='INSTALLDIR' Name='spectatui' />
       </Directory>
     </Directory>
