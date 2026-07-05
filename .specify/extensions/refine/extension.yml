@@ -1,0 +1,48 @@
+schema_version: "1.0"
+
+extension:
+  id: refine
+  name: "Spec Refine"
+  version: "1.0.0"
+  description: "Refine and iterate on existing specifications in-place — update specs, propagate changes to plan and tasks, and diff impact across artifacts"
+  author: "Quratulain-bilal"
+  repository: "https://github.com/Quratulain-bilal/spec-kit-refine"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.4.0"
+
+provides:
+  commands:
+    - name: speckit.refine.update
+      file: commands/speckit.refine.update.md
+      description: "Update an existing spec.md in-place based on new requirements or feedback"
+    - name: speckit.refine.propagate
+      file: commands/speckit.refine.propagate.md
+      description: "Propagate spec changes downstream to plan.md and tasks.md"
+    - name: speckit.refine.diff
+      file: commands/speckit.refine.diff.md
+      description: "Show what changed in spec.md and predict downstream impact on plan and tasks"
+    - name: speckit.refine.status
+      file: commands/speckit.refine.status.md
+      description: "Show sync status between spec, plan, and tasks — identify stale artifacts"
+
+hooks:
+  after_specify:
+    command: speckit.refine.status
+    optional: true
+    prompt: "Check artifact sync status after specification?"
+    description: "Show sync status after spec generation"
+  after_plan:
+    command: speckit.refine.status
+    optional: true
+    prompt: "Check artifact sync status after planning?"
+    description: "Show sync status after plan generation"
+
+tags:
+  - "refine"
+  - "iterate"
+  - "update"
+  - "workflow"
+  - "specifications"
+  - "propagation"
