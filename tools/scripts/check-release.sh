@@ -25,7 +25,10 @@ prev_tag="$(describe_release_tag)"
 
 if [ -z "$prev_tag" ]; then
     echo "No existing release tag — running first release."
-    pnpm nx release --first-release --skip-publish
+    # Conventional-commits derivation never produces a 1.x version from a 0.x
+    # base (Nx halves every bump — major->minor, minor->patch — while major
+    # is 0), so the very first release is pinned to 1.0.0 explicitly.
+    pnpm nx release 1.0.0 --first-release --skip-publish
 else
     echo "Previous release: $prev_tag"
     pnpm nx release --skip-publish
