@@ -1,49 +1,50 @@
+
 [package]
-name = "spectatui"
-version = "0.0.0"
-edition = "2021"
-description = "TUI dashboard for GitHub Spec-Kit"
-license = "MIT"
-repository = "https://github.com/tinesoft/spectatui"
-homepage = "https://github.com/tinesoft/spectatui"
-readme = "README.md"
-keywords = ["tui", "speckit", "dashboard", "ratatui", "terminal"]
-categories = ["command-line-utilities", "development-tools"]
-authors = ["Tine Kondo <kondotine@gmail.com>"]
-rust-version = "1.75"
+name = 'spectatui'
+version = '0.0.1'
+edition = '2021'
+description = 'TUI dashboard for GitHub Spec-Kit'
+license = 'MIT'
+repository = 'https://github.com/tinesoft/spectatui'
+homepage = 'https://github.com/tinesoft/spectatui'
+readme = 'README.md'
+keywords = ['tui', 'speckit', 'dashboard', 'ratatui', 'terminal']
+categories = ['command-line-utilities', 'development-tools']
+authors = ['Tine Kondo <kondotine@gmail.com>']
+rust-version = '1.75'
 
 [package.metadata.bundle]
-name = "Spectatui"
-identifier = "com.tinesoft.spectatui"
+name = 'Spectatui'
+identifier = 'com.tinesoft.spectatui'
 icon = [
-    "../../assets/icons/32x32.png",
-    "../../assets/icons/128x128.png",
-    "../../assets/icons/256x256.png",
-    "../../assets/icons/icon.icns",
+	'../../assets/icons/32x32.png',
+	'../../assets/icons/128x128.png',
+	'../../assets/icons/256x256.png',
+	'../../assets/icons/icon.icns',
 ]
-category = "Developer Tool"
-short_description = "TUI dashboard for GitHub Spec-Kit"
-copyright = "Copyright © 2026 Tine Kondo"
+category = 'Developer Tool'
+short_description = 'TUI dashboard for GitHub Spec-Kit'
+copyright = 'Copyright © 2026 Tine Kondo'
 
 [package.metadata.bundle.linux]
-categories = ["Development"]
+categories = ['Development']
 
 [package.metadata.wix]
-upgrade-guid = "06F822CC-27F1-4F89-AA4B-5A4F1F4E6FE0"
-path-guid    = "5A1C306F-2BD6-4AC8-9C73-E6C0D01F5BD2"
-eula         = false
+upgrade-guid = '06F822CC-27F1-4F89-AA4B-5A4F1F4E6FE0'
+path-guid = '5A1C306F-2BD6-4AC8-9C73-E6C0D01F5BD2'
+eula = false
 
 [build-dependencies]
-winres = "0.1"
+winres = '0.1'
 
 [dependencies]
-spectatui-core = { path = "../spectatui-core", version = "0.0.0" }
-ratatui = "0.29"
-crossterm = { version = "0.28", features = ["event-stream"] }
-anyhow = "1"
-tokio = { version = "1", features = ["full"] }
-futures = "0.3"
-clap = { version = "4", features = ["derive"] }
-directories = "6"
-serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+spectatui-core = { path = '../spectatui-core', version = '0.0.1' }
+ratatui = '0.29'
+crossterm = { version = '0.28', features = ['event-stream'] }
+anyhow = '1'
+tokio = { version = '1', features = ['full'] }
+futures = '0.3'
+clap = { version = '4', features = ['derive'] }
+directories = '6'
+serde = { version = '1', features = ['derive'] }
+toml = '0.8'
