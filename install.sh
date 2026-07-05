@@ -2,7 +2,7 @@
 # spectatui installer — https://github.com/tinesoft/spectatui
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh | sh
-#   curl -fsSL ... | sh -s -- --version 0.1.0
+#   curl -fsSL ... | sh -s -- --version 1.0.0
 #   curl -fsSL ... | sh -s -- --to /usr/local/bin
 
 set -eu
@@ -73,7 +73,7 @@ if [ -z "$VERSION" ]; then
         | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')"
     [ -n "$VERSION" ] || die "could not determine latest version"
 fi
-VERSION="${VERSION#v}"  # accept both v0.1.0 and 0.1.0
+VERSION="${VERSION#v}"  # accept both v1.0.0 and 1.0.0
 case "$VERSION" in
     *[!0-9A-Za-z.+-]*|'') die "could not parse release version: $VERSION" ;;
 esac

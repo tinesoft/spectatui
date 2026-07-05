@@ -55,7 +55,7 @@ curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh 
 Pass `--version` to pin a specific release, or `--to <dir>` to choose an install location:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh | sh -s -- --version 0.1.0
+curl -fsSL https://raw.githubusercontent.com/tinesoft/spectatui/main/install.sh | sh -s -- --version 1.0.0
 ```
 
 </details>
@@ -105,7 +105,7 @@ Download the pre-built binary for your platform from the [Releases page](https:/
 Every release binary carries a [GitHub Artifact Attestation](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) proving it was built by this repo's `release.yml` workflow from the corresponding tagged commit. Verify a downloaded archive with the [GitHub CLI](https://cli.github.com/):
 
 ```sh
-gh attestation verify spectatui-v0.1.0-x86_64-unknown-linux-gnu.tar.gz --owner tinesoft
+gh attestation verify spectatui-v1.0.0-x86_64-unknown-linux-gnu.tar.gz --owner tinesoft
 ```
 
 </details>

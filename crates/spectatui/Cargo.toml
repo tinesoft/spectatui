@@ -1,6 +1,6 @@
 [package]
 name = "spectatui"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 description = "TUI dashboard for GitHub Spec-Kit"
 license = "MIT"
@@ -37,7 +37,7 @@ eula         = false
 winres = "0.1"
 
 [dependencies]
-spectatui-core = { path = "../spectatui-core", version = "0.1.0" }
+spectatui-core = { path = "../spectatui-core", version = "0.0.0" }
 ratatui = "0.29"
 crossterm = { version = "0.28", features = ["event-stream"] }
 anyhow = "1"
