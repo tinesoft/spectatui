@@ -1,27 +1,28 @@
+
 [package]
-name = "spectatui-core"
-version = "0.0.0"
-edition = "2021"
-description = "Core library for spectatui — filesystem watching and Spec-Kit integration"
-license = "MIT"
-repository = "https://github.com/tinesoft/spectatui"
-homepage = "https://github.com/tinesoft/spectatui"
-readme = "README.md"
-keywords = ["speckit", "tui", "terminal"]
-categories = ["development-tools"]
-authors = ["Tine Kondo <kondotine@gmail.com>"]
-rust-version = "1.75"
+name = 'spectatui-core'
+version = '1.0.0'
+edition = '2021'
+description = 'Core library for spectatui — filesystem watching and Spec-Kit integration'
+license = 'MIT'
+repository = 'https://github.com/tinesoft/spectatui'
+homepage = 'https://github.com/tinesoft/spectatui'
+readme = 'README.md'
+keywords = ['speckit', 'tui', 'terminal']
+categories = ['development-tools']
+authors = ['Tine Kondo <kondotine@gmail.com>']
+rust-version = '1.75'
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-thiserror = "2"
-anyhow = "1"
-tokio = { version = "1", features = ["process", "sync", "rt", "io-util", "macros"] }
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
-notify = "7"
-notify-debouncer-mini = "0.5"
+serde = { version = '1', features = ['derive'] }
+serde_json = '1'
+serde_yaml = '0.9'
+thiserror = '2'
+anyhow = '1'
+tokio = { version = '1', features = ['process', 'sync', 'rt', 'io-util', 'macros'] }
+reqwest = { version = '0.12', default-features = false, features = ['rustls-tls', 'json'] }
+notify = '7'
+notify-debouncer-mini = '0.5'
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = '3'
