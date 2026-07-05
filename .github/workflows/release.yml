@@ -180,7 +180,8 @@ jobs:
             --no-build \
             --nocapture \
             --target x86_64-pc-windows-msvc \
-            --output "dist/artifacts/spectatui-v${{ steps.msi_version.outputs.version }}-x86_64-pc-windows-msvc.msi"
+            --output "dist/artifacts/spectatui-v${{ steps.msi_version.outputs.version }}-x86_64-pc-windows-msvc.msi" \
+            crates/spectatui/Cargo.toml
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
