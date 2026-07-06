@@ -6,26 +6,16 @@
     "production": ["default", "!{projectRoot}/**/*.spec.rs"]
   },
   "targetDefaults": {
-    "build": {
-      "cache": true
-    },
-    "test": {
-      "cache": true
-    },
-    "lint": {
-      "cache": true
-    }
+    "build": { "cache": true },
+    "test": { "cache": true },
+    "lint": { "cache": true }
   },
   "plugins": ["@monodon/rust"],
   "release": {
     "projects": ["crates/*"],
     "projectsRelationship": "fixed",
-    "releaseTag": {
-      "pattern": "v{version}"
-    },
-    "version": {
-      "conventionalCommits": true
-    },
+    "releaseTag": { "pattern": "v{version}" },
+    "version": { "conventionalCommits": true },
     "changelog": {
       "projectChangelogs": false,
       "workspaceChangelog": {
@@ -40,5 +30,6 @@
       "push": true
     }
   },
-  "analytics": false
+  "analytics": false,
+  "nxCloudId": "6a4c1b257e59d45188ffaac0"
 }
