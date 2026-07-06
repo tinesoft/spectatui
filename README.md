@@ -20,6 +20,7 @@ A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/github/spec-kit
 <div align="center">
 
 ![spectatui demo](assets/images/spectatui-demo.gif)
+<br><em>💡Tip: I recommend installing and using [Jetbrains Mono](https://github.com/jetbrains/jetbrainsmono) font for a nice looking terminal as seen above</em>
 
 </div>
 
@@ -27,27 +28,27 @@ A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/github/spec-kit
 
 ## ✨ Features
 
-- **Cross-platform** — Runs on Linux, macOS, and Windows (x86_64 & ARM)
-- **Multi-pane dashboard** — Overview, Coding, Audit, and Custom layouts (switch with `1`–`4`)
+- **Extensions manager** — Browse, add, enable/disable, update, and prioritize Spec-Kit extensions
+- **Presets manager** — Browse, add, enable/disable, update, and prioritize Spec-Kit presets
+- **AI Integrations manager** — Install, switch, upgrade, and inspect Spec-Kit integrations (Claude Code, Copilot, etc.)
+- **Workflows manager** — Run, resume, and inspect active Spec-Kit workflows
 - **Live auto-refresh** — Watches `specs/` and `.specify/` and updates the dashboard automatically when files change on disk
-- **Custom layout editor** — Reorder, resize, and toggle visibility of panes; save as your own layout
 - **Spec / Plan / Tasks / Research browser** — Navigate `spec.md`, `plan.md`, `tasks.md`, `research.md` with rendered Markdown and task checkboxes
 - **Constitution viewer** — Read your project's `.specify/memory/constitution.md` from any screen
 - **Workflow stepper** — Visual stage tracker across `cons → spec → clar → plan → task → anly → impl` with task progress bar
+- **Session attach** — Suspend the TUI and hand off to a live tmux session; send follow-up messages inline
 - **Agent output pane** — Live tail of the tmux agent session with attach/refresh/kill controls
 - **CLI job output popup** — Dedicated scrollable view for spawned CLI job output
-- **Session attach** — Suspend the TUI and hand off to a live tmux session; send follow-up messages inline
 - **Command preview & confirm** — Mutating actions (install, remove, enable/disable, switch, run) show the exact CLI command and require confirmation, with a `--force` toggle for destructive ones
-- **Extensions manager** — Browse, add, enable/disable, update, and prioritize Spec-Kit extensions
-- **Presets manager** — Browse, add, enable/disable, update, and prioritize Spec-Kit presets
-- **Integrations manager** — Install, switch, upgrade, and inspect Spec-Kit integrations (GitHub, GitLab, etc.)
-- **Workflows manager** — Run, resume, and inspect active Spec-Kit workflows
 - **Command palette** — Quick-navigate and execute commands (`:` or `Ctrl-K`)
-- **Settings editor** — In-app settings: theme, accent, dashboard layout, mouse support, tmux prefix, and more
 - **Project-local settings override** — A project's `.spectatui/config.toml` takes precedence over your general config when present
+- **Multi-pane dashboard** — Overview, Coding, Audit, and Custom layouts (switch with `1`–`4`)
+- **Custom layout editor** — Reorder, resize, and toggle visibility of panes; save as your own layout
+- **Settings editor** — In-app settings: theme, accent, dashboard layout, mouse support, tmux prefix, and more
 - **Dark & light themes** — Toggle with `t`
 - **Accent palette** — Cycle through Indigo, Teal, and Amber with `T`
 - **Mouse support** — Optional click support for list rows, tabs, status-bar counters, and settings chips
+- **Cross-platform** — Runs on Linux, macOS, and Windows (x86_64 & ARM)
 
 ---
 
