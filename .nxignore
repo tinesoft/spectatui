@@ -1,0 +1,8 @@
+specs/
+design/
+.claude/
+.devcontainer/
+.husky/
+.specify/
+tools/
+.github/
