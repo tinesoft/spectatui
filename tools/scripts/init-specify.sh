@@ -11,7 +11,7 @@
 
 set -euo pipefail
 
-SPECIFY_VERSION="v0.11.2"
+SPECIFY_VERSION="v0.12.4"
 
 if ! command -v uv >/dev/null 2>&1; then
     echo "error: 'uv' is required but not found on PATH — see https://docs.astral.sh/uv/" >&2
