@@ -11,7 +11,7 @@
 
 </div>
 
-A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/tinesoft/speckit) — track features, manage specifications, integrations, presets, workflows, extensions and monitor AI agent workflows, all from your terminal.
+A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/github/spec-kit) — track features, manage specifications, integrations, presets, workflows, extensions and monitor AI agent workflows, all from your terminal.
 
 ---
 
