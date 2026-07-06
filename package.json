@@ -18,10 +18,12 @@
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
     "format": "nx format && cargo fmt --all",
+    "migrate": "nx migrate latest",
+    "run-migrations": "nx migrate --run-migrations --if-exists",
+    "upspecify": "bash tools/scripts/init-specify.sh",
     "ci": "pnpm install --frozen-lockfile",
     "reset": "nx reset && rm -rf dist",
     "release": "nx release",
-    "release:first": "nx release --first-release",
     "release:dry": "nx release --dry-run",
     "artifacts": "sh tools/scripts/build-artifacts.sh"
   },

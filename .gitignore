@@ -39,3 +39,4 @@ Thumbs.db
 
 # Specify
 .specify/**/.cache/
+.specify/**/*.manifest.json

@@ -1,14 +1,13 @@
 ---
-name: "speckit-converge"
+name: 'speckit-converge'
 description: "Assess the current codebase against the feature's spec, plan, and tasks, then append any remaining unbuilt work as new tasks to tasks.md so implement can complete it."
-compatibility: "Requires spec-kit project structure with .specify/ directory"
+compatibility: 'Requires spec-kit project structure with .specify/ directory'
 metadata:
-  author: "github-spec-kit"
-  source: "templates/commands/converge.md"
+    author: 'github-spec-kit'
+    source: 'templates/commands/converge.md'
 user-invocable: true
 disable-model-invocation: false
 ---
-
 
 ## User Input
 
@@ -27,34 +26,36 @@ You **MUST** consider the user input before proceeding (if not empty).
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
 - For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
+    - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
+    - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
-  - **Optional hook** (`optional: true`):
+    - **Optional hook** (`optional: true`):
 
-    ```text
-    ## Extension Hooks
+        ```text
+        ## Extension Hooks
 
-    **Optional Pre-Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
+        **Optional Pre-Hook**: {extension}
+        Command: `/{command}`
+        Description: {description}
 
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
+        Prompt: {prompt}
+        To execute: `/{command}`
+        ```
 
-  - **Mandatory hook** (`optional: false`):
+    - **Mandatory hook** (`optional: false`):
 
-    ```text
-    ## Extension Hooks
+        ```text
+        ## Extension Hooks
 
-    **Automatic Pre-Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
+        **Automatic Pre-Hook**: {extension}
+        Executing: `/{command}`
+        EXECUTE_COMMAND: {command}
 
-    Wait for the result of the hook command before proceeding to the Goal.
-    ```
+        Wait for the result of the hook command before proceeding to the Goal.
+        ```
+
+        After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
@@ -101,10 +102,10 @@ Run `.specify/scripts/bash/check-prerequisites.sh --json --require-tasks --inclu
 - PLAN = FEATURE_DIR/plan.md
 - TASKS = FEATURE_DIR/tasks.md
 - CONSTITUTION = `.specify/memory/constitution.md` (if present)
-If `spec.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
-prerequisite command to run (`/speckit-specify` for a missing spec, `/speckit-plan` for a missing plan,
-`/speckit-tasks` for missing tasks). Do not produce partial output.
-For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
+  If `spec.md`, `plan.md`, or `tasks.md` is missing, STOP with a clear, actionable message naming the
+  prerequisite command to run (`/speckit-specify` for a missing spec, `/speckit-plan` for a missing plan,
+  `/speckit-tasks` for missing tasks). Do not produce partial output.
+  For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
 ### 2. Load Artifacts (Progressive Disclosure)
 
@@ -185,9 +186,9 @@ Before appending anything, output a compact, severity-graded summary (no file wr
 
 ## Convergence Findings
 
-| ID | Gap Type | Severity | Source | Evidence | Remaining Work |
-|----|----------|----------|--------|----------|----------------|
-| F1 | missing  | HIGH     | FR-008 | Example: no append-only guard detected in path/to/module.py when writing tasks.md | Add append-only enforcement |
+| ID  | Gap Type | Severity | Source | Evidence                                                                          | Remaining Work              |
+| --- | -------- | -------- | ------ | --------------------------------------------------------------------------------- | --------------------------- |
+| F1  | missing  | HIGH     | FR-008 | Example: no append-only guard detected in path/to/module.py when writing tasks.md | Add append-only enforcement |
 
 **Summary metrics:**
 
@@ -209,17 +210,18 @@ Append to the **end** of `tasks.md`, per the append contract:
 3. Emit one checklist item per actionable finding, ordered CRITICAL/HIGH first, assigning
    zero-padded IDs `T{M+1:03d}, T{M+2:03d}, …`:
 
-   ```markdown
-   - [ ] T042 <imperative description> per <source-ref> (<gap-type>)
-   ```
+    ```markdown
+    - [ ] T042 <imperative description> per <source-ref> (<gap-type>)
+    ```
 
-   `<source-ref>` traces the task to its origin: e.g. `FR-003`, `SC-002`,
-   `US1/AC2`, `plan: storage decision`, `Constitution II`.
+    `<source-ref>` traces the task to its origin: e.g. `FR-003`, `SC-002`,
+    `US1/AC2`, `plan: storage decision`, `Constitution II`.
 
-   `<gap-type>` is one of `missing`, `partial`, `contradicts`, `unrequested`.
+    `<gap-type>` is one of `missing`, `partial`, `contradicts`, `unrequested`.
 
-   Constitution-violation tasks MUST be emitted first and described as
-   `CRITICAL`.
+    Constitution-violation tasks MUST be emitted first and described as
+    `CRITICAL`.
+
 4. Never reuse or renumber existing IDs. If a prior Convergence phase exists, add a new,
    separately-numbered one below it — do not touch the old one.
 
@@ -245,33 +247,35 @@ After producing the result, check if `.specify/extensions.yml` exists in the pro
 - If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally
 - Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
 - For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
-  - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
-  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
+    - If the hook has no `condition` field, or it is null/empty, treat the hook as executable
+    - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the HookExecutor implementation
 - Report the convergence outcome (`converged` or `tasks_appended`) in-session before listing
   any hooks, so users can decide whether to run optional follow-up commands.
 - When constructing slash commands from hook command names, replace dots (`.`) with hyphens (`-`). For example, `speckit.git.commit` → `/speckit-git-commit`.
 - For each executable hook, output the following based on its `optional` flag:
-  - **Optional hook** (`optional: true`):
+    - **Optional hook** (`optional: true`):
 
-    ```text
-    ## Extension Hooks
+        ```text
+        ## Extension Hooks
 
-    **Optional Hook**: {extension}
-    Command: `/{command}`
-    Description: {description}
+        **Optional Hook**: {extension}
+        Command: `/{command}`
+        Description: {description}
 
-    Prompt: {prompt}
-    To execute: `/{command}`
-    ```
+        Prompt: {prompt}
+        To execute: `/{command}`
+        ```
 
-  - **Mandatory hook** (`optional: false`):
+    - **Mandatory hook** (`optional: false`):
 
-    ```text
-    ## Extension Hooks
+        ```text
+        ## Extension Hooks
 
-    **Automatic Hook**: {extension}
-    Executing: `/{command}`
-    EXECUTE_COMMAND: {command}
-    ```
+        **Automatic Hook**: {extension}
+        Executing: `/{command}`
+        EXECUTE_COMMAND: {command}
+        ```
+
+        After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
