@@ -80,7 +80,7 @@ BIN_PATH="${BIN_DIR}/${BIN_NAME}"
 
 # ── read version ──────────────────────────────────────────────────────────────
 
-VERSION="$(grep '^version' crates/spectatui/Cargo.toml | head -1 | sed 's/.*= *"\(.*\)"/\1/')"
+VERSION="$(grep '^version' crates/spectatui/Cargo.toml | head -1 | sed -E "s/^version[[:space:]]*=[[:space:]]*[\"']([^\"']*)[\"'].*/\1/")"
 
 # ── package ───────────────────────────────────────────────────────────────────
 
