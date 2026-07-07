@@ -14,6 +14,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_TARGET_DIR: target
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
   # ── 1. Test the exact tree being released ─────────────────────────────────────
@@ -34,12 +35,25 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
+            dist/target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Test
-        run: cargo test --workspace
+        run: pnpm nx run-many -t test
 
   # ── 2. Version bump, changelog, tag ───────────────────────────────────────────
   version:

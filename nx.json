@@ -2,18 +2,32 @@
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
   "defaultBase": "develop",
   "namedInputs": {
-    "default": ["{projectRoot}/**/*"],
-    "production": ["default", "!{projectRoot}/**/*.spec.rs"]
+    "default": ["{projectRoot}/**/*", "sharedGlobals"],
+    "sharedGlobals": [
+      "{workspaceRoot}/Cargo.toml",
+      "{workspaceRoot}/Cargo.lock"
+    ]
   },
   "targetDefaults": {
     "build": {
-      "cache": true
+      "cache": true,
+      "inputs": ["default", "^default"]
     },
     "test": {
-      "cache": true
+      "cache": true,
+      "inputs": ["default", "^default"]
     },
     "lint": {
-      "cache": true
+      "cache": true,
+      "inputs": ["default", "^default"]
+    },
+    "check": {
+      "cache": true,
+      "inputs": ["default", "^default"]
+    },
+    "fmt": {
+      "cache": true,
+      "inputs": ["default", "^default"]
     }
   },
   "plugins": ["@monodon/rust"],
@@ -40,5 +54,9 @@
       "push": true
     }
   },
-  "analytics": false
+  "analytics": false,
+  "tui": {
+    "autoExit": true
+  },
+  "nxCloudId": "6a4c1b257e59d45188ffaac0"
 }

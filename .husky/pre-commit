@@ -1,2 +1,2 @@
 pnpm exec lint-staged
-pnpm test
+pnpm exec nx affected -t test

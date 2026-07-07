@@ -14,7 +14,6 @@
     "test": {
       "cache": true,
       "executor": "@monodon/rust:test",
-      "outputs": ["{options.target-dir}"],
       "options": {
         "target-dir": "dist/target/spectatui-core"
       },
@@ -25,9 +24,23 @@
     "lint": {
       "cache": true,
       "executor": "@monodon/rust:lint",
-      "outputs": ["{options.target-dir}"],
+      "options": {
+        "target-dir": "dist/target/spectatui-core",
+        "args": ["-D", "warnings"]
+      }
+    },
+    "check": {
+      "cache": true,
+      "executor": "@monodon/rust:check",
       "options": {
         "target-dir": "dist/target/spectatui-core"
+      }
+    },
+    "fmt": {
+      "cache": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "cargo fmt -p spectatui-core -- --check"
       }
     }
   },

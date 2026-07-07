@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
 
 jobs:
   check:
@@ -29,14 +30,27 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Check
-        run: cargo check --workspace
+        run: pnpm nx run-many -t check
 
       - name: Test
-        run: cargo test --workspace
+        run: pnpm nx run-many -t test
 
       - name: Clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: pnpm nx run-many -t lint
 
   fmt:
     name: Format
@@ -49,8 +63,21 @@ jobs:
         with:
           components: rustfmt
 
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Check formatting
-        run: cargo fmt --all -- --check
+        run: pnpm nx run-many -t fmt
 
   # Husky's commit-msg hook is bypassed by GitHub UI merges; a non-conventional
   # message on main would silently produce no version bump at release time.
