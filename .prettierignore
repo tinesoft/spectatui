@@ -5,6 +5,7 @@
 /.nx/workspace-data
 
 # Spec-kit managed content and reference material - not formatted by prettier
+.claude/skills/speckit-*
 /specs
 /.specify
 /design
