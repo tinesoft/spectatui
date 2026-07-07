@@ -54,9 +54,11 @@
         // Git tools
         "mhutchie.git-graph",
         "eamodio.gitlens",
-        // IDE tools
-        "anweber.reveal-button",
-        "mutantdino.resourcemonitor"
+        // Nx dev tools
+        "nrwl.angular-console",
+        // Rust tools
+        "rust-lang.rust-analyzer",
+        "fill-labs.dependi"
       ],
       "settings": {
         "debug.javascript.autoAttachFilter": "disabled",
