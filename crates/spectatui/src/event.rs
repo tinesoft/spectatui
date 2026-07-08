@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crossterm::event::{self, Event as CtEvent, KeyEvent, MouseEvent};
+use crossterm::event::{self, Event as CtEvent, KeyEvent, KeyEventKind, MouseEvent};
 use tokio::sync::mpsc;
 
 use spectatui_core::speckit::watch::FsEvent;
@@ -43,7 +43,9 @@ impl EventStream {
                 if event::poll(tick_rate).unwrap_or(false) {
                     match event::read() {
                         Ok(CtEvent::Key(key)) => {
-                            if tx_clone.send(AppEvent::Key(key)).is_err() {
+                            if key.kind == KeyEventKind::Press
+                                && tx_clone.send(AppEvent::Key(key)).is_err()
+                            {
                                 return;
                             }
                         }
