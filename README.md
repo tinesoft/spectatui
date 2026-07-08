@@ -211,6 +211,18 @@ Options:
 
 ---
 
+## ⭐️ Star History
+
+<a href="https://www.star-history.com/?repos=tinesoft%2Fspectatui&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tinesoft/spectatui&type=date&theme=dark&legend=top-left&sealed_token=THzzX8bIFtyKCJOc35qOaciDDjzwpYwbhwnOWQNb4k9YXBkBHV3R7UEzLUBxyRefPMroPZ-M3Qqyam2Njm0Fy37P8KY0Ofpl9itcX8HeEK_dPAW9Vn8YRMx65R-cMraAaAx8Xj7SuIKEPNLmUS5IJbZ1F6AP9-FAB4yMCNoU_VBUie-WHw87Xhhwz8D-" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tinesoft/spectatui&type=date&legend=top-left&sealed_token=THzzX8bIFtyKCJOc35qOaciDDjzwpYwbhwnOWQNb4k9YXBkBHV3R7UEzLUBxyRefPMroPZ-M3Qqyam2Njm0Fy37P8KY0Ofpl9itcX8HeEK_dPAW9Vn8YRMx65R-cMraAaAx8Xj7SuIKEPNLmUS5IJbZ1F6AP9-FAB4yMCNoU_VBUie-WHw87Xhhwz8D-" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tinesoft/spectatui&type=date&legend=top-left&sealed_token=THzzX8bIFtyKCJOc35qOaciDDjzwpYwbhwnOWQNb4k9YXBkBHV3R7UEzLUBxyRefPMroPZ-M3Qqyam2Njm0Fy37P8KY0Ofpl9itcX8HeEK_dPAW9Vn8YRMx65R-cMraAaAx8Xj7SuIKEPNLmUS5IJbZ1F6AP9-FAB4yMCNoU_VBUie-WHw87Xhhwz8D-" />
+ </picture>
+</a>
+
+---
+
 ## 🤝 Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, git workflow, and commit conventions.
