@@ -101,6 +101,11 @@ jobs:
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # nx release commits the version bump/changelog itself; skip husky's
+          # pre-commit hook here since the "test" job already gated this commit,
+          # and its `nx affected` diff would fail anyway (no local `develop` ref
+          # in this checkout).
+          HUSKY: 0
         run: tools/scripts/check-release.sh
 
   # ── 3. Build release binaries for all targets ─────────────────────────────────
