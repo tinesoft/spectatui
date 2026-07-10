@@ -141,24 +141,35 @@ The status bar's **workflows** count means installed automation workflows from
    per-user-story phases).
 3. **Constitution viewer** — `.specify/memory/constitution.md`, always one
    keypress away regardless of which feature is selected.
-4. **Extensions & presets manager** — search catalogs, view installed/available
-   items with full detail, install, remove, enable/disable, reprioritize — all
-   by shelling out to `specify extension *` / `specify preset *` (§1.5, §5).
-   Catalog management included.
-5. **Integrations manager** — list installed/available coding-agent
+4. **Extensions manager** — search catalogs, view installed/available
+   extensions with full detail, install, remove, enable/disable, reprioritize —
+   all by shelling out to `specify extension *` (§1.5, §5). Catalog *sources*
+   are managed in the unified catalog manager (item 12).
+5. **Presets manager** — search catalogs, view installed/available presets with
+   full detail, install, remove, enable/disable, reprioritize — all by shelling
+   out to `specify preset *` (§1.5, §5). Catalog *sources* are managed in the
+   unified catalog manager (item 12).
+6. **Integrations manager** — list installed/available coding-agent
    integrations, install/uninstall/switch/use-default, upgrade, and check drift
    via `integration status --json`, all via `specify integration *` (§5) — a
    deliberately different action model from extensions/presets.
-6. **Automation workflows manager** — list, run, resume, and check status of
+7. **Automation workflows manager** — list, run, resume, and check status of
    `specify workflow` pipelines (§1.6, §5) — distinct from the lifecycle
    timeline below.
-7. **Lifecycle timeline** — constitution → specify → clarify → plan → tasks →
+8. **Lifecycle timeline** — constitution → specify → clarify → plan → tasks →
    analyze → checklist → implement, per feature, inferred from which files exist.
-8. **Live agent view** — tail of the tmux pane running the agent for the
+9. **Live agent view** — tail of the tmux pane running the agent for the
    selected feature, with a one-key jump to a fully attached session.
-9. **Customizable layout** — show/hide panes, rearrange them, switch between
-   layout presets; persisted between runs.
-10. **Theming** — dark / light themes and an accent palette, persisted.
+10. **Customizable layout** — show/hide panes, rearrange them, switch between
+    layout presets; persisted between runs.
+11. **Theming** — dark / light themes and an accent palette, persisted.
+12. **Unified catalog manager** — a single popup to manage catalog *sources* for
+    all four resource kinds — extensions, presets, integrations, and workflows —
+    tabbed by kind, with add / remove / reprioritize / toggle install-vs-discovery
+    on each source, every edit shelling out to `specify <kind> catalog *`
+    (§5, §6.5). Reachable from the **catalogs** status-bar stat, `c` from
+    anywhere, or the "Manage Catalogs" command-palette entry. Catalog sources are
+    no longer buried inside the individual extensions/presets manager.
 
 ## 3. High-level architecture
 
@@ -307,10 +318,11 @@ can call `specify integration status --json` for the richer drift view.
 `WorkflowInfo` is populated from `specify workflow list`. The registry files are
 read-only input to spectatui's display — never written by spectatui.
 
-The persistent status bar (§6.5) shows five counts, derived directly from this
+The persistent status bar (§6.5) shows six counts, derived directly from this
 model: integrations (`installed == true`), features (`features.len()`),
-extensions and presets (`status != Available`), and workflows
-(`installed == true`).
+extensions and presets (`status != Available`), workflows
+(`installed == true`), and catalogs (total catalog sources across all four
+resource kinds).
 
 ## 5. CLI action model
 
@@ -321,8 +333,16 @@ different command verbs, so they get dedicated action variants rather than a
 third `CliTarget`. All of them live in one `CliAction` enum
 (`crates/spectatui-core/src/speckit/cli.rs`).
 
+Catalog-source management is the one concern that cuts across all four resource
+kinds: extensions, presets, integrations, and workflows each resolve their
+installable items from one or more catalog sources. So the `Catalog*` actions are
+parameterized by their own `CatalogTarget` (all four kinds), and spectatui
+surfaces them through a single unified catalog popup (§6.5) — tabbed by kind —
+rather than burying catalog management inside each individual manager.
+
 ```rust
 enum CliTarget { Extension, Preset }
+enum CatalogTarget { Extension, Preset, Integration, Workflow }  // catalog sources exist for all four
 
 enum CliAction {
     // Extension / preset (CliTarget-parameterized)
@@ -336,9 +356,11 @@ enum CliAction {
     SetPriority { target: CliTarget, id: String, priority: u8 },
     Update { target: CliTarget, id: Option<String> },   // extension-only in practice — presets have no update
     Resolve { name: String },                           // preset-only
-    CatalogList { target: CliTarget },
-    CatalogAdd { target: CliTarget, url: String, name: String, priority: Option<u8> },
-    CatalogRemove { target: CliTarget, name: String },
+
+    // Catalog sources — one action set spanning all four resource kinds (§6.5 unified popup)
+    CatalogList { target: CatalogTarget },
+    CatalogAdd { target: CatalogTarget, url: String, name: String, priority: Option<u8> },
+    CatalogRemove { target: CatalogTarget, name: String },
 
     // Integrations (install-state / active-default semantics)
     IntegrationList,
@@ -505,34 +527,38 @@ subject to show/hide/reorder:
    screen/pane currently has focus.
 3. **Status bar** — left-aligned counts, each preceded by a small icon, of
    what's in the current project: **integrations, features, extensions, presets,
-   workflows**. Each is clickable (mouse, plus a single-letter fallback —
-   `i`/`f`/`e`/`p`/`w` — for SSH/tmux without mouse passthrough) and opens the
-   matching popup. Right-aligned: a gear icon (`s`) opening the Settings screen.
-   This bar is always present, similar to status lines in k9s or lazygit.
+   workflows, catalogs**. Each is clickable (mouse, plus a single-letter fallback
+   — `i`/`f`/`e`/`p`/`w`/`c` — for SSH/tmux without mouse passthrough) and opens
+   the matching popup. Right-aligned: a gear icon (`s`) opening the Settings
+   screen. This bar is always present, similar to status lines in k9s or lazygit.
 
 ### Status bar popups
 
 Selecting a status-bar stat opens a centered overlay popup
-(`PopupKind`: `Integrations`, `Extensions`, `Presets`, `Features`, `Workflows`,
+(`PopupKind`: `Integrations`, `Extensions`, `Presets`, `Features`, `Workflows`, `Catalogs`,
 plus `Help`, `QuitConfirm`, `CommandPalette`, `CliConfirm`, `CliOutput`):
 
 | Status bar item | Popup content |
 |---|---|
 | integrations | The Integration manager (§5) — list (with `--catalog` toggle), info, install, uninstall, switch, use-default, upgrade, status drift-check. Genuinely different action set from extensions/presets. |
 | features | List of features/sessions (same data as the dashboard sidebar), for quick jump-to without leaving the current screen. |
-| extensions | The full Extensions manager (§5) — search, info, add, remove, enable/disable, set-priority, update, catalog management. |
+| extensions | The full Extensions manager (§5) — search, info, add, remove, enable/disable, set-priority, update. Catalog *sources* now live in the unified catalog popup (see **catalogs**, below), not here. |
 | presets | The full Presets manager (§5) — same shape as extensions, minus `update`, plus `resolve`. |
 | workflows | The Automation Workflow manager (§5) — list, info, run, resume, status/run-history, add, remove. Resolved meaning per §1.6 — `specify workflow` pipelines, not active features/sessions. |
+| catalogs | The unified **Catalog manager** (§5) — one popup, tabbed across all four resource kinds (extensions · presets · integrations · workflows). List / add / remove / reprioritize / toggle install-vs-discovery on any catalog source, each shelling out to `specify <kind> catalog *`. Reachable from this stat, `c` from anywhere, or "Manage Catalogs" in the palette. |
 
 **Architectural point**: popups aren't a separate UI implementation. The
 extensions/presets popup renders the exact same widget function as the
 `ExtensionsPresets` pane; the integrations, workflows, and features popups reuse
 the same widgets as their managers — only the framing differs (overlay box vs.
-docked pane), via ratatui's `Clear` widget plus a centered `Rect`.
+docked pane), via ratatui's `Clear` widget plus a centered `Rect`. The catalog
+popup is likewise one shared widget parameterized by `CatalogTarget` and
+tab-switched across the four kinds — a single unified manager, not four separate
+catalog screens.
 
 ```rust
 enum PopupKind {
-    Integrations, Extensions, Presets, Features, Workflows,
+    Integrations, Extensions, Presets, Features, Workflows, Catalogs,
     Help, QuitConfirm, CommandPalette, CliConfirm, CliOutput,
 }
 ```
@@ -546,9 +572,9 @@ the dashboard, the spec browser, or anywhere else behaves identically.
 ### Command palette
 
 A fuzzy command palette (`:` or `Ctrl+K`) lists every navigation/action command
-(go to screens, open manager popups, switch layout presets, toggle theme, cycle
-accent, attach session) with type-to-filter — a keyboard-first route to anything
-reachable from the chrome.
+(go to screens, open manager popups — including **Manage Catalogs** — switch
+layout presets, toggle theme, cycle accent, attach session) with type-to-filter
+— a keyboard-first route to anything reachable from the chrome.
 
 ### Settings
 

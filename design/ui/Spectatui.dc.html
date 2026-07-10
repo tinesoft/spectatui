@@ -42,6 +42,8 @@
 <div class="term-wrap" style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#070708;overflow:hidden;font-family:'JetBrains Mono',ui-monospace,monospace;">
   {{ screenEl }}
 </div>
+
+<!-- imported design -->
 </x-dc>
 <script type="text/x-dc" data-dc-script>
 const COLS = 132, ROWS = 40;
@@ -118,6 +120,27 @@ const PRESETS = [
   {id:'academic',     name:'Academic',     ver:'1.0.0', status:'available',prio:null,cmds:6, src:'catalog · community', by:'lab-research',desc:'Citation blocks, hypothesis/method framing for research-driven specs.'},
 ];
 
+const CATALOG_SOURCES = {
+  extensions: [
+    {name:'default',   url:'https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.json',           prio:10, installAllowed:true},
+    {name:'community', url:'https://raw.githubusercontent.com/github/spec-kit/main/extensions/catalog.community.json', prio:10, installAllowed:true},
+  ],
+  presets: [
+    {name:'default',   url:'https://raw.githubusercontent.com/github/spec-kit/main/presets/catalog.json',           prio:1, installAllowed:true},
+    {name:'community', url:'https://raw.githubusercontent.com/github/spec-kit/main/presets/catalog.community.json', prio:2, installAllowed:false},
+  ],
+  integrations: [
+    {name:'default',       url:'https://raw.githubusercontent.com/github/spec-kit/main/integrations/catalog.json', prio:1, installAllowed:true},
+    {name:'acme-internal', url:'https://tools.acme.dev/spec-kit/integrations.json',                                prio:5, installAllowed:true},
+  ],
+  workflows: [
+    {name:'default',   url:'https://raw.githubusercontent.com/github/spec-kit/main/workflows/catalog.json',           prio:1, installAllowed:true},
+    {name:'community', url:'https://raw.githubusercontent.com/github/spec-kit/main/workflows/catalog.community.json', prio:2, installAllowed:true},
+  ],
+};
+const CATALOG_TYPES = ['extensions','presets','integrations','workflows'];
+const CAT_TGT = {extensions:'extension',presets:'preset',integrations:'integration',workflows:'workflow'};
+
 const AGENT_SCRIPT = [
   [['● ','good'],['Read ','fg'],['specs/001-taskify/tasks.md','info']],
   [['  ','fg'],['parsed 14 tasks · 9 complete · 2 [P] parallel','dim']],
@@ -138,6 +161,7 @@ class Component extends DCLogic {
       tailFollow:'on', mouseSupport:'on', confirmForce:'always', tmuxPrefix:'spectatui-', configPath:'./.spectatui.toml',
       screen:'dashboard', focus:0, feat:0, setSel:0, editing:null,
       extTab:'extensions', extSel:0, extScroll:0,
+      catSel:0, catAdd:null, catTab:'extensions',
       specTab:'spec', scroll:0,
       popup:null, palQuery:'', palSel:0, cliLines:[], cliStatus:'pending', cliCmd:'',
       tailN:4, leSel:0, intSel:0, wfSel:0, flt:'', fltOn:false,
@@ -304,10 +328,12 @@ class Component extends DCLogic {
     else if(p && p.kind==='cli') hints=[['esc','close & refresh']];
     else if(p && p.kind==='integrations') hints=[['↑↓','select'],['/','filter'],['i','install'],['x','uninstall'],['d','default'],['s','switch'],['esc','close']];
     else if(p && p.kind==='workflows') hints=[['↑↓','select'],['/','filter'],['r','run'],['s','status'],['a','add'],['esc','close']];
-    else if(p && p.kind==='extPresets') hints=[['tab','ext/presets'],['↑↓','select'],['/','filter'],['a','add'],['x','remove'],['esc','close']];
+    else if(p && p.kind==='extPresets') hints=[['tab','ext/presets'],['↑↓','select'],['/','filter'],['a','add'],['x','remove'],['c','catalogs'],['esc','close']];
+    else if(p && p.kind==='catalogs' && this.state.catAdd!=null) hints=[['type','url name [priority]'],['enter','add'],['esc','cancel']];
+    else if(p && p.kind==='catalogs') hints=[['tab','catalog type'],['↑↓','select'],['a','add'],['x','remove'],['r','refresh'],['esc','back']];
     else if(p && p.kind==='features') hints=[['↑↓','select'],['enter','jump to feature'],['esc','close']];
     else if(p) hints=[['↑↓','navigate'],['enter','select'],['esc','close']];
-    else if(this.state.screen==='extensions') hints=[['tab','ext/presets'],['↑↓','select'],['a','add'],['x','remove'],['e/d','enable'],['/','search'],['esc','back']];
+    else if(this.state.screen==='extensions') hints=[['tab','ext/presets'],['↑↓','select'],['a','add'],['x','remove'],['e/d','enable'],['c','catalogs'],['/','search'],['esc','back']];
     else if(this.state.screen==='spec') hints=[['tab','switch doc'],['↑↓','scroll'],['esc','back']];
     else if(this.state.screen==='layouteditor') hints=[['↑↓','select pane'],['space','show/hide'],['< >','reorder'],['+ -','resize'],['enter','apply'],['esc','back']];
     else if(this.state.screen==='constitution'||this.state.screen==='settings') hints=[['↑↓','navigate'],['enter','toggle'],['esc','back']];
@@ -331,6 +357,7 @@ class Component extends DCLogic {
       ['◰', en(EXTENSIONS),'extensions','e',()=>this.openPopup('extensions')],
       ['≣', en(PRESETS),'presets','p',()=>this.openPopup('presets')],
       ['◷', WORKFLOWS.filter(w=>w.installed).length,'workflows','w',()=>this.openPopup('workflows')],
+      ['⧉', CATALOG_TYPES.reduce((a,t)=>a+CATALOG_SOURCES[t].length,0),'catalogs','c',()=>this.openCatalogs(this.state.catTab||'extensions')],
     ];
     let x=2;
     for(const [ic,n,label,key,fn] of stats){
@@ -817,6 +844,7 @@ class Component extends DCLogic {
     this.setState({popup:{kind}, palSel:0, intSel:0, wfSel:0, fltOn:false, flt:''});
   }
   go(screen){ this.setState({screen, popup:null, focus:0, scroll:0, fltOn:false, flt:''}); }
+  openCatalogs(type){ this.setState({popup:{kind:'catalogs'}, catTab:(CATALOG_TYPES.indexOf(type)>=0?type:(this.state.catTab||'extensions')), catSel:0, catAdd:null}); }
 
   centeredBox(w,h,title){
     const C=k=>this.C(k);
@@ -942,6 +970,67 @@ class Component extends DCLogic {
       this.fill(x,y,w,h,C('panel'));
       this.drawExtManager({x,y,w,h},true,false,!!p.single);
     }
+    else if(p.kind==='catalogs'){
+      const w=Math.min(108,COLS-6), h=Math.min(30,ROWS-6);
+      const x=Math.floor((COLS-w)/2), y=Math.floor((ROWS-h)/2);
+      for(let j=0;j<ROWS;j++)for(let i=0;i<COLS;i++){ const c=this.buf[j][i]; c.fg=this.dimHex(c.fg,this.state.theme==='dark'?0.45:0.55); }
+      this.fill(x,y,w,h,C('panel'));
+      const list=this.curCatalogList();
+      const total=CATALOG_TYPES.reduce((a,t)=>a+CATALOG_SOURCES[t].length,0);
+      this.box(x,y,w,h,`Catalogs  ·  ${total} sources across 4 types`,C('accent'),{titleFg:C('accent'),bold:true});
+      let top;
+      const adding=(this.state.catAdd!=null);
+      if(adding){
+        this.fill(x+3,y+2,w-6,1,C('panelAlt'));
+        const catPfx='Add '+CAT_TGT[this.state.catTab]+' catalog:  ';
+        this.text(x+4,y+2,catPfx+this.state.catAdd+'█',C('fg'),C('panelAlt'),true);
+        this.text(x+4+catPfx.length,y+3,'url name [priority] · enter to add · esc to cancel',C('faint'));
+        top=y+5;
+      } else {
+        let tx=x+3;
+        CATALOG_TYPES.forEach(t=>{
+          const act=this.state.catTab===t;
+          const lbl={extensions:'Extensions',presets:'Presets',integrations:'Integrations',workflows:'Workflows'}[t];
+          const tstr=` ${lbl} ${CATALOG_SOURCES[t].length} `;
+          this.text(tx,y+2,tstr,act?C('accent'):C('dim'),act?C('panelAlt'):null,act);
+          this.reg(tx,y+2,tstr.length,1,()=>this.setState({catTab:t,catSel:0}));
+          tx+=tstr.length+1;
+        });
+        top=y+4;
+      }
+      const divTop=top-1;
+      const listW=Math.floor(w*0.46);
+      list.forEach((s,i)=>{
+        const ry=top+i; if(ry>=y+h-2)return;
+        const sel=(i===this.state.catSel);
+        if(sel){ this.fill(x+1,ry,listW-1,1,C('sel')); this.put(x+1,ry,'▌',C('accent'),C('sel')); }
+        const bg=sel?C('sel'):null;
+        this.put(x+3,ry,s.installAllowed?'●':'○',s.installAllowed?C('good'):C('faint'),bg);
+        this.text(x+5,ry,this.clip(s.name,listW-12),sel?C('selFg'):C('fg'),bg,sel);
+        this.text(x+listW-6,ry,s.prio!=null?('p'+s.prio):'—',C('dim'),bg);
+        this.reg(x+1,ry,listW-1,1,()=>this.setState({catSel:i}));
+      });
+      const dx=x+listW+1, dw=w-listW-2;
+      for(let j=divTop;j<y+h-1;j++) this.put(dx-1,j,'│',C('border'));
+      const s=list[this.state.catSel];
+      if(s){
+        let dyy=top;
+        this.text(dx+1,dyy,this.clip(s.name,dw-2),C('fg'),null,true);
+        this.text(dx+1+Math.min(s.name.length,dw-2),dyy,'  ·  '+CAT_TGT[this.state.catTab]+' catalog',C('faint'));
+        dyy+=2;
+        { const uw=Math.max(8,dw-2); for(let ci=0;ci<s.url.length;ci+=uw){ this.text(dx+1,dyy,s.url.slice(ci,ci+uw),C('dim')); dyy+=1; } } dyy+=1;
+        this.text(dx+1,dyy,'priority ',C('faint')); this.text(dx+10,dyy,s.prio!=null?String(s.prio):'not set',C('dim')); dyy+=1;
+        this.put(dx+1,dyy,s.installAllowed?'●':'○',s.installAllowed?C('good'):C('faint'));
+        this.text(dx+3,dyy,s.installAllowed?'install allowed':'discovery only',s.installAllowed?C('good'):C('faint')); dyy+=2;
+        this.text(dx+1,dyy,'Actions',C('dim'),null,true); dyy+=1;
+        [['a','add source'],['x','remove source'],['r','refresh']].forEach(([key,lbl])=>{ this.text(dx+1,dyy,'['+key+'] ',C('accent'),null,true); this.text(dx+5,dyy,lbl,C('fg')); dyy+=1; });
+      }
+      if(!adding){
+        const fh=[['tab','switch type'],['↑↓','select'],['esc','close']];
+        let fx=x+3; const fy=y+h-2;
+        fh.forEach(([kk,dd],fi)=>{ this.text(fx,fy,kk,C('accent'),null,true); fx+=kk.length+1; this.text(fx,fy,dd,C('dim')); fx+=dd.length; if(fi<fh.length-1){ this.text(fx,fy,'  ·  ',C('faint')); fx+=5; } });
+      }
+    }
     else if(p.kind==='palette'){
       const cmds=this.paletteCmds();
       const w=64,h=Math.min(cmds.length+6,ROWS-4); const b=this.centeredBox(w,h,'Command Palette');
@@ -1008,6 +1097,7 @@ class Component extends DCLogic {
       {label:'Manage Extensions', hint:'e', run:()=>this.openPopup('extensions')},
       {label:'Manage Presets', hint:'p', run:()=>this.openPopup('presets')},
       {label:'Manage Workflows', hint:'w', run:()=>this.openPopup('workflows')},
+      {label:'Manage Catalogs', hint:'c', run:()=>this.openCatalogs('extensions')},
       {label:'Open Settings', hint:'⚙', run:()=>this.go('settings')},
       {label:'Layout: Overview', hint:'1', run:()=>this.setState({layout:'overview',screen:'dashboard',popup:null,focus:0})},
       {label:'Layout: Coding', hint:'2', run:()=>this.setState({layout:'coding',screen:'dashboard',popup:null,focus:0})},
@@ -1199,6 +1289,16 @@ class Component extends DCLogic {
       if(action==='info') return `specify workflow info ${id}`;
       return '';
     }
+    if(action==='catalog-add'){
+      const tgt=CAT_TGT[this.state.catTab];
+      const [url,name,prio]=(o.addInput||'').trim().split(/\s+/);
+      return `specify ${tgt} catalog add ${url||''} --name ${name||''}`+(prio?` --priority ${prio}`:'');
+    }
+    if(action==='catalog-remove'){
+      const tgt=CAT_TGT[this.state.catTab];
+      const src=this.curCatalogList()[this.state.catSel];
+      return `specify ${tgt} catalog remove ${src?src.name:''}`;
+    }
     const e=this.curExtListFiltered()[this.state.extSel];
     const tgt=this.state.extTab==='extensions'?'extension':'preset';
     if(action==='add') return `specify ${tgt} add ${e.id}`;
@@ -1236,6 +1336,24 @@ class Component extends DCLogic {
       }
       if(p.kind==='cli'){ if(k==='Escape'){ stop(); clearInterval(this._cliTimer); this.setState({popup:null}); } return; }
       if(p.kind==='extPresets'){ if(this.searchKeys(k,stop,'extSel')) return; this.extKeys(k,stop,true); if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); } return; }
+      if(p.kind==='catalogs'){
+        if(st.catAdd!=null){
+          if(k==='Escape'){ stop(); this.setState({catAdd:null}); return; }
+          if(k==='Enter'){ stop(); const input=st.catAdd; this.setState({catAdd:null},()=>{ this.setState({popup:{kind:'confirm',action:'catalog-add',force:false},cliCmd:this.buildCmd('catalog-add',{addInput:input})}); }); return; }
+          if(k==='Backspace'){ stop(); this.setState({catAdd:st.catAdd.slice(0,-1)}); return; }
+          if(k.length===1){ stop(); this.setState({catAdd:st.catAdd+k}); return; }
+          return;
+        }
+        const list=this.curCatalogList();
+        if(k==='Escape'){ stop(); this.setState({popup:null}); return; }
+        if(k==='Tab'){ stop(); const ci=CATALOG_TYPES.indexOf(st.catTab); const d=e.shiftKey?-1:1; this.setState({catTab:CATALOG_TYPES[(ci+d+CATALOG_TYPES.length)%CATALOG_TYPES.length],catSel:0}); return; }
+        if(k==='ArrowDown'||k==='j'){ stop(); this.setState({catSel:Math.min(list.length-1,st.catSel+1)}); return; }
+        if(k==='ArrowUp'||k==='k'){ stop(); this.setState({catSel:Math.max(0,st.catSel-1)}); return; }
+        if(k==='a'){ stop(); this.setState({catAdd:''}); return; }
+        if(k==='x'&&list[st.catSel]){ stop(); this.setState({popup:{kind:'confirm',action:'catalog-remove',force:false},cliCmd:this.buildCmd('catalog-remove')}); return; }
+        if(k==='r'){ stop(); return; }
+        return;
+      }
       if(p.kind==='integrations'){
         if(this.searchKeys(k,stop,'intSel')) return;
         const list=this.applyFilter(INTEGRATIONS), it=list[st.intSel];
@@ -1291,6 +1409,7 @@ class Component extends DCLogic {
     if(k==='i'){ stop(); this.openPopup('integrations'); return; }
     if(k==='w'){ stop(); this.openPopup('workflows'); return; }
     if(k==='f'){ stop(); this.openPopup('features'); return; }
+    if(k==='c'){ stop(); this.openCatalogs(this.state.catTab||'extensions'); return; }
     if(k==='Escape'){ stop(); if(st.screen!=='dashboard') this.go('dashboard'); return; }
 
     if(st.screen==='dashboard'){
@@ -1369,8 +1488,12 @@ class Component extends DCLogic {
     if(k==='u'&&e.status!=='available'&&st.extTab==='extensions'){ stop(); this.setState({popup:{kind:'confirm',action:'update',force:false},cliCmd:this.buildCmd('update')}); return; }
     if(k==='p'&&e.status!=='available'){ stop(); this.setState({popup:{kind:'confirm',action:'set-priority',force:false},cliCmd:this.buildCmd('set-priority')}); return; }
     if(k==='r'&&e.status!=='available'&&st.extTab==='presets'){ stop(); this.startCli(this.buildCmd('resolve'),false); return; }
+    if(k==='c'){ stop(); this.openCatalogs(st.extTab); return; }
     if(k==='Escape'&&!inPopup){ stop(); this.go('dashboard'); return; }
   }
+
+  // ---- catalog sources (nested under Extensions/Presets, opened with 'c') ----
+  curCatalogList(){ return CATALOG_SOURCES[this.state.catTab]; }
 
   onClick(e){
     const termW=COLS*this.cellW, termH=ROWS*this.cellH;
