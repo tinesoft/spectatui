@@ -161,7 +161,7 @@ class Component extends DCLogic {
       tailFollow:'on', mouseSupport:'on', confirmForce:'always', tmuxPrefix:'spectatui-', configPath:'./.spectatui.toml',
       screen:'dashboard', focus:0, feat:0, setSel:0, editing:null,
       extTab:'extensions', extSel:0, extScroll:0,
-      catSel:0, catAdd:null, catTab:'extensions',
+      catSel:0, catAdd:null, catAddCursor:0, catTab:'extensions',
       specTab:'spec', scroll:0,
       popup:null, palQuery:'', palSel:0, cliLines:[], cliStatus:'pending', cliCmd:'',
       tailN:4, leSel:0, intSel:0, wfSel:0, flt:'', fltOn:false,
@@ -183,9 +183,11 @@ class Component extends DCLogic {
     this._key = (e)=>this.onKey(e);
     this._rsz = ()=>{ this.fit(); this.forceUpdate(); };
     this._clk = (e)=>this.onClick(e);
+    this._paste = (e)=>this.onPaste(e);
     window.addEventListener('keydown', this._key);
     window.addEventListener('resize', this._rsz);
     window.addEventListener('mousedown', this._clk);
+    window.addEventListener('paste', this._paste);
     this.fit();
     if(document.fonts && document.fonts.ready){ document.fonts.ready.then(()=>{ this.fit(); this.forceUpdate(); }); }
     this._tail = setInterval(()=>{
@@ -202,6 +204,7 @@ class Component extends DCLogic {
     window.removeEventListener('keydown', this._key);
     window.removeEventListener('resize', this._rsz);
     window.removeEventListener('mousedown', this._clk);
+    window.removeEventListener('paste', this._paste);
     clearInterval(this._tail);
     clearInterval(this._cliTimer);
     clearInterval(this._anim);
@@ -329,7 +332,7 @@ class Component extends DCLogic {
     else if(p && p.kind==='integrations') hints=[['↑↓','select'],['/','filter'],['i','install'],['x','uninstall'],['d','default'],['s','switch'],['esc','close']];
     else if(p && p.kind==='workflows') hints=[['↑↓','select'],['/','filter'],['r','run'],['s','status'],['a','add'],['esc','close']];
     else if(p && p.kind==='extPresets') hints=[['tab','ext/presets'],['↑↓','select'],['/','filter'],['a','add'],['x','remove'],['c','catalogs'],['esc','close']];
-    else if(p && p.kind==='catalogs' && this.state.catAdd!=null) hints=[['type','url name [priority]'],['enter','add'],['esc','cancel']];
+    else if(p && p.kind==='catalogs' && this.state.catAdd!=null) hints=[['type','url name [priority]'],['enter','add'],['ctrl+c','clear'],['esc','cancel']];
     else if(p && p.kind==='catalogs') hints=[['tab','catalog type'],['↑↓','select'],['a','add'],['x','remove'],['r','refresh'],['esc','back']];
     else if(p && p.kind==='features') hints=[['↑↓','select'],['enter','jump to feature'],['esc','close']];
     else if(p) hints=[['↑↓','navigate'],['enter','select'],['esc','close']];
@@ -844,7 +847,7 @@ class Component extends DCLogic {
     this.setState({popup:{kind}, palSel:0, intSel:0, wfSel:0, fltOn:false, flt:''});
   }
   go(screen){ this.setState({screen, popup:null, focus:0, scroll:0, fltOn:false, flt:''}); }
-  openCatalogs(type){ this.setState({popup:{kind:'catalogs'}, catTab:(CATALOG_TYPES.indexOf(type)>=0?type:(this.state.catTab||'extensions')), catSel:0, catAdd:null}); }
+  openCatalogs(type){ this.setState({popup:{kind:'catalogs'}, catTab:(CATALOG_TYPES.indexOf(type)>=0?type:(this.state.catTab||'extensions')), catSel:0, catAdd:null, catAddCursor:0}); }
 
   centeredBox(w,h,title){
     const C=k=>this.C(k);
@@ -983,8 +986,45 @@ class Component extends DCLogic {
       if(adding){
         this.fill(x+3,y+2,w-6,1,C('panelAlt'));
         const catPfx='Add '+CAT_TGT[this.state.catTab]+' catalog:  ';
-        this.text(x+4,y+2,catPfx+this.state.catAdd+'█',C('fg'),C('panelAlt'),true);
-        this.text(x+4+catPfx.length,y+3,'url name [priority] · enter to add · esc to cancel',C('faint'));
+        this.text(x+4,y+2,catPfx,C('fg'),C('panelAlt'),true);
+        // Scrollable text viewport: 1 col reserved on each side for a `‹`/`›`
+        // overflow indicator, so long input stays fully reachable (by moving
+        // the cursor) even though the box itself never resizes.
+        const prefixSpanWidth=1+catPfx.length;
+        const available=Math.max(0,(w-6)-prefixSpanWidth);
+        const textWidth=Math.max(0,available-2);
+        const textX=x+4+catPfx.length+1;
+        const chars=Array.from(this.state.catAdd);
+        const cursor=Math.min(this.state.catAddCursor||0, chars.length);
+        const scrollOffset=(sel,visible)=>(visible===0||sel<visible)?0:sel-visible+1;
+        const off=scrollOffset(cursor,textWidth);
+        const visible=chars.slice(off,Math.min(off+textWidth,chars.length));
+        const curInSlice=cursor-off;
+        if(off>0) this.text(textX-1,y+2,'‹',C('faint'));
+        if(off+visible.length<chars.length) this.text(textX+textWidth,y+2,'›',C('faint'));
+        if(curInSlice<visible.length){
+          const before=visible.slice(0,curInSlice).join('');
+          const curCh=visible[curInSlice];
+          const after=visible.slice(curInSlice+1).join('');
+          this.text(textX,y+2,before,C('fg'),C('panelAlt'));
+          this.text(textX+before.length,y+2,curCh,C('panelAlt'),C('fg'));
+          this.text(textX+before.length+curCh.length,y+2,after,C('fg'),C('panelAlt'));
+        } else {
+          const all=visible.join('');
+          this.text(textX,y+2,all,C('fg'),C('panelAlt'));
+          this.text(textX+all.length,y+2,'█',C('fg'),C('panelAlt'),true);
+        }
+        // One click region per visible character, mapped back to its absolute
+        // index (not its position in the visible slice) so the mouse can
+        // position the cursor anywhere, including scrolled-off text.
+        visible.forEach((ch,k)=>{ this.reg(textX+k,y+2,1,1,()=>this.setState({catAddCursor:off+k})); });
+        const endX=textX+visible.length, rowEnd=x+3+(w-6);
+        if(endX<rowEnd){ this.reg(endX,y+2,rowEnd-endX,1,()=>this.setState({catAddCursor:off+visible.length})); }
+        { let hx=textX;
+          const seg=(s,accent)=>{ this.text(hx,y+3,s,accent?C('accent'):C('faint'),null,accent); hx+=s.length; };
+          seg('url name [priority] · ',false); seg('enter',true); seg(' to add · ',false);
+          seg('ctrl+c',true); seg(' to clear · ',false); seg('esc',true); seg(' to cancel',false);
+        }
         top=y+5;
       } else {
         let tx=x+3;
@@ -1091,7 +1131,7 @@ class Component extends DCLogic {
     const all=[
       {label:'Go to Dashboard', hint:'d', run:()=>this.go('dashboard')},
       {label:'Go to Spec Browser', hint:'s', run:()=>this.go('spec')},
-      {label:'Go to Constitution', hint:'c', run:()=>this.go('constitution')},
+      {label:'Go to Constitution', hint:'C', run:()=>this.go('constitution')},
       {label:'Show Features', hint:'f', run:()=>this.openPopup('features')},
       {label:'Manage Integrations', hint:'i', run:()=>this.openPopup('integrations')},
       {label:'Manage Extensions', hint:'e', run:()=>this.openPopup('extensions')},
@@ -1338,10 +1378,18 @@ class Component extends DCLogic {
       if(p.kind==='extPresets'){ if(this.searchKeys(k,stop,'extSel')) return; this.extKeys(k,stop,true); if(k==='Escape'){ stop(); this.setState({popup:null,fltOn:false,flt:''}); } return; }
       if(p.kind==='catalogs'){
         if(st.catAdd!=null){
-          if(k==='Escape'){ stop(); this.setState({catAdd:null}); return; }
-          if(k==='Enter'){ stop(); const input=st.catAdd; this.setState({catAdd:null},()=>{ this.setState({popup:{kind:'confirm',action:'catalog-add',force:false},cliCmd:this.buildCmd('catalog-add',{addInput:input})}); }); return; }
-          if(k==='Backspace'){ stop(); this.setState({catAdd:st.catAdd.slice(0,-1)}); return; }
-          if(k.length===1){ stop(); this.setState({catAdd:st.catAdd+k}); return; }
+          const chars=Array.from(st.catAdd);
+          const cursor=Math.min(st.catAddCursor||0, chars.length);
+          if(k==='Escape'){ stop(); this.setState({catAdd:null, catAddCursor:0}); return; }
+          if(k==='Enter'){ stop(); const input=st.catAdd; this.setState({catAdd:null, catAddCursor:0},()=>{ this.setState({popup:{kind:'confirm',action:'catalog-add',force:false},cliCmd:this.buildCmd('catalog-add',{addInput:input})}); }); return; }
+          if(k==='Backspace'){ stop(); if(cursor>0){ const next=chars.slice(0,cursor-1).join('')+chars.slice(cursor).join(''); this.setState({catAdd:next, catAddCursor:cursor-1}); } return; }
+          if(k==='Delete'){ stop(); if(cursor<chars.length){ this.setState({catAdd:chars.slice(0,cursor).join('')+chars.slice(cursor+1).join('')}); } return; }
+          if(k==='ArrowLeft'){ stop(); this.setState({catAddCursor:Math.max(0,cursor-1)}); return; }
+          if(k==='ArrowRight'){ stop(); this.setState({catAddCursor:Math.min(chars.length,cursor+1)}); return; }
+          if(k==='Home'){ stop(); this.setState({catAddCursor:0}); return; }
+          if(k==='End'){ stop(); this.setState({catAddCursor:chars.length}); return; }
+          if(k==='c' && e.ctrlKey){ stop(); this.setState({catAdd:'', catAddCursor:0}); return; }
+          if(k.length===1 && !e.ctrlKey && !e.metaKey){ stop(); const next=chars.slice(0,cursor).join('')+k+chars.slice(cursor).join(''); this.setState({catAdd:next, catAddCursor:cursor+1}); return; }
           return;
         }
         const list=this.curCatalogList();
@@ -1349,7 +1397,7 @@ class Component extends DCLogic {
         if(k==='Tab'){ stop(); const ci=CATALOG_TYPES.indexOf(st.catTab); const d=e.shiftKey?-1:1; this.setState({catTab:CATALOG_TYPES[(ci+d+CATALOG_TYPES.length)%CATALOG_TYPES.length],catSel:0}); return; }
         if(k==='ArrowDown'||k==='j'){ stop(); this.setState({catSel:Math.min(list.length-1,st.catSel+1)}); return; }
         if(k==='ArrowUp'||k==='k'){ stop(); this.setState({catSel:Math.max(0,st.catSel-1)}); return; }
-        if(k==='a'){ stop(); this.setState({catAdd:''}); return; }
+        if(k==='a'){ stop(); const src=list[st.catSel]; const discoverOnly=src&&!src.installAllowed; const prefill=discoverOnly?(src.prio!=null?`${src.url} ${src.name} ${src.prio}`:`${src.url} ${src.name}`):''; this.setState({catAdd:prefill, catAddCursor:Array.from(prefill).length}); return; }
         if(k==='x'&&list[st.catSel]){ stop(); this.setState({popup:{kind:'confirm',action:'catalog-remove',force:false},cliCmd:this.buildCmd('catalog-remove')}); return; }
         if(k==='r'){ stop(); return; }
         return;
@@ -1405,6 +1453,7 @@ class Component extends DCLogic {
     if(k==='?'){ stop(); this.setState({popup:{kind:'help'}}); return; }
     if(k==='t'){ stop(); this.toggleTheme(); return; }
     if(k==='T'){ stop(); this.cycleAccent(); return; }
+    if(k==='C'){ stop(); this.go('constitution'); return; }
     if(k==='q'){ stop(); this.setState({popup:{kind:'quit'}}); return; }
     if(k==='i'){ stop(); this.openPopup('integrations'); return; }
     if(k==='w'){ stop(); this.openPopup('workflows'); return; }
@@ -1494,6 +1543,17 @@ class Component extends DCLogic {
 
   // ---- catalog sources (nested under Extensions/Presets, opened with 'c') ----
   curCatalogList(){ return CATALOG_SOURCES[this.state.catTab]; }
+
+  onPaste(e){
+    if(this.state.catAdd==null) return;
+    const text=(e.clipboardData||window.clipboardData).getData('text').replace(/[\r\n]/g,'');
+    if(!text) return;
+    e.preventDefault();
+    const chars=Array.from(this.state.catAdd);
+    const cursor=Math.min(this.state.catAddCursor||0, chars.length);
+    const next=chars.slice(0,cursor).join('')+text+chars.slice(cursor).join('');
+    this.setState({catAdd:next, catAddCursor:cursor+Array.from(text).length});
+  }
 
   onClick(e){
     const termW=COLS*this.cellW, termH=ROWS*this.cellH;

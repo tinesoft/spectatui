@@ -181,6 +181,13 @@ pub fn draw_statusbar(frame: &mut Frame, app: &App, area: Rect) {
             "w",
             ClickAction::OpenPopup(PopupKind::Workflows),
         ),
+        (
+            "⧉",
+            app.catalog_sources.total(),
+            "catalogs",
+            "c",
+            ClickAction::OpenPopup(PopupKind::Catalogs),
+        ),
     ];
 
     // Track the cell x to register clickable regions per stat.

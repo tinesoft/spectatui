@@ -163,6 +163,7 @@ Options:
 | `i`             | Open Integrations popup              |
 | `f`             | Open Features popup                  |
 | `w`             | Open Workflows popup                 |
+| `c`             | Open Catalogs popup                  |
 | `q`             | Quit (with confirm)                  |
 | `Ctrl-C`        | Force quit                           |
 
@@ -177,7 +178,7 @@ Options:
 | `e`                   | Open Extensions & Presets popup                    |
 | `p`                   | Open Presets popup                                 |
 | `s`                   | Open Settings                                      |
-| `c`                   | Open Constitution viewer                           |
+| `C`                   | Open Constitution viewer                           |
 | `a`                   | Go to Session attach                               |
 
 **Spec browser**:
@@ -200,6 +201,25 @@ Options:
 | `e` / `d`             | Enable / Disable |
 | `u`                   | Update           |
 | `Esc`                 | Close            |
+
+**Catalogs popup**:
+
+| Key                   | Action                                                           |
+| --------------------- | ---------------------------------------------------------------- |
+| `Tab` / `Shift-Tab`   | Switch resource kind (Extensions/Presets/Integrations/Workflows) |
+| `↑` / `k` · `↓` / `j` | Navigate list                                                    |
+| `a`                   | Add catalog source                                               |
+| `x`                   | Remove catalog source                                            |
+| `r`                   | Refresh                                                          |
+| `Esc`                 | Close                                                            |
+
+No `/` filter in this popup, unlike the other manager popups.
+
+While adding a source, the input box additionally supports `←`/`→` (move
+cursor), `Home`/`End`, `Delete` (forward-delete), `Ctrl-C` (clear the field
+without closing it — a scoped exception to the global force-quit binding),
+mouse click (position the cursor), and paste (bracketed paste / clipboard).
+Long input scrolls horizontally to keep the cursor in view.
 
 **Settings**:
 

@@ -1,4 +1,5 @@
 mod agent_output;
+mod catalogs;
 mod extensions;
 mod extensions_presets;
 mod feature_list;

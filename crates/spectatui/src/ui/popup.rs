@@ -23,6 +23,9 @@ pub fn draw(frame: &mut Frame, app: &App) {
         PopupKind::Workflows => {
             super::workflows::draw(frame, app);
         }
+        PopupKind::Catalogs => {
+            super::catalogs::draw(frame, app);
+        }
         PopupKind::Features => draw_features(frame, app),
         PopupKind::Help => {
             let area = fixed_centered_rect(70, 26, frame.area());

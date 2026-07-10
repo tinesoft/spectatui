@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use ratatui::layout::Rect;
 use spectatui_core::layout::CustomLayout;
 use spectatui_core::speckit::cli::{CliAction, CliEvent, CliJob, JobStatus};
+use spectatui_core::speckit::registry::{CatalogSource, CatalogTarget};
 use spectatui_core::speckit::{
     ExtensionInfo, IntegrationInfo, PresetInfo, Project, TasksProgress, WorkflowInfo,
 };
@@ -92,6 +93,7 @@ pub enum PopupKind {
     Presets,
     Features,
     Workflows,
+    Catalogs,
     Help,
     QuitConfirm,
     CommandPalette,
@@ -178,6 +180,41 @@ pub struct CatalogResults {
     pub workflows: Vec<WorkflowInfo>,
 }
 
+/// Catalog *sources* for the Catalog Manager popup — one list per resource kind.
+/// Distinct from `CatalogResults` above, which caches "available items" fetched
+/// through those sources, not the sources themselves.
+#[derive(Clone, Default)]
+pub struct CatalogSourcesState {
+    pub extensions: Vec<CatalogSource>,
+    pub presets: Vec<CatalogSource>,
+    pub integrations: Vec<CatalogSource>,
+    pub workflows: Vec<CatalogSource>,
+}
+
+impl CatalogSourcesState {
+    fn for_target(&self, target: CatalogTarget) -> &[CatalogSource] {
+        match target {
+            CatalogTarget::Extension => &self.extensions,
+            CatalogTarget::Preset => &self.presets,
+            CatalogTarget::Integration => &self.integrations,
+            CatalogTarget::Workflow => &self.workflows,
+        }
+    }
+
+    fn for_target_mut(&mut self, target: CatalogTarget) -> &mut Vec<CatalogSource> {
+        match target {
+            CatalogTarget::Extension => &mut self.extensions,
+            CatalogTarget::Preset => &mut self.presets,
+            CatalogTarget::Integration => &mut self.integrations,
+            CatalogTarget::Workflow => &mut self.workflows,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        self.extensions.len() + self.presets.len() + self.integrations.len() + self.workflows.len()
+    }
+}
+
 pub struct App {
     pub project: Project,
     pub screen: Screen,
@@ -238,6 +275,18 @@ pub struct App {
 
     // Workflow management
     pub wf_index: usize,
+
+    // Catalog source management (Catalog Manager popup)
+    pub cat_tab: CatalogTarget,
+    pub cat_index: usize,
+    /// `Some(buffer)` while the inline "add source" form is active; `None` otherwise.
+    pub cat_add_input: Option<String>,
+    /// Char index (not byte index) into `cat_add_input`. Only meaningful while
+    /// `cat_add_input` is `Some`.
+    pub cat_add_cursor: usize,
+    pub catalog_sources: CatalogSourcesState,
+    /// Set by the `r` (refresh) key; the main loop spawns the fetch and clears this.
+    pub catalog_refresh_request: Option<CatalogTarget>,
 
     // Inline list filter (management popups)
     pub filter_query: String,
@@ -328,6 +377,12 @@ impl App {
 
             integration_index: 0,
             wf_index: 0,
+            cat_tab: CatalogTarget::Extension,
+            cat_index: 0,
+            cat_add_input: None,
+            cat_add_cursor: 0,
+            catalog_sources: CatalogSourcesState::default(),
+            catalog_refresh_request: None,
             filter_query: String::new(),
             filter_active: false,
             indexing: true,
@@ -582,6 +637,11 @@ impl App {
                 self.ext_tab = ExtTab::Presets;
                 self.preset_index = 0;
             }
+            PopupKind::Catalogs => {
+                self.cat_index = 0;
+                self.cat_add_input = None;
+                self.cat_add_cursor = 0;
+            }
             _ => {}
         }
         self.reset_filter();
@@ -591,6 +651,14 @@ impl App {
     pub fn close_popup(&mut self) {
         self.reset_filter();
         self.active_popup = None;
+    }
+
+    /// Open the Catalog Manager, always resetting to the Extensions tab
+    /// (FR-014) — used by the command-palette entry, which the mockup opens on
+    /// a fixed, predictable tab regardless of what was last viewed.
+    pub fn open_catalogs_reset_to_extensions(&mut self) {
+        self.cat_tab = CatalogTarget::Extension;
+        self.open_popup(PopupKind::Catalogs);
     }
 
     pub fn open_palette(&mut self) {
@@ -856,8 +924,15 @@ impl App {
         }
     }
 
-    pub fn poll_cli_job(&mut self) {
-        let Some(rx) = &mut self.cli_rx else { return };
+    /// Polls the in-flight CLI job's event stream. Returns `Some(target)` when a
+    /// `CatalogAdd`/`CatalogRemove` job for that catalog kind just succeeded — the
+    /// generic `refresh_project()` below covers extensions/presets/integrations/
+    /// workflows, but not `catalog_sources`, which the caller must re-fetch itself
+    /// (see `main.rs`'s main loop).
+    pub fn poll_cli_job(&mut self) -> Option<CatalogTarget> {
+        let Some(rx) = &mut self.cli_rx else {
+            return None;
+        };
         let mut should_refresh = false;
         loop {
             match rx.try_recv() {
@@ -887,7 +962,14 @@ impl App {
         }
         if should_refresh {
             self.refresh_project();
+            if let Some(
+                CliAction::CatalogAdd { target, .. } | CliAction::CatalogRemove { target, .. },
+            ) = self.cli_job.as_ref().map(|j| &j.action)
+            {
+                return Some(*target);
+            }
         }
+        None
     }
 
     pub fn integration_select_next(&mut self) {
@@ -924,6 +1006,160 @@ impl App {
                 self.wf_index - 1
             };
         }
+    }
+
+    /// The catalog sources for the currently active `cat_tab`. Unlike the other
+    /// manager popups, the Catalog Manager has no `/` filter, so this is a plain
+    /// slice, not a filtered `Vec`.
+    pub fn current_catalog_list(&self) -> &[CatalogSource] {
+        self.catalog_sources.for_target(self.cat_tab)
+    }
+
+    pub fn cat_select_next(&mut self) {
+        let len = self.current_catalog_list().len();
+        if len > 0 {
+            self.cat_index = (self.cat_index + 1) % len;
+        }
+    }
+
+    pub fn cat_select_prev(&mut self) {
+        let len = self.current_catalog_list().len();
+        if len > 0 {
+            self.cat_index = if self.cat_index == 0 {
+                len - 1
+            } else {
+                self.cat_index - 1
+            };
+        }
+    }
+
+    /// Clamp `cat_index` after the active tab's list shrinks (e.g. a successful
+    /// removal or a refresh returning fewer sources) so it never indexes out of
+    /// bounds.
+    fn clamp_cat_index(&mut self) {
+        let len = self.current_catalog_list().len();
+        if len == 0 {
+            self.cat_index = 0;
+        } else if self.cat_index >= len {
+            self.cat_index = len - 1;
+        }
+    }
+
+    /// Replace the stored sources for `target` (initial load or manual/post-mutation
+    /// refresh), clamping selection if the active tab's list just shrank.
+    pub fn set_catalog_sources(&mut self, target: CatalogTarget, sources: Vec<CatalogSource>) {
+        *self.catalog_sources.for_target_mut(target) = sources;
+        if target == self.cat_tab {
+            self.clamp_cat_index();
+        }
+    }
+
+    // ---- "add source" input editing (cursor-aware; char, not byte, indices) ----
+
+    fn cat_add_char_count(&self) -> usize {
+        self.cat_add_input
+            .as_deref()
+            .map(|s| s.chars().count())
+            .unwrap_or(0)
+    }
+
+    /// Byte offset in `cat_add_input` corresponding to char index `idx`.
+    fn cat_add_byte_offset(&self, idx: usize) -> usize {
+        let input = self.cat_add_input.as_deref().unwrap_or("");
+        input
+            .char_indices()
+            .nth(idx)
+            .map(|(i, _)| i)
+            .unwrap_or(input.len())
+    }
+
+    /// Insert `s` at the cursor, advancing it past the inserted text. `\n`/`\r`
+    /// are stripped — this is a single-line field — so both regular typing (a
+    /// 1-char string) and pasted clipboard text can share this one method.
+    pub fn cat_add_insert_str(&mut self, s: &str) {
+        let cleaned: String = s.chars().filter(|c| *c != '\n' && *c != '\r').collect();
+        if cleaned.is_empty() {
+            return;
+        }
+        let inserted = cleaned.chars().count();
+        let offset = self.cat_add_byte_offset(self.cat_add_cursor);
+        if let Some(input) = &mut self.cat_add_input {
+            input.insert_str(offset, &cleaned);
+        }
+        self.cat_add_cursor += inserted;
+    }
+
+    pub fn cat_add_backspace(&mut self) {
+        if self.cat_add_cursor == 0 || self.cat_add_input.is_none() {
+            return;
+        }
+        let end = self.cat_add_byte_offset(self.cat_add_cursor);
+        self.cat_add_cursor -= 1;
+        let start = self.cat_add_byte_offset(self.cat_add_cursor);
+        if let Some(input) = &mut self.cat_add_input {
+            input.replace_range(start..end, "");
+        }
+    }
+
+    pub fn cat_add_delete_forward(&mut self) {
+        if self.cat_add_cursor >= self.cat_add_char_count() {
+            return;
+        }
+        let start = self.cat_add_byte_offset(self.cat_add_cursor);
+        let end = self.cat_add_byte_offset(self.cat_add_cursor + 1);
+        if let Some(input) = &mut self.cat_add_input {
+            input.replace_range(start..end, "");
+        }
+    }
+
+    pub fn cat_add_move_left(&mut self) {
+        self.cat_add_cursor = self.cat_add_cursor.saturating_sub(1);
+    }
+
+    pub fn cat_add_move_right(&mut self) {
+        if self.cat_add_cursor < self.cat_add_char_count() {
+            self.cat_add_cursor += 1;
+        }
+    }
+
+    pub fn cat_add_move_home(&mut self) {
+        self.cat_add_cursor = 0;
+    }
+
+    pub fn cat_add_move_end(&mut self) {
+        self.cat_add_cursor = self.cat_add_char_count();
+    }
+
+    /// Clamp to `[0, char_count]` — used by the mouse click handler.
+    pub fn cat_add_set_cursor(&mut self, pos: usize) {
+        self.cat_add_cursor = pos.min(self.cat_add_char_count());
+    }
+
+    /// Clear the add-source input's text and reset the cursor to the start —
+    /// the form itself stays open (unlike `Esc`, which cancels it entirely).
+    pub fn cat_add_clear(&mut self) {
+        self.cat_add_input = Some(String::new());
+        self.cat_add_cursor = 0;
+    }
+
+    /// Open the "add source" input, prefilled from the currently selected
+    /// source in `current_catalog_list()` as `"url name [priority]"` — but
+    /// only when that source is "discovery only" (`install_allowed == false`,
+    /// i.e. not yet installed), since prefilling an already-installed source
+    /// would just offer to re-add itself. Falls back to an empty field
+    /// otherwise (nothing selected, empty list, or an installed source).
+    pub fn cat_add_open(&mut self) {
+        let prefill = self
+            .current_catalog_list()
+            .get(self.cat_index)
+            .filter(|src| !src.install_allowed)
+            .map(|src| match src.priority {
+                Some(p) => format!("{} {} {}", src.url, src.name, p),
+                None => format!("{} {}", src.url, src.name),
+            })
+            .unwrap_or_default();
+        self.cat_add_cursor = prefill.chars().count();
+        self.cat_add_input = Some(prefill);
     }
 
     // ---- inline list filter ----
@@ -1107,6 +1343,18 @@ impl App {
     }
 }
 
+/// Parse the Catalog Manager's inline "add source" input, `"url name [priority]"`,
+/// into `(url, name, priority)`. Returns `None` when the name is missing (a bare
+/// URL with nothing else) or the input is empty — there is no reasonable default
+/// for a source name, so this is treated as malformed rather than guessed at.
+pub fn parse_catalog_add_input(input: &str) -> Option<(String, String, Option<u8>)> {
+    let mut parts = input.split_whitespace();
+    let url = parts.next()?.to_string();
+    let name = parts.next()?.to_string();
+    let priority = parts.next().and_then(|p| p.parse::<u8>().ok());
+    Some((url, name, priority))
+}
+
 pub struct PaletteCommand {
     pub label: &'static str,
     pub hint: &'static str,
@@ -1136,6 +1384,9 @@ pub enum ClickAction {
     SelectPreset(usize),
     SelectIntegration(usize),
     SelectWorkflow(usize),
+    SelectCatalogSource(usize),
+    SetCatalogTab(CatalogTarget),
+    SetCatalogAddCursor(usize),
     SetExtTab(ExtTab),
     SetSpecTab(SpecTab),
     SettingsSelect(usize),
@@ -1160,7 +1411,7 @@ pub fn palette_commands() -> Vec<PaletteCommand> {
         },
         PaletteCommand {
             label: "Go to Constitution",
-            hint: "c",
+            hint: "C",
             action: PaletteAction::SetScreen(Screen::Constitution),
         },
         PaletteCommand {
@@ -1187,6 +1438,11 @@ pub fn palette_commands() -> Vec<PaletteCommand> {
             label: "Manage Workflows",
             hint: "w",
             action: PaletteAction::OpenPopup(PopupKind::Workflows),
+        },
+        PaletteCommand {
+            label: "Manage Catalogs",
+            hint: "c",
+            action: PaletteAction::OpenPopup(PopupKind::Catalogs),
         },
         PaletteCommand {
             label: "Open Settings",
@@ -1292,5 +1548,323 @@ mod tests {
         job.status = JobStatus::Failed;
         app.cli_job = Some(job);
         assert!(app.can_start_cli_action());
+    }
+
+    fn test_source(name: &str) -> CatalogSource {
+        CatalogSource {
+            name: name.to_string(),
+            url: format!("https://example.com/{name}.json"),
+            priority: None,
+            install_allowed: true,
+        }
+    }
+
+    #[test]
+    fn cat_select_next_prev_wrap_around() {
+        let mut app = test_app();
+        app.set_catalog_sources(
+            CatalogTarget::Extension,
+            vec![test_source("a"), test_source("b"), test_source("c")],
+        );
+        assert_eq!(app.cat_index, 0);
+        app.cat_select_next();
+        assert_eq!(app.cat_index, 1);
+        app.cat_select_next();
+        assert_eq!(app.cat_index, 2);
+        app.cat_select_next();
+        assert_eq!(app.cat_index, 0, "wraps past the end");
+        app.cat_select_prev();
+        assert_eq!(app.cat_index, 2, "wraps before the start");
+    }
+
+    #[test]
+    fn cat_select_next_prev_noop_on_empty_list() {
+        let mut app = test_app();
+        assert!(app.current_catalog_list().is_empty());
+        app.cat_select_next();
+        assert_eq!(app.cat_index, 0);
+        app.cat_select_prev();
+        assert_eq!(app.cat_index, 0);
+    }
+
+    #[test]
+    fn parse_catalog_add_input_with_priority() {
+        let (url, name, priority) =
+            parse_catalog_add_input("https://example.com/cat.json community 5").unwrap();
+        assert_eq!(url, "https://example.com/cat.json");
+        assert_eq!(name, "community");
+        assert_eq!(priority, Some(5));
+    }
+
+    #[test]
+    fn parse_catalog_add_input_without_priority() {
+        let (url, name, priority) =
+            parse_catalog_add_input("https://example.com/cat.json community").unwrap();
+        assert_eq!(url, "https://example.com/cat.json");
+        assert_eq!(name, "community");
+        assert_eq!(priority, None);
+    }
+
+    #[test]
+    fn parse_catalog_add_input_rejects_missing_name() {
+        assert!(parse_catalog_add_input("https://example.com/cat.json").is_none());
+        assert!(parse_catalog_add_input("").is_none());
+        assert!(parse_catalog_add_input("   ").is_none());
+    }
+
+    #[test]
+    fn cat_add_insert_str_appends_and_advances_cursor() {
+        let mut app = test_app();
+        app.cat_add_input = Some(String::new());
+        app.cat_add_insert_str("abc");
+        assert_eq!(app.cat_add_input.as_deref(), Some("abc"));
+        assert_eq!(app.cat_add_cursor, 3);
+    }
+
+    #[test]
+    fn cat_add_insert_str_inserts_at_cursor_not_just_at_end() {
+        let mut app = test_app();
+        app.cat_add_input = Some("ac".to_string());
+        app.cat_add_cursor = 1;
+        app.cat_add_insert_str("b");
+        assert_eq!(app.cat_add_input.as_deref(), Some("abc"));
+        assert_eq!(app.cat_add_cursor, 2);
+    }
+
+    #[test]
+    fn cat_add_insert_str_strips_newlines() {
+        let mut app = test_app();
+        app.cat_add_input = Some(String::new());
+        app.cat_add_insert_str("a\nb\r\nc");
+        assert_eq!(app.cat_add_input.as_deref(), Some("abc"));
+        assert_eq!(app.cat_add_cursor, 3);
+    }
+
+    #[test]
+    fn cat_add_backspace_removes_char_before_cursor() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 2; // between 'b' and 'c'
+        app.cat_add_backspace();
+        assert_eq!(app.cat_add_input.as_deref(), Some("ac"));
+        assert_eq!(app.cat_add_cursor, 1);
+    }
+
+    #[test]
+    fn cat_add_backspace_noop_at_start() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 0;
+        app.cat_add_backspace();
+        assert_eq!(app.cat_add_input.as_deref(), Some("abc"));
+        assert_eq!(app.cat_add_cursor, 0);
+    }
+
+    #[test]
+    fn cat_add_delete_forward_removes_char_at_cursor() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 1; // before 'b'
+        app.cat_add_delete_forward();
+        assert_eq!(app.cat_add_input.as_deref(), Some("ac"));
+        assert_eq!(
+            app.cat_add_cursor, 1,
+            "cursor doesn't move on forward-delete"
+        );
+    }
+
+    #[test]
+    fn cat_add_delete_forward_noop_at_end() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 3;
+        app.cat_add_delete_forward();
+        assert_eq!(app.cat_add_input.as_deref(), Some("abc"));
+    }
+
+    #[test]
+    fn cat_add_move_left_right_clamp_at_bounds() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 0;
+        app.cat_add_move_left();
+        assert_eq!(app.cat_add_cursor, 0, "clamped at start");
+        app.cat_add_move_right();
+        app.cat_add_move_right();
+        app.cat_add_move_right();
+        app.cat_add_move_right();
+        assert_eq!(app.cat_add_cursor, 3, "clamped at end");
+    }
+
+    #[test]
+    fn cat_add_move_home_end() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_cursor = 1;
+        app.cat_add_move_home();
+        assert_eq!(app.cat_add_cursor, 0);
+        app.cat_add_move_end();
+        assert_eq!(app.cat_add_cursor, 3);
+    }
+
+    #[test]
+    fn cat_add_set_cursor_clamps_to_char_count() {
+        let mut app = test_app();
+        app.cat_add_input = Some("abc".to_string());
+        app.cat_add_set_cursor(2);
+        assert_eq!(app.cat_add_cursor, 2);
+        app.cat_add_set_cursor(999);
+        assert_eq!(app.cat_add_cursor, 3, "clamped to char count");
+    }
+
+    #[test]
+    fn cat_add_clear_empties_input_and_resets_cursor_but_stays_open() {
+        let mut app = test_app();
+        app.cat_add_input = Some("https://example.com/cat.json community".to_string());
+        app.cat_add_cursor = 10;
+        app.cat_add_clear();
+        assert_eq!(app.cat_add_input.as_deref(), Some(""));
+        assert_eq!(app.cat_add_cursor, 0);
+        assert!(
+            app.cat_add_input.is_some(),
+            "form stays open, unlike Esc which cancels it"
+        );
+    }
+
+    #[test]
+    fn cat_add_open_prefills_from_selected_discover_only_source_without_priority() {
+        let mut app = test_app();
+        let mut discover_only = test_source("b");
+        discover_only.install_allowed = false;
+        app.set_catalog_sources(
+            CatalogTarget::Extension,
+            vec![test_source("a"), discover_only],
+        );
+        app.cat_index = 1;
+        app.cat_add_open();
+        assert_eq!(
+            app.cat_add_input.as_deref(),
+            Some("https://example.com/b.json b")
+        );
+        assert_eq!(
+            app.cat_add_cursor,
+            "https://example.com/b.json b".chars().count()
+        );
+    }
+
+    #[test]
+    fn cat_add_open_prefills_priority_when_present() {
+        let mut app = test_app();
+        let mut source = test_source("community");
+        source.install_allowed = false;
+        source.priority = Some(5);
+        app.set_catalog_sources(CatalogTarget::Extension, vec![source]);
+        app.cat_add_open();
+        assert_eq!(
+            app.cat_add_input.as_deref(),
+            Some("https://example.com/community.json community 5")
+        );
+    }
+
+    #[test]
+    fn cat_add_open_is_empty_when_selected_source_is_already_installed() {
+        let mut app = test_app();
+        let installed = test_source("a"); // test_source defaults install_allowed to true
+        assert!(installed.install_allowed);
+        app.set_catalog_sources(CatalogTarget::Extension, vec![installed]);
+        app.cat_add_open();
+        assert_eq!(
+            app.cat_add_input.as_deref(),
+            Some(""),
+            "installed sources aren't prefilled — only discovery-only ones"
+        );
+        assert_eq!(app.cat_add_cursor, 0);
+    }
+
+    #[test]
+    fn cat_add_open_is_empty_when_nothing_selected() {
+        let mut app = test_app();
+        assert!(app.current_catalog_list().is_empty());
+        app.cat_add_open();
+        assert_eq!(app.cat_add_input.as_deref(), Some(""));
+        assert_eq!(app.cat_add_cursor, 0);
+    }
+
+    #[test]
+    fn cat_add_insert_str_is_utf8_boundary_safe() {
+        let mut app = test_app();
+        app.cat_add_input = Some("héllo".to_string()); // 'é' is a multi-byte char
+        app.cat_add_cursor = 2; // between 'é' and 'l' — a char boundary, not a byte one
+        app.cat_add_insert_str("X");
+        assert_eq!(app.cat_add_input.as_deref(), Some("héXllo"));
+        assert_eq!(app.cat_add_cursor, 3);
+    }
+
+    #[test]
+    fn set_catalog_sources_clamps_selection_after_shrink() {
+        let mut app = test_app();
+        app.set_catalog_sources(
+            CatalogTarget::Extension,
+            vec![test_source("a"), test_source("b"), test_source("c")],
+        );
+        app.cat_index = 2;
+        // Simulate a successful removal (or refresh) that shrinks the list to 1 item.
+        app.set_catalog_sources(CatalogTarget::Extension, vec![test_source("a")]);
+        assert_eq!(app.cat_index, 0);
+
+        // Shrinking to empty clamps to 0, not underflow.
+        app.set_catalog_sources(CatalogTarget::Extension, Vec::new());
+        assert_eq!(app.cat_index, 0);
+    }
+
+    #[test]
+    fn set_catalog_sources_does_not_clamp_inactive_tab() {
+        let mut app = test_app();
+        app.set_catalog_sources(
+            CatalogTarget::Workflow,
+            vec![test_source("a"), test_source("b")],
+        );
+        app.cat_tab = CatalogTarget::Workflow;
+        app.cat_index = 1;
+        // Updating a different, inactive tab must not touch the active tab's index.
+        app.set_catalog_sources(CatalogTarget::Extension, vec![test_source("x")]);
+        assert_eq!(app.cat_index, 1);
+    }
+
+    #[test]
+    fn open_popup_catalogs_preserves_last_viewed_tab() {
+        let mut app = test_app();
+        app.cat_tab = CatalogTarget::Workflow;
+        app.open_popup(PopupKind::Catalogs);
+        assert_eq!(
+            app.cat_tab,
+            CatalogTarget::Workflow,
+            "status-bar/keypress entry is sticky"
+        );
+    }
+
+    #[test]
+    fn open_catalogs_reset_to_extensions_always_resets() {
+        let mut app = test_app();
+        app.cat_tab = CatalogTarget::Workflow;
+        app.open_catalogs_reset_to_extensions();
+        assert_eq!(
+            app.cat_tab,
+            CatalogTarget::Extension,
+            "palette entry always resets"
+        );
+    }
+
+    #[test]
+    fn current_catalog_list_is_scoped_to_active_tab() {
+        let mut app = test_app();
+        app.set_catalog_sources(CatalogTarget::Extension, vec![test_source("ext-a")]);
+        app.set_catalog_sources(
+            CatalogTarget::Workflow,
+            vec![test_source("wf-a"), test_source("wf-b")],
+        );
+        assert_eq!(app.current_catalog_list().len(), 1);
+        app.cat_tab = CatalogTarget::Workflow;
+        assert_eq!(app.current_catalog_list().len(), 2);
     }
 }

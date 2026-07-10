@@ -76,6 +76,7 @@ async fn main() -> Result<()> {
     if app.config.mouse_support {
         execute!(stdout, crossterm::event::EnableMouseCapture)?;
     }
+    execute!(stdout, crossterm::event::EnableBracketedPaste)?;
 
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
@@ -89,6 +90,10 @@ async fn main() -> Result<()> {
             crossterm::event::DisableMouseCapture
         )?;
     }
+    execute!(
+        terminal.backend_mut(),
+        crossterm::event::DisableBracketedPaste
+    )?;
     terminal::disable_raw_mode()?;
     execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     terminal.show_cursor()?;
@@ -176,6 +181,17 @@ async fn run_loop(
         });
     }
 
+    // Catalog *source* listing — one fetch per resource kind, independent of the
+    // "available items" indexing above (see AppEvent::CatalogSourcesLoaded).
+    for target in [
+        registry::CatalogTarget::Extension,
+        registry::CatalogTarget::Preset,
+        registry::CatalogTarget::Integration,
+        registry::CatalogTarget::Workflow,
+    ] {
+        spawn_catalog_sources_fetch(event_tx.clone(), root.to_path_buf(), target);
+    }
+
     loop {
         terminal.draw(|frame| ui::draw(frame, app))?;
 
@@ -183,8 +199,11 @@ async fn run_loop(
             return Ok(());
         }
 
-        // Poll CLI job progress
-        app.poll_cli_job();
+        // Poll CLI job progress. A successful CatalogAdd/CatalogRemove reports
+        // which kind to re-fetch, since refresh_project() doesn't cover catalog_sources.
+        if let Some(target) = app.poll_cli_job() {
+            spawn_catalog_sources_fetch(event_tx.clone(), root.to_path_buf(), target);
+        }
 
         // Publish the current selection for the tmux poller.
         let _ = selection_tx.send(app.selected_feature().map(|f| f.id.clone()));
@@ -194,6 +213,9 @@ async fn run_loop(
                 AppEvent::Key(key) => {
                     let mouse_before = app.config.mouse_support;
                     handle_key(app, key, &cli_client);
+                    if let Some(target) = app.catalog_refresh_request.take() {
+                        spawn_catalog_sources_fetch(event_tx.clone(), root.to_path_buf(), target);
+                    }
                     // Apply a Mouse-support setting change immediately (no restart needed).
                     if app.config.mouse_support != mouse_before {
                         if app.config.mouse_support {
@@ -238,6 +260,15 @@ async fn run_loop(
                     app.cli_available = cli_available;
                     app.merge_catalog_results(integrations, extensions, presets, workflows);
                 }
+                AppEvent::CatalogSourcesLoaded { target, sources } => {
+                    app.set_catalog_sources(target, sources);
+                }
+                AppEvent::Paste(text) => {
+                    // Scoped to the catalog add-form only; paste elsewhere is a no-op.
+                    if app.cat_add_input.is_some() {
+                        app.cat_add_insert_str(&text);
+                    }
+                }
                 AppEvent::TmuxChanged { sessions, session } => {
                     app.apply_tmux(sessions, session);
                 }
@@ -247,6 +278,20 @@ async fn run_loop(
             }
         }
     }
+}
+
+/// Spawn a `list_catalog_sources` fetch for `target`, sending the result as
+/// `AppEvent::CatalogSourcesLoaded` — used for the initial load, manual refresh
+/// (`r` key), and the post-success refresh after a `CatalogAdd`/`CatalogRemove`.
+fn spawn_catalog_sources_fetch(
+    tx: mpsc::UnboundedSender<AppEvent>,
+    root: PathBuf,
+    target: registry::CatalogTarget,
+) {
+    tokio::spawn(async move {
+        let sources = registry::list_catalog_sources(&root, target).await;
+        let _ = tx.send(AppEvent::CatalogSourcesLoaded { target, sources });
+    });
 }
 
 /// Suspend the TUI, run a foreground tmux attach to `target`, then restore
@@ -321,9 +366,15 @@ async fn launch_session(
 }
 
 fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
-    // Ctrl+C always quits
+    // Ctrl+C always quits — except inside the Catalog Manager's add-source
+    // input, where it clears the field instead (more useful there than an
+    // accidental full-app quit while editing).
     if key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c') {
-        app.should_quit = true;
+        if app.active_popup == Some(PopupKind::Catalogs) && app.cat_add_input.is_some() {
+            app.cat_add_clear();
+        } else {
+            app.should_quit = true;
+        }
         return;
     }
 
@@ -580,6 +631,84 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             PopupKind::Extensions | PopupKind::Presets => {
                 handle_ext_preset_popup_key(app, key, cli_client);
             }
+            // Remove/tab-switch/refresh handling is layered on in later tasks (US2/US3).
+            PopupKind::Catalogs => {
+                if app.cat_add_input.is_some() {
+                    match key.code {
+                        KeyCode::Esc => {
+                            app.cat_add_input = None;
+                            app.cat_add_cursor = 0;
+                        }
+                        KeyCode::Backspace => app.cat_add_backspace(),
+                        KeyCode::Delete => app.cat_add_delete_forward(),
+                        KeyCode::Left => app.cat_add_move_left(),
+                        KeyCode::Right => app.cat_add_move_right(),
+                        KeyCode::Home => app.cat_add_move_home(),
+                        KeyCode::End => app.cat_add_move_end(),
+                        KeyCode::Enter => {
+                            if let Some(input) = app.cat_add_input.take() {
+                                app.cat_add_cursor = 0;
+                                if let Some((url, name, priority)) =
+                                    app::parse_catalog_add_input(&input)
+                                {
+                                    request_cli_action(
+                                        app,
+                                        CliAction::CatalogAdd {
+                                            target: app.cat_tab,
+                                            url,
+                                            name,
+                                            priority,
+                                        },
+                                        cli_client,
+                                    );
+                                }
+                            }
+                        }
+                        KeyCode::Char(c) => {
+                            let mut buf = [0u8; 4];
+                            app.cat_add_insert_str(c.encode_utf8(&mut buf));
+                        }
+                        _ => {}
+                    }
+                } else {
+                    match key.code {
+                        KeyCode::Esc => app.close_popup(),
+                        KeyCode::Up | KeyCode::Char('k') => app.cat_select_prev(),
+                        KeyCode::Down | KeyCode::Char('j') => app.cat_select_next(),
+                        KeyCode::Tab => {
+                            app.cat_tab = app.cat_tab.next();
+                            app.cat_index = 0;
+                        }
+                        KeyCode::BackTab => {
+                            app.cat_tab = app.cat_tab.prev();
+                            app.cat_index = 0;
+                        }
+                        KeyCode::Char('a') => {
+                            app.cat_add_open();
+                        }
+                        KeyCode::Char('x') => {
+                            if let Some(name) = app
+                                .current_catalog_list()
+                                .get(app.cat_index)
+                                .map(|s| s.name.clone())
+                            {
+                                request_cli_action(
+                                    app,
+                                    CliAction::CatalogRemove {
+                                        target: app.cat_tab,
+                                        name,
+                                    },
+                                    cli_client,
+                                );
+                            }
+                        }
+                        KeyCode::Char('r') => {
+                            app.catalog_refresh_request = Some(app.cat_tab);
+                        }
+                        _ => {}
+                    }
+                }
+            }
             _ => {
                 if key.code == KeyCode::Esc {
                     app.close_popup()
@@ -734,6 +863,10 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
             app.open_popup(PopupKind::Workflows);
             return;
         }
+        KeyCode::Char('c') => {
+            app.open_popup(PopupKind::Catalogs);
+            return;
+        }
         _ => {}
     }
 
@@ -786,7 +919,7 @@ fn handle_dashboard_key(app: &mut App, key: KeyEvent, _cli_client: &SpecifyCliCl
         KeyCode::Char('a') => {
             app.screen = Screen::SessionAttach;
         }
-        KeyCode::Char('c') => app.enter_constitution(),
+        KeyCode::Char('C') => app.enter_constitution(),
         KeyCode::Char('e') => {
             app.ext_tab = ExtTab::Extensions;
             app.open_popup(PopupKind::Extensions);
@@ -1101,6 +1234,20 @@ fn execute_click_action(app: &mut App, action: ClickAction) {
                 app.wf_index = i;
             }
         }
+        ClickAction::SelectCatalogSource(i) => {
+            if i < app.current_catalog_list().len() {
+                app.cat_index = i;
+            }
+        }
+        ClickAction::SetCatalogTab(target) => {
+            app.cat_tab = target;
+            app.cat_index = 0;
+        }
+        ClickAction::SetCatalogAddCursor(pos) => {
+            if app.cat_add_input.is_some() {
+                app.cat_add_set_cursor(pos);
+            }
+        }
         ClickAction::SetExtTab(tab) => {
             app.ext_tab = tab;
         }
@@ -1177,6 +1324,7 @@ fn execute_palette_action(app: &mut App, action: PaletteAction) {
         },
         PaletteAction::ToggleTheme => app.toggle_theme(),
         PaletteAction::CycleAccent => app.cycle_accent(),
+        PaletteAction::OpenPopup(PopupKind::Catalogs) => app.open_catalogs_reset_to_extensions(),
         PaletteAction::OpenPopup(kind) => app.open_popup(kind),
         PaletteAction::Quit => app.should_quit = true,
     }

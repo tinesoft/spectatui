@@ -3,6 +3,7 @@ use std::time::Duration;
 use crossterm::event::{self, Event as CtEvent, KeyEvent, KeyEventKind, MouseEvent};
 use tokio::sync::mpsc;
 
+use spectatui_core::speckit::registry::{CatalogSource, CatalogTarget};
 use spectatui_core::speckit::watch::FsEvent;
 use spectatui_core::speckit::{ExtensionInfo, IntegrationInfo, PresetInfo, WorkflowInfo};
 use spectatui_core::tmux::TmuxSession;
@@ -27,6 +28,11 @@ pub enum AppEvent {
         presets: Vec<PresetInfo>,
         workflows: Vec<WorkflowInfo>,
     },
+    CatalogSourcesLoaded {
+        target: CatalogTarget,
+        sources: Vec<CatalogSource>,
+    },
+    Paste(String),
 }
 
 pub struct EventStream {
@@ -58,6 +64,11 @@ impl EventStream {
                             if tx_clone.send(AppEvent::Resize(w, h)).is_err() =>
                         {
                             return;
+                        }
+                        Ok(CtEvent::Paste(text)) => {
+                            if tx_clone.send(AppEvent::Paste(text)).is_err() {
+                                return;
+                            }
                         }
                         _ => {}
                     }

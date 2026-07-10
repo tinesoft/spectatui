@@ -272,33 +272,59 @@ pub async fn specify_cli_available(root: &Path) -> bool {
 }
 
 /// Which catalog family to query via `specify <kind> catalog list`.
-#[derive(Debug, Clone, Copy)]
-enum CatalogKind {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogTarget {
     Extension,
     Preset,
     Integration,
     Workflow,
 }
 
-impl CatalogKind {
-    fn cli(self) -> &'static str {
+/// Fixed cycling order for the Catalog Manager's kind tabs.
+const CATALOG_TARGET_ORDER: [CatalogTarget; 4] = [
+    CatalogTarget::Extension,
+    CatalogTarget::Preset,
+    CatalogTarget::Integration,
+    CatalogTarget::Workflow,
+];
+
+impl CatalogTarget {
+    pub fn next(self) -> Self {
+        let idx = CATALOG_TARGET_ORDER
+            .iter()
+            .position(|t| *t == self)
+            .unwrap_or(0);
+        CATALOG_TARGET_ORDER[(idx + 1) % CATALOG_TARGET_ORDER.len()]
+    }
+
+    pub fn prev(self) -> Self {
+        let idx = CATALOG_TARGET_ORDER
+            .iter()
+            .position(|t| *t == self)
+            .unwrap_or(0);
+        let len = CATALOG_TARGET_ORDER.len();
+        CATALOG_TARGET_ORDER[(idx + len - 1) % len]
+    }
+
+    pub fn cli(self) -> &'static str {
         match self {
-            CatalogKind::Extension => "extension",
-            CatalogKind::Preset => "preset",
-            CatalogKind::Integration => "integration",
-            CatalogKind::Workflow => "workflow",
+            CatalogTarget::Extension => "extension",
+            CatalogTarget::Preset => "preset",
+            CatalogTarget::Integration => "integration",
+            CatalogTarget::Workflow => "workflow",
         }
     }
 }
 
 #[derive(Debug, Clone)]
-struct CatalogSource {
-    name: String,
-    url: String,
-    /// `false` for "discovery only" (community) catalogs. Carried for a future
-    /// UI affordance that gates the install action; not yet rendered.
-    #[allow(dead_code)]
-    install_allowed: bool,
+pub struct CatalogSource {
+    pub name: String,
+    pub url: String,
+    /// `Some(N)` when the CLI's `catalog list` output included a numeric
+    /// priority (dialect A); `None` for dialect B, which never has one.
+    pub priority: Option<u8>,
+    /// `false` for "discovery only" (community) catalogs.
+    pub install_allowed: bool,
 }
 
 /// Label shown in the UI for a catalog source: the built-in `default` catalog is
@@ -311,12 +337,12 @@ fn catalog_label(name: &str) -> String {
     }
 }
 
-/// Discover active catalog source URLs (default + community, in priority order) by
+/// Discover active catalog sources (default + community, in priority order) by
 /// scraping `specify <kind> catalog list`. Run with `COLUMNS=4000` so the CLI emits
 /// each URL on a single un-wrapped line.
-async fn catalog_urls(root: &Path, kind: CatalogKind) -> Vec<CatalogSource> {
+pub async fn list_catalog_sources(root: &Path, target: CatalogTarget) -> Vec<CatalogSource> {
     let output = tokio::process::Command::new("specify")
-        .args([kind.cli(), "catalog", "list"])
+        .args([target.cli(), "catalog", "list"])
         .current_dir(root)
         .env("COLUMNS", "4000")
         .output()
@@ -332,6 +358,7 @@ fn parse_catalog_urls(output: &str) -> Vec<CatalogSource> {
     let allowed = |s: &str| !s.contains("discovery only");
     let mut out: Vec<CatalogSource> = Vec::new();
     let mut name: Option<String> = None;
+    let mut priority: Option<u8> = None;
     let mut ok = true;
 
     for raw in output.lines() {
@@ -347,14 +374,17 @@ fn parse_catalog_urls(output: &str) -> Vec<CatalogSource> {
         });
         if let Some((n, tail)) = b.and_then(|r| r.split_once('—')) {
             name = Some(n.trim().to_string());
+            priority = None;
             ok = allowed(tail);
             continue;
         }
 
         // Dialect A header: "<name> (priority N)"
         if let Some((n, tail)) = line.split_once('(') {
-            if tail.trim_start().starts_with("priority") {
+            let tail = tail.trim_start();
+            if let Some(rest) = tail.strip_prefix("priority") {
                 name = Some(n.trim().to_string());
+                priority = rest.trim().trim_end_matches(')').trim().parse::<u8>().ok();
                 ok = true; // refined by the trailing "Install:" line
                 continue;
             }
@@ -377,6 +407,7 @@ fn parse_catalog_urls(output: &str) -> Vec<CatalogSource> {
             out.push(CatalogSource {
                 name: n,
                 url: url.to_string(),
+                priority,
                 install_allowed: ok,
             });
         }
@@ -442,7 +473,7 @@ struct Provides {
 
 pub async fn fetch_available_integrations(root: &Path) -> Vec<IntegrationInfo> {
     let mut items = Vec::new();
-    for src in catalog_urls(root, CatalogKind::Integration).await {
+    for src in list_catalog_sources(root, CatalogTarget::Integration).await {
         let Some(cat) = fetch_catalog_json::<IntegrationCatalog>(&src.url).await else {
             continue;
         };
@@ -465,7 +496,7 @@ pub async fn fetch_available_integrations(root: &Path) -> Vec<IntegrationInfo> {
 
 pub async fn fetch_available_extensions(root: &Path) -> Vec<ExtensionInfo> {
     let mut items = Vec::new();
-    for src in catalog_urls(root, CatalogKind::Extension).await {
+    for src in list_catalog_sources(root, CatalogTarget::Extension).await {
         let Some(cat) = fetch_catalog_json::<ExtensionCatalog>(&src.url).await else {
             continue;
         };
@@ -488,7 +519,7 @@ pub async fn fetch_available_extensions(root: &Path) -> Vec<ExtensionInfo> {
 
 pub async fn fetch_available_presets(root: &Path) -> Vec<PresetInfo> {
     let mut items = Vec::new();
-    for src in catalog_urls(root, CatalogKind::Preset).await {
+    for src in list_catalog_sources(root, CatalogTarget::Preset).await {
         let Some(cat) = fetch_catalog_json::<PresetCatalog>(&src.url).await else {
             continue;
         };
@@ -514,7 +545,7 @@ pub async fn fetch_workflows(root: &Path) -> Vec<WorkflowInfo> {
     let mut workflows = fetch_installed_workflows(root).await;
 
     // Catalog workflows: backfill metadata on installed entries, append the rest.
-    for src in catalog_urls(root, CatalogKind::Workflow).await {
+    for src in list_catalog_sources(root, CatalogTarget::Workflow).await {
         let Some(cat) = fetch_catalog_json::<WorkflowCatalog>(&src.url).await else {
             continue;
         };
@@ -624,8 +655,10 @@ Using built-in default catalog stack.
         assert_eq!(srcs.len(), 2);
         assert_eq!(srcs[0].name, "default");
         assert_eq!(srcs[0].url, "https://example.com/extensions/catalog.json");
+        assert_eq!(srcs[0].priority, Some(1));
         assert!(srcs[0].install_allowed);
         assert_eq!(srcs[1].name, "community");
+        assert_eq!(srcs[1].priority, Some(2));
         assert!(!srcs[1].install_allowed);
     }
 
@@ -647,8 +680,10 @@ Workflow Catalog Sources:
         assert_eq!(srcs.len(), 2);
         assert_eq!(srcs[0].name, "default");
         assert_eq!(srcs[0].url, "https://example.com/workflows/catalog.json");
+        assert_eq!(srcs[0].priority, None);
         assert!(srcs[0].install_allowed);
         assert_eq!(srcs[1].name, "community");
+        assert_eq!(srcs[1].priority, None);
         assert!(!srcs[1].install_allowed);
     }
 

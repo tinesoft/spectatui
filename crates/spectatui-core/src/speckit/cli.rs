@@ -5,6 +5,8 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
+use super::registry::CatalogTarget;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CliTarget {
     Extension,
@@ -70,16 +72,16 @@ pub enum CliAction {
         name: String,
     },
     CatalogList {
-        target: CliTarget,
+        target: CatalogTarget,
     },
     CatalogAdd {
-        target: CliTarget,
+        target: CatalogTarget,
         url: String,
         name: String,
         priority: Option<u8>,
     },
     CatalogRemove {
-        target: CliTarget,
+        target: CatalogTarget,
         name: String,
     },
     IntegrationList,
@@ -241,7 +243,7 @@ impl CliAction {
                 format!("specify preset resolve {name}")
             }
             Self::CatalogList { target } => {
-                format!("specify {} catalog list", target.cmd_noun())
+                format!("specify {} catalog list", target.cli())
             }
             Self::CatalogAdd {
                 target,
@@ -249,14 +251,14 @@ impl CliAction {
                 name,
                 priority,
             } => {
-                let mut cmd = format!("specify {} catalog add {url} {name}", target.cmd_noun());
+                let mut cmd = format!("specify {} catalog add {url} {name}", target.cli());
                 if let Some(p) = priority {
                     cmd.push_str(&format!(" --priority {p}"));
                 }
                 cmd
             }
             Self::CatalogRemove { target, name } => {
-                format!("specify {} catalog remove {name}", target.cmd_noun())
+                format!("specify {} catalog remove {name}", target.cli())
             }
             Self::IntegrationList => "specify integration list".to_string(),
             Self::IntegrationInstall { key } => {
@@ -429,5 +431,86 @@ impl SpecifyCliClient {
         });
 
         (job, rx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn catalog_list_command_line_covers_all_four_kinds() {
+        assert_eq!(
+            CliAction::CatalogList {
+                target: CatalogTarget::Extension
+            }
+            .to_command_line(),
+            "specify extension catalog list"
+        );
+        assert_eq!(
+            CliAction::CatalogList {
+                target: CatalogTarget::Preset
+            }
+            .to_command_line(),
+            "specify preset catalog list"
+        );
+        assert_eq!(
+            CliAction::CatalogList {
+                target: CatalogTarget::Integration
+            }
+            .to_command_line(),
+            "specify integration catalog list"
+        );
+        assert_eq!(
+            CliAction::CatalogList {
+                target: CatalogTarget::Workflow
+            }
+            .to_command_line(),
+            "specify workflow catalog list"
+        );
+    }
+
+    #[test]
+    fn catalog_add_command_line_for_newly_supported_kinds() {
+        assert_eq!(
+            CliAction::CatalogAdd {
+                target: CatalogTarget::Integration,
+                url: "https://example.com/cat.json".to_string(),
+                name: "community".to_string(),
+                priority: None,
+            }
+            .to_command_line(),
+            "specify integration catalog add https://example.com/cat.json community"
+        );
+        assert_eq!(
+            CliAction::CatalogAdd {
+                target: CatalogTarget::Workflow,
+                url: "https://example.com/cat.json".to_string(),
+                name: "community".to_string(),
+                priority: Some(5),
+            }
+            .to_command_line(),
+            "specify workflow catalog add https://example.com/cat.json community --priority 5"
+        );
+    }
+
+    #[test]
+    fn catalog_remove_command_line_for_newly_supported_kinds() {
+        assert_eq!(
+            CliAction::CatalogRemove {
+                target: CatalogTarget::Integration,
+                name: "community".to_string(),
+            }
+            .to_command_line(),
+            "specify integration catalog remove community"
+        );
+        assert_eq!(
+            CliAction::CatalogRemove {
+                target: CatalogTarget::Workflow,
+                name: "community".to_string(),
+            }
+            .to_command_line(),
+            "specify workflow catalog remove community"
+        );
     }
 }
