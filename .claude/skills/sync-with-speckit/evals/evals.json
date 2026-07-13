@@ -1,0 +1,34 @@
+{
+  "skill_name": "sync-with-speckit",
+  "evals": [
+    {
+      "id": 1,
+      "name": "natural-check-for-updates",
+      "prompt": "hey can you check if spectatui has fallen behind on spec-kit? want to know if there's anything new upstream we should be adding support for",
+      "expected_output": "Reads design/memory/sync-log.md for prior state, does a real version check against the GitHub Spec-Kit releases API, and either (a) reports the run was version-gated/skipped because there's no new major/minor release since the last sync, or (b) if there is a new release, runs the full analysis (live CLI capture via uvx, ground-truth code comparison, feature table, recommendations) and reports it. Whichever branch, the report should be clear about which happened and why, and any claims about what Spectatui supports should cite actual source files, not just README.md/spec.md prose.",
+      "files": [],
+      "expectations": [
+        "The final report explicitly states whether the run was version-gated/skipped or fully analyzed, and gives the reason",
+        "The reported latest Spec-Kit version is a real fetched value (a plausible vX.Y.Z-style tag), not fabricated or guessed from training data",
+        "If a full analysis ran, the report cites at least one concrete Spectatui source file path (e.g. under crates/spectatui-core/src/speckit/ or crates/spectatui/src/) as evidence, not just README.md or spec.md prose",
+        "No mutating `specify` subcommand is invoked — only `--help` calls appear in the transcript's Bash usage of the specify CLI",
+        "No file outside design/memory/ is modified"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "forced-full-reanalysis",
+      "prompt": "I think we already synced with spec-kit recently but I don't fully trust it — can you force a full re-analysis against the current spec-kit release anyway, even if your version-check gate would normally skip it, and give me the comparison report",
+      "expected_output": "Honors the explicit override: runs the full analysis pipeline (ground-truth TUI code read, live `specify --help` CLI capture via uvx, diff, comparison) even though the version gate would otherwise skip it since no new major/minor release exists. Produces a feature comparison table and concrete recommendations citing real Spectatui source file paths, backed by an actual live CLI capture rather than the model's own memory of Spec-Kit's command surface.",
+      "files": [],
+      "expectations": [
+        "A full analysis runs despite the version gate — the report is not just a one-line 'skipped, no feat/major release' message",
+        "The transcript shows an actual `uvx`/`specify --help` invocation (or the bundled capture script) rather than the model describing Spec-Kit's CLI surface from memory",
+        "The final report includes a feature comparison table (or clearly equivalent structured comparison) mapping specific CLI capabilities to an implementation status in Spectatui",
+        "The report cites concrete Spectatui source file paths for at least one implemented and one missing/partial feature",
+        "No mutating `specify` subcommand is invoked — only `--help` calls appear in the transcript's Bash usage of the specify CLI",
+        "The transcript shows at least one WebFetch of an upstream source file under templates/ or scripts/ (e.g. a templates/commands/*.md slash-command template or scripts/bash/common.sh) — not just `--help` output or release-notes prose"
+      ]
+    }
+  ]
+}

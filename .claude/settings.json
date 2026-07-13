@@ -18,12 +18,5 @@
   "enabledPlugins": {
     "nx@nx-claude-plugins": true,
     "skill-creator@claude-plugins-official": true
-  },
-  "sandbox": {
-    "network": {
-      "allowedDomains": [
-        "www.google-analytics.com"
-      ]
-    }
   }
 }
