@@ -540,7 +540,7 @@ pub async fn fetch_available_presets(root: &Path) -> Vec<PresetInfo> {
     items
 }
 
-pub async fn fetch_workflows(root: &Path) -> Vec<WorkflowInfo> {
+pub async fn fetch_available_workflows(root: &Path) -> Vec<WorkflowInfo> {
     // Installed workflows are authoritative for `installed`/`source`.
     let mut workflows = fetch_installed_workflows(root).await;
 

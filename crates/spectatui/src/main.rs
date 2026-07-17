@@ -160,26 +160,7 @@ async fn run_loop(
     }
 
     // Async catalog indexing
-    {
-        let catalog_tx = event_tx.clone();
-        let catalog_root = root.to_path_buf();
-        tokio::spawn(async move {
-            let cli_available = registry::specify_cli_available(&catalog_root).await;
-            let (integrations, extensions, presets, workflows) = tokio::join!(
-                registry::fetch_available_integrations(&catalog_root),
-                registry::fetch_available_extensions(&catalog_root),
-                registry::fetch_available_presets(&catalog_root),
-                registry::fetch_workflows(&catalog_root),
-            );
-            let _ = catalog_tx.send(AppEvent::CatalogIndexed {
-                cli_available,
-                integrations,
-                extensions,
-                presets,
-                workflows,
-            });
-        });
-    }
+    spawn_catalog_index(event_tx.clone(), root.to_path_buf());
 
     // Catalog *source* listing — one fetch per resource kind, independent of the
     // "available items" indexing above (see AppEvent::CatalogSourcesLoaded).
@@ -199,10 +180,32 @@ async fn run_loop(
             return Ok(());
         }
 
-        // Poll CLI job progress. A successful CatalogAdd/CatalogRemove reports
-        // which kind to re-fetch, since refresh_project() doesn't cover catalog_sources.
-        if let Some(target) = app.poll_cli_job() {
+        // Poll CLI job progress. A successful job reports what refresh_project()
+        // didn't already cover: which catalog-source list to re-fetch (CatalogAdd/
+        // CatalogRemove), whether the async "available items" index is stale, and/or
+        // a queued followup action (the re-add half of a catalog source edit).
+        let refresh = app.poll_cli_job();
+        if let Some(target) = refresh.catalog_sources_target {
             spawn_catalog_sources_fetch(event_tx.clone(), root.to_path_buf(), target);
+        }
+        if refresh.needs_reindex {
+            spawn_catalog_index(event_tx.clone(), root.to_path_buf());
+        }
+        if let Some(action) = refresh.followup_action {
+            // Preserve the just-finished step's command + output ahead of the
+            // followup's own, so a catalog-source edit's two real CLI calls both
+            // stay visible in the output log instead of the first being silently
+            // overwritten by the second. The popup already prints the *new* job's
+            // own `command_line` as a header, so only the prior step's needs
+            // inlining into the output body here.
+            let prior = app
+                .cli_job
+                .as_ref()
+                .map(|j| format!("$ {}\n{}", j.command_line, j.output));
+            spawn_and_show_cli_job(app, &cli_client, &action);
+            if let (Some(prior), Some(job)) = (prior, &mut app.cli_job) {
+                job.output = format!("{prior}\n\n{}", job.output);
+            }
         }
 
         // Publish the current selection for the tmux poller.
@@ -278,6 +281,32 @@ async fn run_loop(
             }
         }
     }
+}
+
+/// Spawn the "available items" catalog index (installed+available integrations/
+/// extensions/presets/workflows), sending the result as `AppEvent::CatalogIndexed`.
+/// Used for the initial load at startup and re-run after any CLI job completes that
+/// can change installed/available state (see `App::poll_cli_job`'s `needs_reindex`),
+/// since `Project::discover()` can't populate this data itself (workflows and
+/// "available" items require async CLI/network calls) and otherwise `refresh_project()`
+/// would just keep re-applying the stale snapshot from the last index.
+fn spawn_catalog_index(tx: mpsc::UnboundedSender<AppEvent>, root: PathBuf) {
+    tokio::spawn(async move {
+        let cli_available = registry::specify_cli_available(&root).await;
+        let (integrations, extensions, presets, workflows) = tokio::join!(
+            registry::fetch_available_integrations(&root),
+            registry::fetch_available_extensions(&root),
+            registry::fetch_available_presets(&root),
+            registry::fetch_available_workflows(&root),
+        );
+        let _ = tx.send(AppEvent::CatalogIndexed {
+            cli_available,
+            integrations,
+            extensions,
+            presets,
+            workflows,
+        });
+    });
 }
 
 /// Spawn a `list_catalog_sources` fetch for `target`, sending the result as
@@ -638,6 +667,7 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         KeyCode::Esc => {
                             app.cat_add_input = None;
                             app.cat_add_cursor = 0;
+                            app.cat_edit_target = None;
                         }
                         KeyCode::Backspace => app.cat_add_backspace(),
                         KeyCode::Delete => app.cat_add_delete_forward(),
@@ -645,22 +675,42 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         KeyCode::Right => app.cat_add_move_right(),
                         KeyCode::Home => app.cat_add_move_home(),
                         KeyCode::End => app.cat_add_move_end(),
+                        // Only meaningful in edit mode (see `cat_edit_toggle_install_allowed`);
+                        // free to repurpose here since Tab otherwise does nothing while the
+                        // add-form has focus (it switches catalog kind tabs the rest of the time).
+                        KeyCode::Tab => app.cat_edit_toggle_install_allowed(),
                         KeyCode::Enter => {
                             if let Some(input) = app.cat_add_input.take() {
                                 app.cat_add_cursor = 0;
+                                let edit_target = app.cat_edit_target.take();
                                 if let Some((url, name, priority)) =
                                     app::parse_catalog_add_input(&input)
                                 {
-                                    request_cli_action(
-                                        app,
-                                        CliAction::CatalogAdd {
-                                            target: app.cat_tab,
-                                            url,
-                                            name,
-                                            priority,
-                                        },
-                                        cli_client,
-                                    );
+                                    let add_action = CliAction::CatalogAdd {
+                                        target: app.cat_tab,
+                                        url,
+                                        name,
+                                        priority,
+                                        install_allowed: edit_target
+                                            .is_some()
+                                            .then_some(app.cat_edit_install_allowed),
+                                    };
+                                    if let Some(old_name) = edit_target {
+                                        // No single CLI edit/update verb exists (only
+                                        // list/add/remove) — remove the original, then
+                                        // chain the re-add once that succeeds.
+                                        app.pending_followup_action = Some(add_action);
+                                        request_cli_action(
+                                            app,
+                                            CliAction::CatalogRemove {
+                                                target: app.cat_tab,
+                                                name: old_name,
+                                            },
+                                            cli_client,
+                                        );
+                                    } else {
+                                        request_cli_action(app, add_action, cli_client);
+                                    }
                                 }
                             }
                         }
@@ -685,6 +735,11 @@ fn handle_key(app: &mut App, key: KeyEvent, cli_client: &SpecifyCliClient) {
                         }
                         KeyCode::Char('a') => {
                             app.cat_add_open();
+                        }
+                        KeyCode::Char('e') => {
+                            if app.cat_edit_available() {
+                                app.cat_edit_open();
+                            }
                         }
                         KeyCode::Char('x') => {
                             if let Some(name) = app

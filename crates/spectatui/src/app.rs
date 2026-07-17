@@ -180,6 +180,18 @@ pub struct CatalogResults {
     pub workflows: Vec<WorkflowInfo>,
 }
 
+/// What `App::poll_cli_job` determined the caller must re-fetch after a successful
+/// CLI job, since neither is covered by the `refresh_project()` it already ran.
+#[derive(Default)]
+pub struct CliJobRefresh {
+    pub catalog_sources_target: Option<CatalogTarget>,
+    pub needs_reindex: bool,
+    /// An action queued by `pending_followup_action` to dispatch now that the job
+    /// it depended on just succeeded (currently: the re-add half of a catalog
+    /// source edit, after its remove half completes).
+    pub followup_action: Option<CliAction>,
+}
+
 /// Catalog *sources* for the Catalog Manager popup — one list per resource kind.
 /// Distinct from `CatalogResults` above, which caches "available items" fetched
 /// through those sources, not the sources themselves.
@@ -287,6 +299,20 @@ pub struct App {
     pub catalog_sources: CatalogSourcesState,
     /// Set by the `r` (refresh) key; the main loop spawns the fetch and clears this.
     pub catalog_refresh_request: Option<CatalogTarget>,
+    /// `Some(original_name)` while the inline form (`cat_add_input`) is editing an
+    /// existing source rather than adding a new one — `None` for a plain add. The
+    /// CLI has no edit/update verb (only `list`/`add`/`remove`), so submitting an
+    /// edit removes the original by this name, then re-adds it with the form's
+    /// values (see `pending_followup_action`).
+    pub cat_edit_target: Option<String>,
+    /// The install-allowed flag being edited, toggled by `Tab` while the form is
+    /// open in edit mode. Meaningless outside edit mode.
+    pub cat_edit_install_allowed: bool,
+    /// An action to dispatch as soon as the in-flight job succeeds — used to chain
+    /// the re-add after an edit's remove completes. Cleared (without running) if
+    /// the in-flight job fails, so a failed remove doesn't leave a stray source gone
+    /// with no re-add ever attempted, silently, later.
+    pub pending_followup_action: Option<CliAction>,
 
     // Inline list filter (management popups)
     pub filter_query: String,
@@ -383,6 +409,9 @@ impl App {
             cat_add_cursor: 0,
             catalog_sources: CatalogSourcesState::default(),
             catalog_refresh_request: None,
+            cat_edit_target: None,
+            cat_edit_install_allowed: false,
+            pending_followup_action: None,
             filter_query: String::new(),
             filter_active: false,
             indexing: true,
@@ -641,6 +670,7 @@ impl App {
                 self.cat_index = 0;
                 self.cat_add_input = None;
                 self.cat_add_cursor = 0;
+                self.cat_edit_target = None;
             }
             _ => {}
         }
@@ -924,14 +954,18 @@ impl App {
         }
     }
 
-    /// Polls the in-flight CLI job's event stream. Returns `Some(target)` when a
-    /// `CatalogAdd`/`CatalogRemove` job for that catalog kind just succeeded — the
-    /// generic `refresh_project()` below covers extensions/presets/integrations/
-    /// workflows, but not `catalog_sources`, which the caller must re-fetch itself
-    /// (see `main.rs`'s main loop).
-    pub fn poll_cli_job(&mut self) -> Option<CatalogTarget> {
+    /// Polls the in-flight CLI job's event stream, refreshing project/catalog state
+    /// on success. Returns what the caller (`main.rs`'s main loop) must re-fetch
+    /// itself, since neither is covered by `refresh_project()`:
+    /// - `catalog_sources_target`: a `CatalogAdd`/`CatalogRemove` job for that kind
+    ///   just succeeded, so `catalog_sources` (not part of `Project`) needs re-listing.
+    /// - `needs_reindex`: the job just succeeded and can change installed/available
+    ///   state for extensions/presets/integrations/workflows, so the async catalog
+    ///   index (`spawn_catalog_index`) must re-run — otherwise `refresh_project()`
+    ///   just keeps re-applying the last (now stale) `catalog_cache` snapshot.
+    pub fn poll_cli_job(&mut self) -> CliJobRefresh {
         let Some(rx) = &mut self.cli_rx else {
-            return None;
+            return CliJobRefresh::default();
         };
         let mut should_refresh = false;
         loop {
@@ -955,21 +989,50 @@ impl App {
                     }
                     if success {
                         should_refresh = true;
+                    } else {
+                        // A failed remove must not later chain into an add that was
+                        // queued for a completely different, still-pending edit.
+                        self.pending_followup_action = None;
                     }
                 }
                 Err(_) => break,
             }
         }
-        if should_refresh {
-            self.refresh_project();
-            if let Some(
-                CliAction::CatalogAdd { target, .. } | CliAction::CatalogRemove { target, .. },
-            ) = self.cli_job.as_ref().map(|j| &j.action)
-            {
-                return Some(*target);
-            }
+        if !should_refresh {
+            return CliJobRefresh::default();
         }
-        None
+        self.refresh_project();
+        let followup_action = self.pending_followup_action.take();
+        let action = self.cli_job.as_ref().map(|j| &j.action);
+        let catalog_sources_target = match action {
+            Some(
+                CliAction::CatalogAdd { target, .. } | CliAction::CatalogRemove { target, .. },
+            ) => Some(*target),
+            _ => None,
+        };
+        let needs_reindex = matches!(
+            action,
+            Some(
+                CliAction::Add { .. }
+                    | CliAction::Remove { .. }
+                    | CliAction::Enable { .. }
+                    | CliAction::Disable { .. }
+                    | CliAction::Update { .. }
+                    | CliAction::CatalogAdd { .. }
+                    | CliAction::CatalogRemove { .. }
+                    | CliAction::IntegrationInstall { .. }
+                    | CliAction::IntegrationUninstall { .. }
+                    | CliAction::IntegrationSwitch { .. }
+                    | CliAction::IntegrationUpgrade { .. }
+                    | CliAction::WorkflowAdd { .. }
+                    | CliAction::WorkflowRemove { .. }
+            )
+        );
+        CliJobRefresh {
+            catalog_sources_target,
+            needs_reindex,
+            followup_action,
+        }
     }
 
     pub fn integration_select_next(&mut self) {
@@ -1149,6 +1212,7 @@ impl App {
     /// would just offer to re-add itself. Falls back to an empty field
     /// otherwise (nothing selected, empty list, or an installed source).
     pub fn cat_add_open(&mut self) {
+        self.cat_edit_target = None;
         let prefill = self
             .current_catalog_list()
             .get(self.cat_index)
@@ -1160,6 +1224,55 @@ impl App {
             .unwrap_or_default();
         self.cat_add_cursor = prefill.chars().count();
         self.cat_add_input = Some(prefill);
+    }
+
+    /// Whether the selected catalog source (in the current `cat_tab`) can be
+    /// edited in place. Only extension/preset catalogs have a priority /
+    /// install-allowed flag at all — integration/workflow sources are just
+    /// name+url, so there's nothing for an edit form to change.
+    pub fn cat_edit_available(&self) -> bool {
+        matches!(
+            self.cat_tab,
+            CatalogTarget::Extension | CatalogTarget::Preset
+        ) && self.current_catalog_list().get(self.cat_index).is_some()
+    }
+
+    /// Open the inline form in *edit* mode for the currently selected source,
+    /// prefilled with its current url/name/priority regardless of its
+    /// install-allowed state (unlike `cat_add_open`, which only prefills
+    /// discovery-only sources). Submitting removes the original by name, then
+    /// re-adds it with the form's (possibly edited) values — the CLI has no
+    /// single edit/update verb (§ `CliAction::CatalogAdd`'s `install_allowed` doc).
+    /// No-op if `cat_edit_available()` is false.
+    pub fn cat_edit_open(&mut self) {
+        if !matches!(
+            self.cat_tab,
+            CatalogTarget::Extension | CatalogTarget::Preset
+        ) {
+            return;
+        }
+        let Some(src) = self.current_catalog_list().get(self.cat_index) else {
+            return;
+        };
+        let name = src.name.clone();
+        let install_allowed = src.install_allowed;
+        let prefill = match src.priority {
+            Some(p) => format!("{} {} {}", src.url, src.name, p),
+            None => format!("{} {}", src.url, src.name),
+        };
+        self.cat_edit_target = Some(name);
+        self.cat_edit_install_allowed = install_allowed;
+        self.cat_add_cursor = prefill.chars().count();
+        self.cat_add_input = Some(prefill);
+    }
+
+    /// Toggle the install-allowed flag being edited. Only meaningful while
+    /// `cat_edit_target` is `Some` (the form is open in edit mode); a no-op
+    /// otherwise so a stray keypress in add mode can't do anything surprising.
+    pub fn cat_edit_toggle_install_allowed(&mut self) {
+        if self.cat_edit_target.is_some() {
+            self.cat_edit_install_allowed = !self.cat_edit_install_allowed;
+        }
     }
 
     // ---- inline list filter ----
@@ -1788,6 +1901,179 @@ mod tests {
         app.cat_add_open();
         assert_eq!(app.cat_add_input.as_deref(), Some(""));
         assert_eq!(app.cat_add_cursor, 0);
+    }
+
+    #[test]
+    fn cat_edit_available_true_only_for_extension_and_preset_with_a_selection() {
+        let mut app = test_app();
+        app.set_catalog_sources(CatalogTarget::Extension, vec![test_source("a")]);
+        app.cat_tab = CatalogTarget::Extension;
+        assert!(app.cat_edit_available());
+
+        app.cat_tab = CatalogTarget::Integration;
+        assert!(
+            !app.cat_edit_available(),
+            "integration catalogs have no priority/install-allowed to edit"
+        );
+
+        app.cat_tab = CatalogTarget::Extension;
+        app.set_catalog_sources(CatalogTarget::Extension, vec![]);
+        assert!(!app.cat_edit_available(), "nothing selected");
+    }
+
+    #[test]
+    fn cat_edit_open_prefills_regardless_of_install_allowed() {
+        let mut app = test_app();
+        let mut installed = test_source("a");
+        installed.priority = Some(3);
+        assert!(installed.install_allowed);
+        app.set_catalog_sources(CatalogTarget::Extension, vec![installed]);
+        app.cat_tab = CatalogTarget::Extension;
+        app.cat_edit_open();
+        assert_eq!(
+            app.cat_add_input.as_deref(),
+            Some("https://example.com/a.json a 3"),
+            "unlike cat_add_open, edit pre-fills even an already install-allowed source"
+        );
+        assert_eq!(app.cat_edit_target.as_deref(), Some("a"));
+        assert!(app.cat_edit_install_allowed);
+    }
+
+    #[test]
+    fn cat_edit_open_is_noop_for_integration_and_workflow_targets() {
+        let mut app = test_app();
+        app.set_catalog_sources(CatalogTarget::Integration, vec![test_source("a")]);
+        app.cat_tab = CatalogTarget::Integration;
+        app.cat_edit_open();
+        assert_eq!(app.cat_add_input, None);
+        assert_eq!(app.cat_edit_target, None);
+    }
+
+    #[test]
+    fn cat_edit_toggle_install_allowed_noop_outside_edit_mode() {
+        let mut app = test_app();
+        assert_eq!(app.cat_edit_target, None);
+        assert!(!app.cat_edit_install_allowed);
+        app.cat_edit_toggle_install_allowed();
+        assert!(
+            !app.cat_edit_install_allowed,
+            "toggle is a no-op when no edit is in progress"
+        );
+    }
+
+    #[test]
+    fn cat_edit_toggle_install_allowed_flips_while_editing() {
+        let mut app = test_app();
+        app.cat_edit_target = Some("a".to_string());
+        app.cat_edit_install_allowed = false;
+        app.cat_edit_toggle_install_allowed();
+        assert!(app.cat_edit_install_allowed);
+        app.cat_edit_toggle_install_allowed();
+        assert!(!app.cat_edit_install_allowed);
+    }
+
+    #[test]
+    fn cat_add_open_resets_any_in_progress_edit() {
+        let mut app = test_app();
+        app.cat_edit_target = Some("stale".to_string());
+        app.cat_add_open();
+        assert_eq!(
+            app.cat_edit_target, None,
+            "pressing 'a' always means a fresh add, never a leftover edit"
+        );
+    }
+
+    #[test]
+    fn poll_cli_job_chains_followup_action_when_job_succeeds() {
+        let mut app = test_app();
+        let (tx, rx) = mpsc::unbounded_channel();
+        app.cli_job = Some(CliJob::new(CliAction::CatalogRemove {
+            target: CatalogTarget::Extension,
+            name: "a".to_string(),
+        }));
+        app.cli_rx = Some(rx);
+        let add_action = CliAction::CatalogAdd {
+            target: CatalogTarget::Extension,
+            url: "https://example.com/a.json".to_string(),
+            name: "a".to_string(),
+            priority: Some(1),
+            install_allowed: Some(true),
+        };
+        app.pending_followup_action = Some(add_action);
+        tx.send(CliEvent::Completed { success: true }).unwrap();
+
+        let refresh = app.poll_cli_job();
+        assert!(
+            matches!(refresh.followup_action, Some(CliAction::CatalogAdd { .. })),
+            "the queued re-add should be handed back once the remove succeeds"
+        );
+        assert!(
+            app.pending_followup_action.is_none(),
+            "taken, not left to double-dispatch on a later unrelated success"
+        );
+    }
+
+    #[test]
+    fn poll_cli_job_drops_pending_followup_when_job_fails() {
+        let mut app = test_app();
+        let (tx, rx) = mpsc::unbounded_channel();
+        app.cli_job = Some(CliJob::new(CliAction::CatalogRemove {
+            target: CatalogTarget::Extension,
+            name: "a".to_string(),
+        }));
+        app.cli_rx = Some(rx);
+        app.pending_followup_action = Some(CliAction::CatalogAdd {
+            target: CatalogTarget::Extension,
+            url: "https://example.com/a.json".to_string(),
+            name: "a".to_string(),
+            priority: Some(1),
+            install_allowed: Some(true),
+        });
+        tx.send(CliEvent::Completed { success: false }).unwrap();
+
+        let refresh = app.poll_cli_job();
+        assert!(
+            refresh.followup_action.is_none(),
+            "a failed remove must not chain into the queued re-add"
+        );
+        assert!(
+            app.pending_followup_action.is_none(),
+            "must not linger and fire on some later, unrelated success"
+        );
+    }
+
+    #[test]
+    fn poll_cli_job_flags_needs_reindex_for_availability_changing_actions() {
+        let mut app = test_app();
+        let (tx, rx) = mpsc::unbounded_channel();
+        app.cli_job = Some(CliJob::new(CliAction::WorkflowAdd {
+            source: "speckit".to_string(),
+        }));
+        app.cli_rx = Some(rx);
+        tx.send(CliEvent::Completed { success: true }).unwrap();
+
+        let refresh = app.poll_cli_job();
+        assert!(
+            refresh.needs_reindex,
+            "installing a workflow can change what's available"
+        );
+    }
+
+    #[test]
+    fn poll_cli_job_does_not_need_reindex_for_read_only_actions() {
+        let mut app = test_app();
+        let (tx, rx) = mpsc::unbounded_channel();
+        app.cli_job = Some(CliJob::new(CliAction::IntegrationStatus {
+            key: "claude".to_string(),
+        }));
+        app.cli_rx = Some(rx);
+        tx.send(CliEvent::Completed { success: true }).unwrap();
+
+        let refresh = app.poll_cli_job();
+        assert!(
+            !refresh.needs_reindex,
+            "a status check changes nothing about what's installed/available"
+        );
     }
 
     #[test]
