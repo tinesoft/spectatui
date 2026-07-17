@@ -79,6 +79,13 @@ pub enum CliAction {
         url: String,
         name: String,
         priority: Option<u8>,
+        /// `Some(_)` explicitly passes `--install-allowed`/`--no-install-allowed`
+        /// (used when re-adding a source to preserve its current flag across an
+        /// edit); `None` omits the flag entirely, letting the CLI default to
+        /// `--no-install-allowed` — the existing "add a new source" behavior.
+        /// Only extension/preset catalogs accept this flag; integration/workflow
+        /// catalog sources have no priority/install-allowed concept at all.
+        install_allowed: Option<bool>,
     },
     CatalogRemove {
         target: CatalogTarget,
@@ -250,10 +257,18 @@ impl CliAction {
                 url,
                 name,
                 priority,
+                install_allowed,
             } => {
                 let mut cmd = format!("specify {} catalog add {url} {name}", target.cli());
                 if let Some(p) = priority {
                     cmd.push_str(&format!(" --priority {p}"));
+                }
+                if let Some(allowed) = install_allowed {
+                    cmd.push_str(if *allowed {
+                        " --install-allowed"
+                    } else {
+                        " --no-install-allowed"
+                    });
                 }
                 cmd
             }
@@ -478,6 +493,7 @@ mod tests {
                 url: "https://example.com/cat.json".to_string(),
                 name: "community".to_string(),
                 priority: None,
+                install_allowed: None,
             }
             .to_command_line(),
             "specify integration catalog add https://example.com/cat.json community"
@@ -488,9 +504,36 @@ mod tests {
                 url: "https://example.com/cat.json".to_string(),
                 name: "community".to_string(),
                 priority: Some(5),
+                install_allowed: None,
             }
             .to_command_line(),
             "specify workflow catalog add https://example.com/cat.json community --priority 5"
+        );
+    }
+
+    #[test]
+    fn catalog_add_command_line_passes_install_allowed_flag_when_explicit() {
+        assert_eq!(
+            CliAction::CatalogAdd {
+                target: CatalogTarget::Extension,
+                url: "https://example.com/cat.json".to_string(),
+                name: "community".to_string(),
+                priority: Some(2),
+                install_allowed: Some(true),
+            }
+            .to_command_line(),
+            "specify extension catalog add https://example.com/cat.json community --priority 2 --install-allowed"
+        );
+        assert_eq!(
+            CliAction::CatalogAdd {
+                target: CatalogTarget::Preset,
+                url: "https://example.com/cat.json".to_string(),
+                name: "community".to_string(),
+                priority: Some(2),
+                install_allowed: Some(false),
+            }
+            .to_command_line(),
+            "specify preset catalog add https://example.com/cat.json community --priority 2 --no-install-allowed"
         );
     }
 

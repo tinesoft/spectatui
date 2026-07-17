@@ -147,7 +147,12 @@ fn draw_add_form(frame: &mut Frame, app: &App, inner: Rect, input: &str) {
         row,
     );
 
-    let prefix = format!("Add {} catalog:  ", app.cat_tab.cli());
+    let verb = if app.cat_edit_target.is_some() {
+        "Edit"
+    } else {
+        "Add"
+    };
+    let prefix = format!("{verb} {} catalog:  ", app.cat_tab.cli());
     let prefix_span_width = 1 + prefix.chars().count() as u16; // " {prefix}"
     frame.render_widget(
         Paragraph::new(Line::from(Span::styled(
@@ -246,18 +251,33 @@ fn draw_add_form(frame: &mut Frame, app: &App, inner: Rect, input: &str) {
         inner.width.saturating_sub(text_x - inner.x),
         1,
     );
-    frame.render_widget(
-        Paragraph::new(Line::from(vec![
-            Span::styled("url name [priority] · ", theme.faint_style),
-            Span::styled("enter", theme.accent_bold),
-            Span::styled(" to add · ", theme.faint_style),
-            Span::styled("ctrl+c", theme.accent_bold),
-            Span::styled(" to clear · ", theme.faint_style),
-            Span::styled("esc", theme.accent_bold),
-            Span::styled(" to cancel", theme.faint_style),
-        ])),
-        hint_row,
-    );
+    let mut hint_spans = vec![Span::styled("url name [priority] · ", theme.faint_style)];
+    if app.cat_edit_target.is_some() {
+        let (dot, label, style) = if app.cat_edit_install_allowed {
+            ("● ", "install allowed", theme.good_style)
+        } else {
+            ("○ ", "discovery only", theme.faint_style)
+        };
+        hint_spans.push(Span::styled(dot, style));
+        hint_spans.push(Span::styled(label, style));
+        hint_spans.push(Span::styled(" (", theme.faint_style));
+        hint_spans.push(Span::styled("tab", theme.accent_bold));
+        hint_spans.push(Span::styled(" to toggle) · ", theme.faint_style));
+    }
+    hint_spans.push(Span::styled("enter", theme.accent_bold));
+    hint_spans.push(Span::styled(
+        if app.cat_edit_target.is_some() {
+            " to save · "
+        } else {
+            " to add · "
+        },
+        theme.faint_style,
+    ));
+    hint_spans.push(Span::styled("ctrl+c", theme.accent_bold));
+    hint_spans.push(Span::styled(" to clear · ", theme.faint_style));
+    hint_spans.push(Span::styled("esc", theme.accent_bold));
+    hint_spans.push(Span::styled(" to cancel", theme.faint_style));
+    frame.render_widget(Paragraph::new(Line::from(hint_spans)), hint_row);
     // A blank row separates the hint from the source list/detail below.
 }
 
@@ -382,6 +402,12 @@ fn draw_detail(frame: &mut Frame, app: &App, area: Rect) {
     lines.push(action_line("a", "add source", theme));
     if selected.is_some() {
         lines.push(action_line("x", "remove source", theme));
+        // Only extension/preset catalogs have a priority/install-allowed flag to
+        // edit — integration/workflow sources are just name+url (see
+        // `App::cat_edit_available`).
+        if app.cat_edit_available() {
+            lines.push(action_line("e", "edit priority / install-allowed", theme));
+        }
     }
     lines.push(action_line("r", "refresh", theme));
 
