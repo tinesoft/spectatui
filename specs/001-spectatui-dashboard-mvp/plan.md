@@ -4,6 +4,8 @@
 
 **Propagated**: 2026-07-04 — Updated from spec.md refinement (FR-006a, in-app coding-agent session launch)
 
+**Propagated**: 2026-07-14 — Updated from spec.md refinement: catalog browsing of not-yet-installed items (previously out of scope) is delivered via the existing inline `/` filter; the direct-catalog-JSON-fetch design choice (already reflected in Technical Context's `reqwest` line above) is now also documented as an intentional exception in `design/core/spectatui-archi-design.md` §1.5, not just an implementation detail.
+
 **Input**: Feature specification from `/specs/001-spectatui-dashboard-mvp/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command. See `.specify/templates/plan-template.md` for the execution workflow.

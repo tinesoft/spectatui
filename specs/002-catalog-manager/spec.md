@@ -15,6 +15,13 @@ affordances (cursor movement, forward/backward delete, mouse click-to-position,
 paste); and Ctrl+C is scoped to clear the form's input instead of triggering
 the app's global quit while the form is open.
 
+**Refined**: 2026-07-14 — Delivered reprioritize/toggle-in-place for extension
+and preset catalog sources (previously out of scope): an `e` edit action
+sequences a real remove-then-re-add behind one confirm step, rather than
+requiring the user to do both steps manually. Integration/workflow catalog
+sources remain remove/re-add only, since the underlying tool gives those
+kinds no priority or install-allowed concept to edit in the first place.
+
 **Input**: User description: "Catalog Manager: a unified popup in spectatui for managing catalog *sources* across all four Spec Kit resource kinds — extensions, presets, integrations, and workflows. Each of these resource kinds resolves its installable items from one or more catalog sources (a name + URL + priority + install-allowed/discovery-only flag), and today spectatui has no way to view or manage those sources at all, even though it already has full managers for the resources themselves (Extensions, Presets, Integrations, Workflows popups). The Catalog Manager popup should be reachable from a status bar stat, a global keypress, and a command-palette entry; be tabbed by resource kind; support add/remove/refresh per source, each delegated to the underlying catalog tool with a preview-then-confirm flow; and reuse the existing generic confirm/output flow already used by the other managers. Since the global key is being claimed by Catalogs, the existing Constitution viewer keybinding moves to a different key to free it up. Out of scope: reprioritizing or toggling a source in place — done via remove + re-add instead."
 
 ## Clarifications
@@ -246,12 +253,16 @@ same session.
   other resource managers) is the sole source of truth for catalog source
   state; this feature is a visualization and control layer on top of it, not
   an independent store of its own.
-- Reprioritizing an existing catalog source is accomplished by removing it
-  and re-adding it with a new priority, since the underlying tool does not
-  expose a dedicated reorder action today.
-- Whether a source is install-allowed or discovery-only is informational in
-  this feature (reflecting whatever the underlying tool reports) rather than
-  something the user toggles in place.
+- ~~Reprioritizing an existing catalog source is accomplished by removing it
+  and re-adding it with a new priority... something the user toggles in
+  place~~ — **delivered** (see 2026-07-14 refinement note): an `e` "edit"
+  action, scoped to extension/preset catalog sources only (the underlying
+  tool's integration/workflow catalog sources have no priority or
+  install-allowed concept to edit), opens a form pre-filled with the
+  source's current url/name/priority/install-allowed and, on submit, still
+  performs a real remove-then-re-add — the underlying tool has no dedicated
+  reorder/edit verb today — but as one sequenced pair of calls behind a
+  single confirm step instead of the user doing it manually in two.
 - Exactly four resource kinds exist today (extensions, presets, integrations,
   workflows); no other kinds are in scope.
 - Reachability for this feature reuses the same three entry-point mechanisms

@@ -11,6 +11,10 @@ Ctrl+C-clears behavior). This work had already shipped in code ahead of
 spec.md/tasks.md documenting it; the tasks are recorded (and marked done)
 for traceability.
 
+**Propagated**: 2026-07-14 — Added T027 under Phase 5 (User Story 3) for the
+spec's reprioritize/toggle-in-place refinement, scoped to Extension/Preset
+catalog kinds.
+
 **Input**: Design documents from `/specs/002-catalog-manager/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/cli-catalog-commands.md, quickstart.md (all present)
@@ -109,6 +113,28 @@ Existing two-crate Cargo workspace, no new crate/directory:
 - [X] T017 [US3] In `crates/spectatui/src/ui/catalogs.rs`: add the `[r] refresh` line to the Actions list; confirm the tab row (already rendering `app.cat_tab`, static since T006) needs no visual change beyond it now actually responding to `Tab`/`Shift+Tab` from T016. *(depends on T006)*
 
 **Checkpoint**: All three user stories are independently functional; the full feature matches spec.md.
+
+- [X] T027 [US3] Deliver the spec's 2026-07-14 refinement: reprioritize/toggle
+  catalog sources in place (previously out of scope), scoped to Extension/Preset
+  catalog kinds only. **Result**: verified against the installed `specify 0.12.4`
+  CLI that `extension catalog`/`preset catalog` support
+  `--priority`/`--install-allowed` on `add`, but `integration catalog`/`workflow
+  catalog` do not (no priority/install-allowed concept for those two kinds at
+  all) — confirming `registry.rs`'s existing `CatalogSource` "dialect A/B"
+  comment and scoping this feature accordingly. No single CLI edit/update verb
+  exists (`list`/`add`/`remove` only), so added an `e` key
+  (`App::cat_edit_available`/`cat_edit_open` in `crates/spectatui/src/app.rs`,
+  gated to Extension/Preset in the `ui/catalogs.rs` Actions list) that opens the
+  existing add-form pre-filled with the selected source's current
+  url/name/priority/install-allowed regardless of its install-allowed state
+  (unlike `cat_add_open`, which only pre-fills discovery-only sources). Submitting
+  the edit form dispatches `CatalogRemove` then, once it succeeds, a
+  `CatalogAdd` carrying the edited values — chained via a new
+  `App::pending_followup_action` field polled in `poll_cli_job`, and aborted
+  (not chained) if the remove fails. Added `install_allowed: Option<bool>` to
+  `CliAction::CatalogAdd` in `crates/spectatui-core/src/speckit/cli.rs` so the
+  re-add can pass `--install-allowed`/`--no-install-allowed` explicitly (`None`
+  preserves the existing plain "add a new source" behavior of omitting the flag).
 
 ---
 

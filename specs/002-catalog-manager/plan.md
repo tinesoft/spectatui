@@ -7,6 +7,13 @@ prefill from a selected discovery-only source, text-editing affordances,
 and scoped Ctrl+C-clears behavior) into Project Structure below; this work
 had already shipped in code ahead of the spec/plan documenting it.
 
+**Propagated**: 2026-07-14 — Reflected spec.md's 2026-07-14 refinement:
+reprioritize/toggle-in-place is delivered for extension/preset catalog
+sources via a new `e` edit action that sequences a real `CatalogRemove` then
+`CatalogAdd` (now carrying an explicit `install_allowed: Option<bool>` field)
+behind one confirm step — no new `CliAction` variant was needed since the
+underlying tool still has no dedicated edit/update verb.
+
 **Input**: Feature specification from `/specs/002-catalog-manager/spec.md`
 
 ## Summary

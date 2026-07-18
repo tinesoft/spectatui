@@ -108,6 +108,26 @@ goes through the same validation, confirmation prompts, and backup behavior the
 CLI already implements (e.g. `extension remove` backs up config by default
 unless `--keep-config`/`--force` is passed).
 
+**Explicit exception — catalog *available-item* discovery.** Every *mutating*
+action (install, remove, enable/disable, reprioritize, switch, run, …) still
+goes exclusively through a real `specify` subprocess call, with no exceptions.
+But populating the "available" (not-yet-installed) extensions/presets/
+integrations/workflows shown in each manager is read/discovery-only, and there
+spectatui deliberately does **not** shell out to `specify <target> search`/
+`list --available`. Instead (`crates/spectatui-core/src/speckit/registry.rs`'s
+`fetch_available_*` functions) it lists catalog *sources* via `specify <kind>
+catalog list` and then fetches each source's catalog JSON directly over HTTP,
+parsing it into `ExtensionInfo`/`PresetInfo`/`IntegrationInfo`/`WorkflowInfo`
+records. This is intentional, not an oversight: the CLI's `search`/`list`
+output is Rich-formatted table text, and spectatui needs to re-filter that data
+per keystroke (the inline `/` filter in every manager popup, §6.5) and bind
+individual rows to direct TUI actions (`a` to install a specific catalog
+entry) — both of which would mean re-invoking the subprocess and re-parsing
+text on every filter change, with no stable identifier to bind a row's action
+to across calls. Structured catalog JSON gives stable, addressable records
+instead. The "CLI is the only thing that mutates state" invariant still holds
+in full; this exception is scoped to the read side of catalog browsing only.
+
 ## 1.6. Two different "workflow" concepts in Spec Kit
 
 Spec Kit has **two unrelated things both called "workflow"**, and spectatui
@@ -310,13 +330,18 @@ releases.
 
 `ExtensionInfo`/`PresetInfo` are populated from **two sources**: parse the local
 `.specify/extensions/.registry` / `.specify/presets/.registry` (JSON, no file
-extension) for a fast, no-subprocess listing of what's *installed*; call
-`specify extension list --available` / `specify preset search` for what's
-*available but not installed* (these become `InstallStatus::Available` entries).
-`IntegrationInfo` reads `.specify/integration.json` for instant local state and
-can call `specify integration status --json` for the richer drift view.
-`WorkflowInfo` is populated from `specify workflow list`. The registry files are
-read-only input to spectatui's display — never written by spectatui.
+extension) for a fast, no-subprocess listing of what's *installed*; fetch each
+configured catalog's JSON directly (`registry.rs`'s `fetch_available_*`, listing
+sources via `specify <kind> catalog list` first) for what's *available but not
+installed* (these become `InstallStatus::Available` entries) — see §1.5's
+explicit exception for why this bypasses `specify <target> search`/
+`list --available` rather than parsing their output. `IntegrationInfo` reads
+`.specify/integration.json` for instant local state, the same direct-fetch path
+for available integrations, and can call `specify integration status --json`
+for the richer drift view. `WorkflowInfo` merges `specify workflow list` (the
+installed set, authoritative for `installed`/`source`) with the same
+direct-fetch catalog path for not-yet-installed workflows. The registry files
+are read-only input to spectatui's display — never written by spectatui.
 
 The persistent status bar (§6.5) shows six counts, derived directly from this
 model: integrations (`installed == true`), features (`features.len()`),

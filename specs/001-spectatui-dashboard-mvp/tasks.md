@@ -7,6 +7,10 @@ description: "Task list template for feature implementation"
 
 **Propagated**: 2026-07-04 — Updated from spec.md refinement (FR-006a, in-app coding-agent session launch)
 
+**Propagated**: 2026-07-14 — Updated from spec.md refinement (catalog browsing of
+not-yet-installed items delivered); added T026 to Phase 5 documenting the delivery and
+the fix for the stale catalog-availability cache found while implementing it
+
 **Input**: Design documents from `/specs/001-spectatui-dashboard-mvp/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
@@ -237,6 +241,27 @@ one is running" scenario.
 
 **Checkpoint**: User Stories 1, 2, and 3 all fully satisfy spec.md, including the
 FR-019a clarification.
+
+- [X] T026 [US3] Deliver the spec's 2026-07-14 refinement: catalog browsing of
+  not-yet-installed extensions/presets/workflows (previously out of scope). **Result**:
+  found this was already substantially built — the existing inline `/` filter
+  (`app.filtered_extensions/presets/workflows/integrations` in
+  `crates/spectatui/src/app.rs`) already matches against `InstallStatus::Available`
+  rows fetched via `registry.rs`'s `fetch_available_*` functions, wired into all four
+  manager popups (`crates/spectatui/src/ui/{extensions,presets,workflows,integrations}.rs`)
+  — no new filter UI was needed. What *was* a real gap: the async catalog index (which
+  populates those `Available` rows and `Project.workflows`, since `Project::discover()`
+  can't call the async/CLI-backed fetch itself) only ran once at startup, so
+  installing/removing a workflow, extension, preset, or integration never refreshed the
+  "available" list until restart. Fixed by extracting the startup fetch into
+  `spawn_catalog_index` (`crates/spectatui/src/main.rs`) and re-running it from the main
+  loop whenever `App::poll_cli_job`'s new `needs_reindex` flag fires (any
+  install/remove/enable/disable/update-shaped action). Also documented the deliberate
+  direct-catalog-JSON-fetch design choice (vs. parsing `specify <target> search` output)
+  in `design/core/spectatui-archi-design.md` §1.5 and here in spec.md, so it reads as an
+  intentional exception rather than a gap on the next audit. (Catalog source
+  reprioritize/toggle-in-place — `002-catalog-manager`'s separate deferred item — is
+  tracked and delivered in that feature's own tasks.md, not here.)
 
 ---
 
