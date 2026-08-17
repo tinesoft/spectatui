@@ -6,6 +6,14 @@
 
 **Propagated**: 2026-07-14 — Updated from spec.md refinement: catalog browsing of not-yet-installed items (previously out of scope) is delivered via the existing inline `/` filter; the direct-catalog-JSON-fetch design choice (already reflected in Technical Context's `reqwest` line above) is now also documented as an intentional exception in `design/core/spectatui-archi-design.md` §1.5, not just an implementation detail.
 
+**Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024a, draggable
+dashboard-divider resizing): documented `DashboardSizes`/`ResizeDivider` as delivered in
+Project Structure below. No Constitution Check, Technical Context, or design-doc change
+was needed — the feature is mouse-gated UI state layered on the existing
+`crossterm`/mouse-event plumbing already covered by Constitution Principle IV, and
+`design/core/spectatui-archi-design.md` needs no update since it documents architecture
+principles, not per-pane interaction details.
+
 **Input**: Feature specification from `/specs/001-spectatui-dashboard-mvp/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
@@ -107,7 +115,9 @@ crates/
   spectatui-core/                 (lib crate — async engine, UI-agnostic)
     src/
       lib.rs
-      layout.rs                   # PaneKind / PaneConfig / CustomLayout
+      layout.rs                   # PaneKind / PaneConfig / CustomLayout /
+                                  # DashboardSizes / CustomPaneHeight (persisted
+                                  # divider-drag proportions)
       speckit/
         mod.rs                    # Project / Feature discovery (specs/ — read-only)
         workflow.rs                # WorkflowStage inference + tasks progress (read-only)
@@ -120,7 +130,9 @@ crates/
   spectatui/                       (bin crate — UI + event loop, depends on spectatui-core)
     src/
       main.rs
-      app.rs                       # App state: Screen / DashboardLayout / Pane / PopupKind / SettingsRow
+      app.rs                       # App state: Screen / DashboardLayout / Pane / PopupKind /
+                                    # SettingsRow / ResizeDivider / DividerTarget / DividerAxis
+                                    # (begin_resize/resize_from_pointer/finish_resize)
       event.rs                     # Key / Tick / TmuxChanged / FsChanged
       config.rs                    # AppConfig load/save
       theme.rs                     # ThemeMode / Accent / Theme
@@ -128,7 +140,9 @@ crates/
         mod.rs, header.rs, statusbar.rs, feature_list.rs, spec_browser.rs,
         extensions_presets.rs, integrations.rs, workflows.rs, workflow.rs,
         agent_output.rs, session_attach.rs, popup.rs, palette.rs,
-        layout_editor.rs, settings.rs
+        layout_editor.rs, settings.rs, layout_geometry.rs   # divider geometry/
+                                                             # hit-box computation
+                                                             # + per-pane minimums
 
 # Tests are colocated `mod tests { ... }` blocks inside the files above
 # (Constitution Principle II), not a separate tests/ directory.

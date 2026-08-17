@@ -4,7 +4,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 
 use ratatui::layout::Rect;
-use spectatui_core::layout::CustomLayout;
+use spectatui_core::layout::{CustomLayout, PaneKind};
 use spectatui_core::speckit::cli::{CliAction, CliEvent, CliJob, JobStatus};
 use spectatui_core::speckit::registry::{CatalogSource, CatalogTarget};
 use spectatui_core::speckit::{
@@ -15,6 +15,23 @@ use tokio::sync::mpsc;
 
 use crate::config::{self, AppConfig};
 use crate::theme::{Accent, Theme, ThemeMode};
+
+fn rect_contains(rect: Rect, col: u16, row: u16) -> bool {
+    col >= rect.x
+        && col < rect.x.saturating_add(rect.width)
+        && row >= rect.y
+        && row < rect.y.saturating_add(rect.height)
+}
+
+fn split_percent(position: u16, length: u16, min_before: u16, min_after: u16) -> u16 {
+    if length == 0 {
+        return 5_000;
+    }
+    let upper = length.saturating_sub(min_after);
+    let lower = min_before.min(upper);
+    let position = position.clamp(lower, upper);
+    ((position as u32 * 10_000) / length as u32) as u16
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Screen {
@@ -31,6 +48,34 @@ pub enum DashboardLayout {
     Coding,
     Audit,
     Custom,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DividerTarget {
+    OverviewSidebar,
+    OverviewWorkflow,
+    CodingSplit,
+    AuditSplit,
+    CustomSidebar,
+    CustomStack(PaneKind, PaneKind),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DividerAxis {
+    Vertical,
+    Horizontal,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ResizeDivider {
+    pub target: DividerTarget,
+    pub axis: DividerAxis,
+    /// Parent area that is split by this divider.
+    pub bounds: Rect,
+    pub min_before: u16,
+    pub min_after: u16,
+    /// The narrow border region that starts a resize gesture.
+    pub hitbox: Rect,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -278,6 +323,10 @@ pub struct App {
     pub custom_layout: CustomLayout,
     pub layout_editor_index: usize,
     pub layout_editor_active: bool,
+    /// Dividers rendered in the last dashboard frame. Kept alongside click
+    /// regions so mouse hit testing always uses the exact rendered geometry.
+    pub resize_dividers: RefCell<Vec<ResizeDivider>>,
+    pub resize_drag: Option<ResizeDivider>,
 
     // Agent output
     pub agent_lines: Vec<String>,
@@ -398,6 +447,8 @@ impl App {
             custom_layout,
             layout_editor_index: 0,
             layout_editor_active: false,
+            resize_dividers: RefCell::new(Vec::new()),
+            resize_drag: None,
 
             agent_lines: Vec::new(),
 
@@ -458,6 +509,7 @@ impl App {
 
     pub fn clear_click_regions(&self) {
         self.click_regions.borrow_mut().clear();
+        self.resize_dividers.borrow_mut().clear();
     }
 
     /// Hit-test a terminal cell (column,row) against registered regions,
@@ -469,6 +521,91 @@ impl App {
             .rev()
             .find(|(r, _)| col >= r.x && col < r.x + r.width && row >= r.y && row < r.y + r.height)
             .map(|(_, a)| *a)
+    }
+
+    pub fn register_resize_divider(&self, divider: ResizeDivider) {
+        self.resize_dividers.borrow_mut().push(divider);
+    }
+
+    pub fn begin_resize(&mut self, col: u16, row: u16) -> bool {
+        let divider = self
+            .resize_dividers
+            .borrow()
+            .iter()
+            .find(|divider| rect_contains(divider.hitbox, col, row))
+            .copied();
+        self.resize_drag = divider;
+        divider.is_some()
+    }
+
+    /// Applies one mouse position to the active divider. Returns `true` when
+    /// a persisted layout value changed.
+    pub fn resize_from_pointer(&mut self, col: u16, row: u16) -> bool {
+        let Some(drag) = self.resize_drag else {
+            return false;
+        };
+        let amount = match drag.axis {
+            DividerAxis::Vertical => split_percent(
+                col.saturating_sub(drag.bounds.x),
+                drag.bounds.width,
+                drag.min_before,
+                drag.min_after,
+            ),
+            DividerAxis::Horizontal => split_percent(
+                row.saturating_sub(drag.bounds.y),
+                drag.bounds.height,
+                drag.min_before,
+                drag.min_after,
+            ),
+        };
+
+        match drag.target {
+            DividerTarget::OverviewSidebar => self.config.dashboard_sizes.overview_sidebar = amount,
+            DividerTarget::OverviewWorkflow => {
+                self.config.dashboard_sizes.overview_workflow = amount
+            }
+            DividerTarget::CodingSplit => self.config.dashboard_sizes.coding_split = amount,
+            DividerTarget::AuditSplit => self.config.dashboard_sizes.audit_split = amount,
+            DividerTarget::CustomSidebar => self.config.dashboard_sizes.custom_sidebar = amount,
+            DividerTarget::CustomStack(before, after) => {
+                let before_size = self
+                    .custom_layout
+                    .panes
+                    .iter()
+                    .find(|pane| pane.kind == before)
+                    .map(|pane| {
+                        self.config
+                            .dashboard_sizes
+                            .custom_pane_height(before, pane.size)
+                    });
+                let after_size = self
+                    .custom_layout
+                    .panes
+                    .iter()
+                    .find(|pane| pane.kind == after)
+                    .map(|pane| {
+                        self.config
+                            .dashboard_sizes
+                            .custom_pane_height(after, pane.size)
+                    });
+                if let (Some(before_size), Some(after_size)) = (before_size, after_size) {
+                    let total = before_size as u32 + after_size as u32;
+                    let next_before =
+                        ((total * amount as u32) / 10_000).clamp(1, total.saturating_sub(1)) as u16;
+                    self.config
+                        .dashboard_sizes
+                        .set_custom_pane_height(before, next_before);
+                    self.config
+                        .dashboard_sizes
+                        .set_custom_pane_height(after, total as u16 - next_before);
+                }
+            }
+        }
+        true
+    }
+
+    pub fn finish_resize(&mut self) -> bool {
+        self.resize_drag.take().is_some()
     }
 
     pub fn selected_feature(&self) -> Option<&spectatui_core::speckit::Feature> {

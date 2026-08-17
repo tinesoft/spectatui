@@ -6,6 +6,7 @@ mod feature_list;
 mod header;
 mod integrations;
 mod layout_editor;
+mod layout_geometry;
 mod palette;
 mod popup;
 mod presets;
@@ -21,9 +22,14 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::Paragraph;
 use ratatui::Frame;
+use spectatui_core::layout::PaneKind;
 
-use crate::app::{App, DashboardLayout, Screen};
+use crate::app::{App, DashboardLayout, DividerTarget, Screen};
 use crate::theme::Theme;
+use layout_geometry::{
+    custom_layout_geometry, min_width, register_horizontal_divider, register_vertical_divider,
+    split_horizontal, split_vertical, stored_or_default, stored_or_length,
+};
 
 /// Consistent inner padding for every bordered panel/popup so content does not
 /// hug the frame borders.
@@ -186,13 +192,40 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
     use crate::app::{ClickAction, Pane};
     match app.layout {
         DashboardLayout::Overview => {
-            let cols = Layout::horizontal([Constraint::Length(38), Constraint::Min(0)]).split(area);
+            let sidebar =
+                stored_or_length(app.config.dashboard_sizes.overview_sidebar, 38, area.width);
+            let cols = split_horizontal(area, sidebar, min_width(PaneKind::FeatureList), 24);
+            register_vertical_divider(
+                app,
+                DividerTarget::OverviewSidebar,
+                area,
+                cols[0],
+                min_width(PaneKind::FeatureList),
+                24,
+            );
 
             app.register_click(cols[0], ClickAction::FocusPane(Pane::FeatureList));
             feature_list::draw(frame, app, cols[0]);
 
-            let right =
-                Layout::vertical([Constraint::Length(13), Constraint::Min(0)]).split(cols[1]);
+            let workflow = stored_or_length(
+                app.config.dashboard_sizes.overview_workflow,
+                13,
+                cols[1].height,
+            );
+            let right = split_vertical(
+                cols[1],
+                workflow,
+                PaneKind::WorkflowTimeline.min_height(),
+                PaneKind::AgentOutput.min_height(),
+            );
+            register_horizontal_divider(
+                app,
+                DividerTarget::OverviewWorkflow,
+                cols[1],
+                right[0],
+                PaneKind::WorkflowTimeline.min_height(),
+                PaneKind::AgentOutput.min_height(),
+            );
 
             app.register_click(right[0], ClickAction::FocusPane(Pane::Workflow));
             app.register_click(right[1], ClickAction::FocusPane(Pane::AgentOutput));
@@ -200,8 +233,20 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
             agent_output::draw(frame, app, right[1]);
         }
         DashboardLayout::Coding => {
-            let cols = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(area);
+            let cols = split_horizontal(
+                area,
+                stored_or_default(app.config.dashboard_sizes.coding_split, 5_000),
+                min_width(PaneKind::SpecBrowser),
+                min_width(PaneKind::AgentOutput),
+            );
+            register_vertical_divider(
+                app,
+                DividerTarget::CodingSplit,
+                area,
+                cols[0],
+                min_width(PaneKind::SpecBrowser),
+                min_width(PaneKind::AgentOutput),
+            );
 
             app.register_click(cols[0], ClickAction::FocusPane(Pane::SpecBrowser));
             app.register_click(cols[1], ClickAction::FocusPane(Pane::AgentOutput));
@@ -209,8 +254,20 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
             agent_output::draw(frame, app, cols[1]);
         }
         DashboardLayout::Audit => {
-            let cols =
-                Layout::horizontal([Constraint::Percentage(54), Constraint::Min(0)]).split(area);
+            let cols = split_horizontal(
+                area,
+                stored_or_default(app.config.dashboard_sizes.audit_split, 5_400),
+                min_width(PaneKind::ExtensionsPresets),
+                min_width(PaneKind::Constitution),
+            );
+            register_vertical_divider(
+                app,
+                DividerTarget::AuditSplit,
+                area,
+                cols[0],
+                min_width(PaneKind::ExtensionsPresets),
+                min_width(PaneKind::Constitution),
+            );
 
             app.register_click(cols[0], ClickAction::FocusPane(Pane::ExtensionsPresets));
             app.register_click(cols[1], ClickAction::FocusPane(Pane::Constitution));
@@ -224,7 +281,12 @@ fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_custom_layout(frame: &mut Frame, app: &App, area: Rect) {
-    let rects = custom_pane_rects(&app.custom_layout, area);
+    let (rects, dividers) = custom_layout_geometry(
+        &app.custom_layout,
+        app.config.dashboard_sizes.custom_sidebar,
+        &app.config.dashboard_sizes,
+        area,
+    );
     if rects.is_empty() {
         let theme = &app.theme;
         let msg = ratatui::widgets::Paragraph::new(ratatui::text::Line::from(
@@ -236,6 +298,9 @@ fn draw_custom_layout(frame: &mut Frame, app: &App, area: Rect) {
         .style(theme.base);
         frame.render_widget(msg, area);
         return;
+    }
+    for divider in dividers {
+        app.register_resize_divider(divider);
     }
     for (kind, rect) in rects {
         draw_pane_by_kind(frame, app, kind, rect);
@@ -259,25 +324,21 @@ pub(crate) fn custom_pane_rects(
 
     let cols = Layout::horizontal([Constraint::Length(38), Constraint::Min(0)]).split(area);
     let mut out = vec![(visible[0].kind, cols[0])];
-
     let rest = &visible[1..];
-    let total_size: u8 = rest.iter().map(|p| p.size).sum();
+    let total_size: u8 = rest.iter().map(|pane| pane.size).sum();
     let constraints: Vec<Constraint> = rest
         .iter()
-        .map(|p| {
+        .map(|pane| {
             if total_size > 0 {
-                Constraint::Ratio(p.size as u32, total_size as u32)
+                Constraint::Ratio(pane.size as u32, total_size as u32)
             } else {
                 Constraint::Min(0)
             }
         })
         .collect();
-
     let right_rows = Layout::vertical(constraints).split(cols[1]);
-    for (i, pane) in rest.iter().enumerate() {
-        if i < right_rows.len() {
-            out.push((pane.kind, right_rows[i]));
-        }
+    for (pane, rect) in rest.iter().zip(right_rows.iter()) {
+        out.push((pane.kind, *rect));
     }
     out
 }

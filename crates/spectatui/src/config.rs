@@ -4,7 +4,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::theme::{Accent, ThemeMode};
-use spectatui_core::layout::CustomLayout;
+use spectatui_core::layout::{CustomLayout, DashboardSizes};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AppConfig {
@@ -26,6 +26,8 @@ pub struct AppConfig {
     pub config_location: String,
     #[serde(default)]
     pub custom_layout: Option<CustomLayout>,
+    #[serde(default)]
+    pub dashboard_sizes: DashboardSizes,
 }
 
 fn default_theme() -> String {
@@ -66,6 +68,7 @@ impl Default for AppConfig {
             tmux_prefix: default_tmux_prefix(),
             config_location: default_config_location(),
             custom_layout: None,
+            dashboard_sizes: DashboardSizes::default(),
         }
     }
 }

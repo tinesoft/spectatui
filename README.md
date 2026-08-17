@@ -38,7 +38,7 @@ A terminal UI dashboard for [GitHub Spec-Kit](https://github.com/github/spec-kit
 - 🖥️ **Agent output pane** — Live tail of the tmux agent session with attach/refresh/kill controls
 - 📤 **CLI job output popup** — Dedicated scrollable view for spawned CLI job output
 - 🎯 **Command palette** — Quick-navigate and execute commands (`:` or `Ctrl-K`)
-- 🗂️ **Multi-pane dashboard** — Overview, Coding, Audit, and Custom layouts (switch with `1`–`4`)
+- 🗂️ **Multi-pane dashboard** — Overview, Coding, Audit, and Custom layouts (switch with `1`–`4`); drag panel borders for continuous resizing
 - 🎨 **Custom layout editor** — Reorder, resize, and toggle visibility of panes; save as your own layout
 - ⚙️ **Settings editor** — In-app settings: theme, accent, dashboard layout, mouse support, tmux prefix, and more, persited globally or per-project
 - 🌓 **Dark & light themes** — Toggle with `t`
@@ -180,6 +180,8 @@ Options:
 | `s`                   | Open Settings                                      |
 | `C`                   | Open Constitution viewer                           |
 | `a`                   | Go to Session attach                               |
+
+With **Mouse support** enabled, drag any border between adjacent dashboard panels to resize them. Sizes are saved when the mouse button is released and are restored as relative proportions when the terminal is resized. Existing Custom-layout keyboard controls remain available in the layout editor.
 
 **Spec browser**:
 

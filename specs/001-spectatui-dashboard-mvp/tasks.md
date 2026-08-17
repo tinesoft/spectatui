@@ -11,6 +11,9 @@ description: "Task list template for feature implementation"
 not-yet-installed items delivered); added T026 to Phase 5 documenting the delivery and
 the fix for the stale catalog-availability cache found while implementing it
 
+**Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024a, draggable
+dashboard-divider resizing delivered); added T027 to Phase 6 documenting the delivery
+
 **Input**: Design documents from `/specs/001-spectatui-dashboard-mvp/`
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
@@ -287,6 +290,32 @@ custom layout editing, theme/accent, and restart persistence.
   limitation as T008 applies to live visual confirmation
 
 **Checkpoint**: User Stories 1–4 all fully satisfy spec.md.
+
+- [X] T027 [US4] Deliver the spec's 2026-09-13 refinement (FR-024a): draggable
+  dashboard-divider resizing. **Result**: added `DashboardSizes`/`CustomPaneHeight`
+  (`crates/spectatui-core/src/layout.rs`) to persist per-divider split proportions
+  (basis points, not fixed cell counts, so they scale across terminal resizes) alongside
+  the existing `CustomLayout` editor defaults, which remain untouched; added
+  `ResizeDivider`/`DividerTarget`/`DividerAxis` plus `App::begin_resize`/
+  `resize_from_pointer`/`finish_resize` (`crates/spectatui/src/app.rs`) to hit-test and
+  drag any divider registered during the last render pass; added
+  `crates/spectatui/src/ui/layout_geometry.rs` (new file) to compute divider bounds/
+  hit-boxes and each `PaneKind`'s minimum width/height, wired into every layout's render
+  in `crates/spectatui/src/ui/mod.rs` (Overview, Coding, Audit, and Custom's sidebar +
+  stacked-pane dividers); wired mouse `Down`/`Drag`/`Up` handling in
+  `crates/spectatui/src/main.rs`, gated off when a popup, the command palette, or the
+  layout editor is active, and suppressing wheel-scroll while a drag is in progress;
+  autosaves via `config::save_config` on mouse-up. `AppConfig.dashboard_sizes`
+  (`crates/spectatui/src/config.rs`) persists the new field with `#[serde(default)]` so
+  existing config files load unchanged and every split defaults to today's existing
+  proportion until first dragged. Colocated `mod tests` added in `layout.rs`
+  (`DashboardSizes`/`CustomPaneHeight` round-trip) and `layout_geometry.rs`
+  (`split_length` minimum-clamping, `stored_or_length` default-fallback).
+  `README.md`'s feature list and keybindings table were updated in the same commit
+  (Constitution Principle III). No `.rs` test coverage was added for the mouse
+  event-handling glue in `main.rs` itself (consistent with that file's existing
+  no-automated-tests state for input handling — see T007/T025's citations); flagged here
+  per Constitution Principle II for a future task if regression coverage is wanted.
 
 ---
 

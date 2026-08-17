@@ -1231,6 +1231,9 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient)
         // Route the wheel through the keyboard nav so it scrolls whatever Up/Down
         // currently affects (active popup, focused pane, or document view).
         MouseEventKind::ScrollDown => {
+            if app.resize_drag.is_some() {
+                return;
+            }
             handle_key(
                 app,
                 KeyEvent::new(KeyCode::Down, KeyModifiers::NONE),
@@ -1238,6 +1241,9 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient)
             );
         }
         MouseEventKind::ScrollUp => {
+            if app.resize_drag.is_some() {
+                return;
+            }
             handle_key(
                 app,
                 KeyEvent::new(KeyCode::Up, KeyModifiers::NONE),
@@ -1245,9 +1251,22 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient)
             );
         }
         MouseEventKind::Down(MouseButton::Left) => {
+            if app.active_popup.is_none()
+                && app.palette.is_none()
+                && !app.layout_editor_active
+                && app.begin_resize(mouse.column, mouse.row)
+            {
+                return;
+            }
             if let Some(action) = app.hit_test(mouse.column, mouse.row) {
                 execute_click_action(app, action);
             }
+        }
+        MouseEventKind::Drag(MouseButton::Left) => {
+            app.resize_from_pointer(mouse.column, mouse.row);
+        }
+        MouseEventKind::Up(MouseButton::Left) if app.finish_resize() => {
+            let _ = config::save_config(&app.config);
         }
         _ => {}
     }

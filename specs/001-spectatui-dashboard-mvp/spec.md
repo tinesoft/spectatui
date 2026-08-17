@@ -10,6 +10,8 @@
 
 **Refined**: 2026-07-14 — Catalog search/browse of not-yet-installed extensions/presets/workflows (previously out of scope) is delivered via the existing inline `/` filter over each manager's "available" rows; documented the deliberate design choice to discover catalog items via direct catalog-JSON fetch rather than CLI `search`/`list --available` parsing.
 
+**Refined**: 2026-09-13 — Documented draggable dashboard-divider resizing: with mouse support enabled, dragging the border between any two adjacent panes in the Overview, Coding, Audit, or Custom layout continuously resizes them (not only via the Custom Layout Editor's keyboard controls), respecting each pane's minimum size, autosaving as a relative proportion on mouse release, and falling back to today's existing default split until first dragged.
+
 **Input**: User description: "feature - initial version. from @design/core/spectatui-archi-design.md and current implementation, write me the necessary spec files"
 
 ## Clarifications
@@ -85,7 +87,7 @@ A developer wants to arrange which panes are visible and how they're sized, pick
 
 **Why this priority**: Personalization increases day-to-day comfort and efficiency but is not required to get value from the dashboard's core monitoring and browsing capability.
 
-**Independent Test**: Switch between the built-in layouts with a single keypress each; enter the layout editor, hide a pane, reorder two panes, and resize one; toggle theme and accent; restart spectatui and confirm every choice persisted.
+**Independent Test**: Switch between the built-in layouts with a single keypress each; enter the layout editor, hide a pane, reorder two panes, and resize one; with mouse support enabled, drag a border between two adjacent panes in a built-in layout and confirm the split changes continuously and persists after restart; toggle theme and accent; restart spectatui and confirm every choice persisted.
 
 **Acceptance Scenarios**:
 
@@ -94,6 +96,9 @@ A developer wants to arrange which panes are visible and how they're sized, pick
 3. **Given** the user has toggled the theme or cycled the accent color, **When** any screen is rendered afterward, **Then** the new theme/accent is applied consistently across every screen and popup.
 4. **Given** the user has made layout, theme, or accent changes, **When** they quit and relaunch spectatui, **Then** all of those choices are restored exactly as left.
 5. **Given** a project provides its own local settings file, **When** spectatui starts inside that project, **Then** the project-local settings take precedence over the user's general settings for this session.
+6. **Given** mouse support is enabled and the dashboard shows two or more adjacent panes (in any of the Overview, Coding, Audit, or Custom layouts), **When** the user drags the border between them, **Then** the split resizes continuously in real time without letting either pane shrink below its usable minimum size.
+7. **Given** the user has dragged a divider to a new position, **When** they release the mouse button, **Then** the new split is saved automatically without any separate save step, and is restored on the next launch.
+8. **Given** a divider has never been dragged, **When** the dashboard renders that layout, **Then** the split uses today's existing default proportions unchanged.
 
 ---
 
@@ -128,6 +133,7 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - What happens when two destructive actions are queued in quick succession? Each mutating action must be confirmed and completed (or fail) independently — there is no batch/silent auto-confirm path.
 - What happens when the coding-agent tmux session for a feature ends while the user is attached to it? Control must return cleanly to the dashboard rather than leaving the terminal in an inconsistent state.
 - What happens when a feature's artifacts were produced by an incompatible or unrecognized Spec-Kit template version? The lifecycle stage must show as explicitly "unknown" rather than silently guessing or crashing.
+- What happens when the terminal is resized after the user has drag-resized a divider? The persisted split must be stored as a relative proportion (not a fixed cell count) so it re-applies sensibly at the new terminal size rather than clipping or leaving a pane off-screen.
 
 ## Requirements *(mandatory)*
 
@@ -169,7 +175,8 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 **Layout, theming, and settings**
 
 - **FR-023**: System MUST offer a small set of built-in dashboard layout arrangements, each reachable with a single keypress.
-- **FR-024**: System MUST allow the user to build a custom layout by showing/hiding, reordering, and resizing the dashboard's panes.
+- **FR-024**: System MUST allow the user to build a custom layout by showing/hiding, reordering, and resizing the dashboard's panes via the layout editor's keyboard controls.
+- **FR-024a**: When mouse support is enabled, system MUST allow the user to continuously resize adjacent panes in any built-in dashboard layout (Overview, Coding, Audit, Custom) by dragging the border between them, keeping each pane at or above its minimum usable size, persisting the resulting split automatically on mouse release, and defaulting to the layout's existing proportions until first dragged.
 - **FR-025**: System MUST offer at least two color themes and at least three accent color choices, each togglable/cyclable with a dedicated keypress, applied consistently across every screen and popup.
 - **FR-026**: System MUST persist the user's layout, theme, accent, and other preference choices between application restarts.
 - **FR-027**: System MUST allow a project to override the user's general preferences with a project-local settings file when running inside that project.
@@ -194,7 +201,7 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - **Integration**: An installable coding-agent tool binding; has an identifier, display name, installed state, default flag, and whether it requires a separate CLI tool.
 - **Automation Workflow**: An installable, runnable pipeline that automates the lifecycle end-to-end; has an identifier, install state, and run-history summary, distinct from the fixed Lifecycle Stage sequence.
 - **Coding-Agent Session**: The live terminal session associated with a feature's coding agent; has a running/idle status and recent output used for the live tail and full-attach handoff. Spectatui can create this session itself (running the project's default coding-agent integration) when a selected feature has none, or attach to one already running.
-- **User Preferences**: The persisted set of choices (theme, accent, dashboard layout, custom pane arrangement, mouse support, confirmation behavior) that shape the dashboard's appearance and behavior across restarts.
+- **User Preferences**: The persisted set of choices (theme, accent, dashboard layout, custom pane arrangement, per-divider pane split proportions, mouse support, confirmation behavior) that shape the dashboard's appearance and behavior across restarts.
 
 ## Success Criteria *(mandatory)*
 
