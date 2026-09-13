@@ -1,0 +1,16 @@
+theme = "dark"
+accent = "indigo"
+dashboard_layout = "overview"
+mouse_support = true
+agent_tail_follow = true
+confirm_before_force = true
+tmux_prefix = "spectatui-"
+config_location = "./.spectatui.toml"
+
+[dashboard_sizes]
+overview_sidebar = 3040
+overview_workflow = 2807
+coding_split = 0
+audit_split = 0
+custom_sidebar = 0
+custom_pane_heights = []

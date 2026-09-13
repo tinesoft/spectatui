@@ -14,7 +14,7 @@ pub struct AppConfig {
     pub accent: String,
     #[serde(default = "default_layout")]
     pub dashboard_layout: String,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub mouse_support: bool,
     #[serde(default = "default_true")]
     pub agent_tail_follow: bool,
@@ -62,7 +62,7 @@ impl Default for AppConfig {
             theme: default_theme(),
             accent: default_accent(),
             dashboard_layout: default_layout(),
-            mouse_support: false,
+            mouse_support: true,
             agent_tail_follow: true,
             confirm_before_force: true,
             tmux_prefix: default_tmux_prefix(),

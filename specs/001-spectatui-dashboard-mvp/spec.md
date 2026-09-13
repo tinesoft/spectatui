@@ -14,6 +14,8 @@
 
 **Refined**: 2026-09-13 — Documented a directional hover cue for the dashboard dividers: while hovering (or dragging) a divider with mouse support enabled, a ↔ or ↕ glyph is drawn on the border cell under the pointer, tracking pointer position, to signal that continuous resizing is available there.
 
+**Refined**: 2026-09-13 — Documented that mouse support now defaults to enabled for new installations (previously the default was disabled, requiring an explicit opt-in from Settings before any mouse-driven action, including divider dragging and the hover cue, became active). The user can still disable it from the Settings view, and the choice persists like any other preference.
+
 **Input**: User description: "feature - initial version. from @design/core/spectatui-archi-design.md and current implementation, write me the necessary spec files"
 
 ## Clarifications
@@ -185,6 +187,7 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - **FR-024**: System MUST allow the user to build a custom layout by showing/hiding, reordering, and resizing the dashboard's panes via the layout editor's keyboard controls.
 - **FR-024a**: When mouse support is enabled, system MUST allow the user to continuously resize adjacent panes in any built-in dashboard layout (Overview, Coding, Audit, Custom) by dragging the border between them, keeping each pane at or above its minimum usable size, persisting the resulting split automatically on mouse release, and defaulting to the layout's existing proportions until first dragged.
 - **FR-024b**: When mouse support is enabled, system MUST render a directional hover cue on a dashboard divider's border cell wherever the pointer is positioned within that divider's hit-region — ↔ for a vertical (left-right) divider, ↕ for a horizontal (top-bottom) divider — under the same conditions FR-024a's drag can begin (no popup, command palette, or layout editor active). The cue MUST track the pointer's exact position along the divider, MUST use a style visually distinct from the existing focused-pane border highlight, MUST remain visible for the duration of an active drag, and MUST disappear when the pointer leaves the divider's hit-region or any of the gating conditions above becomes true. This applies only to FR-024a's dashboard dividers, not the Custom Layout Editor's own keyboard-driven resize controls.
+- **FR-024c**: Mouse support MUST default to enabled for a new installation (no prior persisted preference), while remaining a user-toggleable Settings option whose chosen value persists like any other preference (FR-026).
 - **FR-025**: System MUST offer at least two color themes and at least three accent color choices, each togglable/cyclable with a dedicated keypress, applied consistently across every screen and popup.
 - **FR-026**: System MUST persist the user's layout, theme, accent, and other preference choices between application restarts.
 - **FR-027**: System MUST allow a project to override the user's general preferences with a project-local settings file when running inside that project.
