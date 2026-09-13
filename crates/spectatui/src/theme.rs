@@ -71,6 +71,10 @@ pub struct Theme {
     pub accent_style: Style,
     pub accent_bold: Style,
     pub statusbar_style: Style,
+    /// Divider hover/drag resize cue (↔/↕ glyph). Deliberately independent of
+    /// `accent` so it's never confused with `border_focused`'s pane-focus
+    /// highlight.
+    pub divider_hover: Style,
 }
 
 impl Theme {
@@ -164,6 +168,10 @@ impl Theme {
                 .fg(accent_color)
                 .add_modifier(Modifier::BOLD),
             statusbar_style: Style::default().fg(dim).bg(panel),
+            divider_hover: Style::default()
+                .fg(sel_fg)
+                .bg(sel)
+                .add_modifier(Modifier::BOLD),
         }
     }
 

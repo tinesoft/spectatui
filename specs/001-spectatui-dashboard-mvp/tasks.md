@@ -11,6 +11,9 @@ description: "Task list template for feature implementation"
 not-yet-installed items delivered); added T026 to Phase 5 documenting the delivery and
 the fix for the stale catalog-availability cache found while implementing it
 
+**Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024b, divider hover
+cue); added T028 to Phase 6 as upcoming work (not yet implemented)
+
 **Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024a, draggable
 dashboard-divider resizing delivered); added T027 to Phase 6 documenting the delivery
 
@@ -316,6 +319,32 @@ custom layout editing, theme/accent, and restart persistence.
   event-handling glue in `main.rs` itself (consistent with that file's existing
   no-automated-tests state for input handling — see T007/T025's citations); flagged here
   per Constitution Principle II for a future task if regression coverage is wanted.
+
+- [X] T028 [US4] Implement the spec's second 2026-09-13 refinement (FR-024b): divider
+  hover cue. **Result**: added `DividerHover` and `App::resize_hover`
+  (`crates/spectatui/src/app.rs`), plus `update_divider_hover`/`clear_divider_hover`
+  (hit-tests the same `resize_dividers` geometry `begin_resize` already uses) and wired
+  hover-position tracking into `begin_resize`/`resize_from_pointer` so the cue seeds on
+  mouse-down and follows the pointer for the whole drag. Added
+  `MouseEventKind::Moved` handling to `handle_mouse`
+  (`crates/spectatui/src/main.rs`, previously unhandled — fell through to `_ => {}`),
+  gated identically to `begin_resize` (no popup, no palette, layout editor inactive) and
+  clearing the cue otherwise. Added a dedicated `Theme::divider_hover` style
+  (`crates/spectatui/src/theme.rs`, `sel`/`sel_fg` + bold — deliberately not `accent`, so
+  it can never read as `border_focused`'s pane-focus highlight). Rendering
+  (`draw_divider_hover_cue` in `crates/spectatui/src/ui/mod.rs`) overlays a single ↔ or ↕
+  character directly on the buffer cell at the tracked position — no recoloring of the
+  rest of the divider — gated the same way at render time as a second line of defense.
+  Added 4 colocated `mod tests` in `app.rs` covering hover enter/move/leave, the
+  clear-reports-a-change contract, and hover seeding/tracking through
+  `begin_resize`/`resize_from_pointer`. Updated `README.md`'s mouse-support paragraph
+  (Constitution Principle III). `pnpm nx run-many -t build,test,lint` for both crates:
+  all green (74 tests total, up from 70; zero clippy warnings; `cargo fmt --all --
+  --check` clean). **Not covered**: same sandbox limitation as T008/T025 — no real
+  TTY/tmux available here, so the glyph's actual on-screen appearance (character,
+  color, position tracking as the mouse moves) was verified by code trace and unit test
+  only, not visually confirmed in a live terminal; recommend a manual pass before
+  release.
 
 ---
 

@@ -1,6 +1,6 @@
 # Feature Specification: Spectatui Dashboard — Initial Version
 
-**Feature Branch**: `001-spectatui-dashboard-mvp`
+**Feature Branch**: `001-spectatui-dashboard-mvp`↕
 
 **Created**: 2026-07-04
 
@@ -11,6 +11,8 @@
 **Refined**: 2026-07-14 — Catalog search/browse of not-yet-installed extensions/presets/workflows (previously out of scope) is delivered via the existing inline `/` filter over each manager's "available" rows; documented the deliberate design choice to discover catalog items via direct catalog-JSON fetch rather than CLI `search`/`list --available` parsing.
 
 **Refined**: 2026-09-13 — Documented draggable dashboard-divider resizing: with mouse support enabled, dragging the border between any two adjacent panes in the Overview, Coding, Audit, or Custom layout continuously resizes them (not only via the Custom Layout Editor's keyboard controls), respecting each pane's minimum size, autosaving as a relative proportion on mouse release, and falling back to today's existing default split until first dragged.
+
+**Refined**: 2026-09-13 — Documented a directional hover cue for the dashboard dividers: while hovering (or dragging) a divider with mouse support enabled, a ↔ or ↕ glyph is drawn on the border cell under the pointer, tracking pointer position, to signal that continuous resizing is available there.
 
 **Input**: User description: "feature - initial version. from @design/core/spectatui-archi-design.md and current implementation, write me the necessary spec files"
 
@@ -87,7 +89,7 @@ A developer wants to arrange which panes are visible and how they're sized, pick
 
 **Why this priority**: Personalization increases day-to-day comfort and efficiency but is not required to get value from the dashboard's core monitoring and browsing capability.
 
-**Independent Test**: Switch between the built-in layouts with a single keypress each; enter the layout editor, hide a pane, reorder two panes, and resize one; with mouse support enabled, drag a border between two adjacent panes in a built-in layout and confirm the split changes continuously and persists after restart; toggle theme and accent; restart spectatui and confirm every choice persisted.
+**Independent Test**: Switch between the built-in layouts with a single keypress each; enter the layout editor, hide a pane, reorder two panes, and resize one; with mouse support enabled, hover a border between two adjacent panes in a built-in layout and confirm a directional (↔/↕) cue appears and tracks the pointer, then drag it and confirm the split changes continuously, the cue persists throughout the drag, and the result persists after restart; toggle theme and accent; restart spectatui and confirm every choice persisted.
 
 **Acceptance Scenarios**:
 
@@ -99,6 +101,10 @@ A developer wants to arrange which panes are visible and how they're sized, pick
 6. **Given** mouse support is enabled and the dashboard shows two or more adjacent panes (in any of the Overview, Coding, Audit, or Custom layouts), **When** the user drags the border between them, **Then** the split resizes continuously in real time without letting either pane shrink below its usable minimum size.
 7. **Given** the user has dragged a divider to a new position, **When** they release the mouse button, **Then** the new split is saved automatically without any separate save step, and is restored on the next launch.
 8. **Given** a divider has never been dragged, **When** the dashboard renders that layout, **Then** the split uses today's existing default proportions unchanged.
+9. **Given** mouse support is enabled and no popup, command palette, or layout editor is active, **When** the pointer moves over a divider's hit-region, **Then** a directional cue appears on the border cell under the pointer — ↔ for a vertical (left-right) divider, ↕ for a horizontal (top-bottom) divider — styled distinctly from the focused-pane border highlight.
+10. **Given** the hover cue is showing, **When** the pointer moves within the divider's hit-region, **Then** the cue's position updates to track it.
+11. **Given** the user begins dragging a divider, **When** the drag continues, **Then** the cue remains visible for the entire gesture until the mouse button is released.
+12. **Given** the hover cue is showing, **When** the pointer leaves the divider's hit-region, or a popup, command palette, or the layout editor becomes active, **Then** the cue no longer appears.
 
 ---
 
@@ -133,6 +139,7 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - What happens when two destructive actions are queued in quick succession? Each mutating action must be confirmed and completed (or fail) independently — there is no batch/silent auto-confirm path.
 - What happens when the coding-agent tmux session for a feature ends while the user is attached to it? Control must return cleanly to the dashboard rather than leaving the terminal in an inconsistent state.
 - What happens when a feature's artifacts were produced by an incompatible or unrecognized Spec-Kit template version? The lifecycle stage must show as explicitly "unknown" rather than silently guessing or crashing.
+- What happens when the pointer hovers a divider while a popup, command palette, or the layout editor is active? No hover cue must appear, consistent with those same states already blocking resize-drag initiation.
 - What happens when the terminal is resized after the user has drag-resized a divider? The persisted split must be stored as a relative proportion (not a fixed cell count) so it re-applies sensibly at the new terminal size rather than clipping or leaving a pane off-screen.
 
 ## Requirements *(mandatory)*
@@ -177,6 +184,7 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - **FR-023**: System MUST offer a small set of built-in dashboard layout arrangements, each reachable with a single keypress.
 - **FR-024**: System MUST allow the user to build a custom layout by showing/hiding, reordering, and resizing the dashboard's panes via the layout editor's keyboard controls.
 - **FR-024a**: When mouse support is enabled, system MUST allow the user to continuously resize adjacent panes in any built-in dashboard layout (Overview, Coding, Audit, Custom) by dragging the border between them, keeping each pane at or above its minimum usable size, persisting the resulting split automatically on mouse release, and defaulting to the layout's existing proportions until first dragged.
+- **FR-024b**: When mouse support is enabled, system MUST render a directional hover cue on a dashboard divider's border cell wherever the pointer is positioned within that divider's hit-region — ↔ for a vertical (left-right) divider, ↕ for a horizontal (top-bottom) divider — under the same conditions FR-024a's drag can begin (no popup, command palette, or layout editor active). The cue MUST track the pointer's exact position along the divider, MUST use a style visually distinct from the existing focused-pane border highlight, MUST remain visible for the duration of an active drag, and MUST disappear when the pointer leaves the divider's hit-region or any of the gating conditions above becomes true. This applies only to FR-024a's dashboard dividers, not the Custom Layout Editor's own keyboard-driven resize controls.
 - **FR-025**: System MUST offer at least two color themes and at least three accent color choices, each togglable/cyclable with a dedicated keypress, applied consistently across every screen and popup.
 - **FR-026**: System MUST persist the user's layout, theme, accent, and other preference choices between application restarts.
 - **FR-027**: System MUST allow a project to override the user's general preferences with a project-local settings file when running inside that project.
@@ -228,3 +236,4 @@ A developer working over SSH or inside tmux (where a mouse may not be usable) wa
 - A supporting terminal-multiplexer session host and the Spec-Kit command-line tool are both expected to be present in the user's environment; their absence is handled as a degraded/error state (see Edge Cases) rather than a supported offline mode.
 - This initial version targets the current Spec-Kit template conventions rather than maintaining compatibility with multiple historical template versions; artifacts that don't match any recognized pattern degrade to an "unknown stage" indicator instead of being actively parsed by a version-detection system.
 - Typical usage is a single project with up to roughly 100 total features, extensions, presets, integrations, and workflows combined; the scrolling list views are not required to remain responsive at significantly larger scale in this initial version.
+- Controlling the real OS mouse pointer's shape (e.g., swapping it to a resize icon) is out of scope, since no standard, portable mechanism for it exists across terminal emulators; the divider hover cue (FR-024b) is instead drawn by spectatui itself as an in-band glyph on the divider's own border cell.

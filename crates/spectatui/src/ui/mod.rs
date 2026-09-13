@@ -24,7 +24,7 @@ use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 use spectatui_core::layout::PaneKind;
 
-use crate::app::{App, DashboardLayout, DividerTarget, Screen};
+use crate::app::{App, DashboardLayout, DividerAxis, DividerTarget, Screen};
 use crate::theme::Theme;
 use layout_geometry::{
     custom_layout_geometry, min_width, register_horizontal_divider, register_vertical_divider,
@@ -177,6 +177,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
     statusbar::draw_hints(frame, app, outer[3]);
     statusbar::draw_statusbar(frame, app, outer[5]);
 
+    draw_divider_hover_cue(frame, app);
+
     // Popups render on top
     if app.active_popup.is_some() {
         popup::draw(frame, app);
@@ -186,6 +188,35 @@ pub fn draw(frame: &mut Frame, app: &App) {
     if app.palette.is_some() {
         palette::draw(frame, app);
     }
+}
+
+/// Renders the FR-024b divider hover/drag cue (↔/↕) on the exact border cell
+/// the pointer is over. Gated the same way `App::begin_resize` already is, so
+/// a stale cue never lingers once a popup, the palette, or the layout editor
+/// takes over the dashboard.
+fn draw_divider_hover_cue(frame: &mut Frame, app: &App) {
+    if app.screen != Screen::Dashboard
+        || app.layout_editor_active
+        || app.active_popup.is_some()
+        || app.palette.is_some()
+    {
+        return;
+    }
+    let Some(hover) = app.resize_hover else {
+        return;
+    };
+    let area = frame.area();
+    if hover.col >= area.width || hover.row >= area.height {
+        return;
+    }
+    let glyph = match hover.axis {
+        DividerAxis::Vertical => '↔',
+        DividerAxis::Horizontal => '↕',
+    };
+    let style = app.theme.divider_hover;
+    let cell = &mut frame.buffer_mut()[(hover.col, hover.row)];
+    cell.set_char(glyph);
+    cell.set_style(style);
 }
 
 fn draw_dashboard(frame: &mut Frame, app: &App, area: Rect) {

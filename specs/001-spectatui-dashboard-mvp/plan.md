@@ -6,6 +6,13 @@
 
 **Propagated**: 2026-07-14 — Updated from spec.md refinement: catalog browsing of not-yet-installed items (previously out of scope) is delivered via the existing inline `/` filter; the direct-catalog-JSON-fetch design choice (already reflected in Technical Context's `reqwest` line above) is now also documented as an intentional exception in `design/core/spectatui-archi-design.md` §1.5, not just an implementation detail.
 
+**Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024b, divider hover
+cue), now delivered — see tasks.md T028. No Constitution Check, Technical Context, or
+new-dependency change was needed: `crossterm`'s `MouseEventKind::Moved` variant already
+existed in the version already in use, it was just unhandled (`main.rs`'s `handle_mouse`
+match fell through to `_ => {}`); the new hover-position state and theme style are
+additive to `App`/`Theme` below, no new crate.
+
 **Propagated**: 2026-09-13 — Updated from spec.md refinement (FR-024a, draggable
 dashboard-divider resizing): documented `DashboardSizes`/`ResizeDivider` as delivered in
 Project Structure below. No Constitution Check, Technical Context, or design-doc change
@@ -131,11 +138,13 @@ crates/
     src/
       main.rs
       app.rs                       # App state: Screen / DashboardLayout / Pane / PopupKind /
-                                    # SettingsRow / ResizeDivider / DividerTarget / DividerAxis
-                                    # (begin_resize/resize_from_pointer/finish_resize)
+                                    # SettingsRow / ResizeDivider / DividerTarget / DividerAxis /
+                                    # DividerHover (begin_resize/resize_from_pointer/finish_resize/
+                                    # update_divider_hover/clear_divider_hover — FR-024b)
       event.rs                     # Key / Tick / TmuxChanged / FsChanged
       config.rs                    # AppConfig load/save
-      theme.rs                     # ThemeMode / Accent / Theme
+      theme.rs                     # ThemeMode / Accent / Theme; `divider_hover` style, distinct
+                                    # from `border_focused`'s accent color (FR-024b)
       ui/
         mod.rs, header.rs, statusbar.rs, feature_list.rs, spec_browser.rs,
         extensions_presets.rs, integrations.rs, workflows.rs, workflow.rs,

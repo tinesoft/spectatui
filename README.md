@@ -181,7 +181,7 @@ Options:
 | `C`                   | Open Constitution viewer                           |
 | `a`                   | Go to Session attach                               |
 
-With **Mouse support** enabled, drag any border between adjacent dashboard panels to resize them. Sizes are saved when the mouse button is released and are restored as relative proportions when the terminal is resized. Existing Custom-layout keyboard controls remain available in the layout editor.
+With **Mouse support** enabled, drag any border between adjacent dashboard panels to resize them; hovering a border shows a ↔ or ↕ cue confirming it's draggable. Sizes are saved when the mouse button is released and are restored as relative proportions when the terminal is resized. Existing Custom-layout keyboard controls remain available in the layout editor.
 
 **Spec browser**:
 

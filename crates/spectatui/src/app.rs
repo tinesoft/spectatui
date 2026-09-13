@@ -78,6 +78,15 @@ pub struct ResizeDivider {
     pub hitbox: Rect,
 }
 
+/// The pointer position to draw a directional resize cue (↔/↕) at, tracked
+/// while hovering a divider's hitbox or dragging one (FR-024b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DividerHover {
+    pub axis: DividerAxis,
+    pub col: u16,
+    pub row: u16,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pane {
     FeatureList,
@@ -327,6 +336,9 @@ pub struct App {
     /// regions so mouse hit testing always uses the exact rendered geometry.
     pub resize_dividers: RefCell<Vec<ResizeDivider>>,
     pub resize_drag: Option<ResizeDivider>,
+    /// Current pointer position to draw the divider hover cue at, if any
+    /// (tracked while hovering a divider or dragging one).
+    pub resize_hover: Option<DividerHover>,
 
     // Agent output
     pub agent_lines: Vec<String>,
@@ -449,6 +461,7 @@ impl App {
             layout_editor_active: false,
             resize_dividers: RefCell::new(Vec::new()),
             resize_drag: None,
+            resize_hover: None,
 
             agent_lines: Vec::new(),
 
@@ -535,7 +548,39 @@ impl App {
             .find(|divider| rect_contains(divider.hitbox, col, row))
             .copied();
         self.resize_drag = divider;
+        if let Some(divider) = divider {
+            self.resize_hover = Some(DividerHover {
+                axis: divider.axis,
+                col,
+                row,
+            });
+        }
         divider.is_some()
+    }
+
+    /// Updates which divider (if any) the pointer is hovering, for the
+    /// resize hover cue (FR-024b). Returns `true` when the hover state
+    /// changed, so callers can decide whether a redraw is warranted.
+    pub fn update_divider_hover(&mut self, col: u16, row: u16) -> bool {
+        let hover = self
+            .resize_dividers
+            .borrow()
+            .iter()
+            .find(|divider| rect_contains(divider.hitbox, col, row))
+            .map(|divider| DividerHover {
+                axis: divider.axis,
+                col,
+                row,
+            });
+        let changed = hover != self.resize_hover;
+        self.resize_hover = hover;
+        changed
+    }
+
+    /// Clears the resize hover cue, e.g. when a popup/palette/layout editor
+    /// becomes active. Returns `true` when a cue was actually showing.
+    pub fn clear_divider_hover(&mut self) -> bool {
+        self.resize_hover.take().is_some()
     }
 
     /// Applies one mouse position to the active divider. Returns `true` when
@@ -544,6 +589,11 @@ impl App {
         let Some(drag) = self.resize_drag else {
             return false;
         };
+        self.resize_hover = Some(DividerHover {
+            axis: drag.axis,
+            col,
+            row,
+        });
         let amount = match drag.axis {
             DividerAxis::Vertical => split_percent(
                 col.saturating_sub(drag.bounds.x),
@@ -2289,5 +2339,82 @@ mod tests {
         assert_eq!(app.current_catalog_list().len(), 1);
         app.cat_tab = CatalogTarget::Workflow;
         assert_eq!(app.current_catalog_list().len(), 2);
+    }
+
+    fn test_divider(axis: DividerAxis) -> ResizeDivider {
+        ResizeDivider {
+            target: DividerTarget::CodingSplit,
+            axis,
+            bounds: Rect::new(0, 0, 100, 40),
+            min_before: 10,
+            min_after: 10,
+            hitbox: Rect::new(50, 0, 2, 40),
+        }
+    }
+
+    #[test]
+    fn update_divider_hover_detects_enter_move_and_leave() {
+        let mut app = test_app();
+        app.register_resize_divider(test_divider(DividerAxis::Vertical));
+
+        assert!(app.update_divider_hover(50, 5));
+        assert_eq!(
+            app.resize_hover,
+            Some(DividerHover {
+                axis: DividerAxis::Vertical,
+                col: 50,
+                row: 5
+            })
+        );
+
+        // Still inside the hitbox but at a different cell: position tracks the pointer.
+        assert!(app.update_divider_hover(51, 6));
+
+        // Leaving the hitbox clears the cue and reports the change.
+        assert!(app.update_divider_hover(0, 0));
+        assert_eq!(app.resize_hover, None);
+
+        // No further change while remaining outside every divider's hitbox.
+        assert!(!app.update_divider_hover(1, 1));
+    }
+
+    #[test]
+    fn clear_divider_hover_reports_whether_a_cue_was_showing() {
+        let mut app = test_app();
+        app.register_resize_divider(test_divider(DividerAxis::Horizontal));
+        app.update_divider_hover(50, 5);
+        assert!(app.clear_divider_hover());
+        assert!(!app.clear_divider_hover());
+    }
+
+    #[test]
+    fn begin_resize_seeds_the_hover_cue_at_the_grabbed_divider() {
+        let mut app = test_app();
+        app.register_resize_divider(test_divider(DividerAxis::Vertical));
+        assert!(app.begin_resize(50, 5));
+        assert_eq!(
+            app.resize_hover,
+            Some(DividerHover {
+                axis: DividerAxis::Vertical,
+                col: 50,
+                row: 5
+            })
+        );
+    }
+
+    #[test]
+    fn resize_from_pointer_keeps_the_hover_cue_tracking_the_drag() {
+        let mut app = test_app();
+        app.register_resize_divider(test_divider(DividerAxis::Vertical));
+        app.begin_resize(50, 5);
+        app.resize_from_pointer(70, 20);
+        assert_eq!(
+            app.resize_hover,
+            Some(DividerHover {
+                axis: DividerAxis::Vertical,
+                col: 70,
+                row: 20
+            })
+        );
     }
 }

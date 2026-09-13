@@ -1268,6 +1268,13 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent, cli_client: &SpecifyCliClient)
         MouseEventKind::Up(MouseButton::Left) if app.finish_resize() => {
             let _ = config::save_config(&app.config);
         }
+        MouseEventKind::Moved => {
+            if app.active_popup.is_none() && app.palette.is_none() && !app.layout_editor_active {
+                app.update_divider_hover(mouse.column, mouse.row);
+            } else {
+                app.clear_divider_hover();
+            }
+        }
         _ => {}
     }
 }
