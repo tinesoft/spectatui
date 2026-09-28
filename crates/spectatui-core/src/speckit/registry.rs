@@ -77,7 +77,11 @@ struct ExtensionRegistry {
 #[derive(Deserialize)]
 struct ExtensionRegistryEntry {
     version: String,
-    source: Option<String>,
+    /// Legacy string (`"local"`, a URL, or a catalog name) or, since spec-kit
+    /// 1.0.x, a structured `{"kind": "catalog", "catalog": "<name>"}` /
+    /// `{"kind": "local"}` object. Kept as raw JSON so an unknown shape never
+    /// fails project discovery.
+    source: Option<serde_json::Value>,
     enabled: bool,
     priority: Option<u8>,
     registered_commands: Option<HashMap<String, Vec<String>>>,
@@ -116,12 +120,7 @@ pub fn load_extensions(root: &Path) -> Result<Vec<ExtensionInfo>> {
                 .map(|cmds| cmds.values().map(|v| v.len() as u32).sum())
                 .unwrap_or(0);
 
-            let source = match entry.source.as_deref() {
-                Some("local") => ExtensionSource::Local,
-                Some(s) if s.starts_with("http") => ExtensionSource::Url(s.to_string()),
-                Some(s) => ExtensionSource::Catalog(s.to_string()),
-                None => ExtensionSource::Local,
-            };
+            let source = extension_source(entry.source.as_ref());
 
             let status = if entry.enabled {
                 InstallStatus::Enabled
@@ -145,6 +144,28 @@ pub fn load_extensions(root: &Path) -> Result<Vec<ExtensionInfo>> {
 
     extensions.sort_by(|a, b| a.id.cmp(&b.id));
     Ok(extensions)
+}
+
+fn extension_source(source: Option<&serde_json::Value>) -> ExtensionSource {
+    match source {
+        Some(serde_json::Value::String(s)) if s == "local" => ExtensionSource::Local,
+        Some(serde_json::Value::String(s)) if s.starts_with("http") => {
+            ExtensionSource::Url(s.to_string())
+        }
+        Some(serde_json::Value::String(s)) => ExtensionSource::Catalog(s.to_string()),
+        Some(serde_json::Value::Object(obj)) => {
+            let kind = obj.get("kind").and_then(|v| v.as_str());
+            let catalog = obj
+                .get("catalog")
+                .and_then(|v| v.as_str())
+                .filter(|s| !s.trim().is_empty());
+            match (kind, catalog) {
+                (Some("catalog"), Some(name)) => ExtensionSource::Catalog(name.to_string()),
+                _ => ExtensionSource::Local,
+            }
+        }
+        _ => ExtensionSource::Local,
+    }
 }
 
 pub fn load_presets(root: &Path) -> Result<Vec<PresetInfo>> {
@@ -632,6 +653,77 @@ fn parse_installed_workflows(output: &str) -> Vec<WorkflowInfo> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn loads_extensions_with_legacy_and_structured_sources() {
+        // spec-kit 1.0.12 writes `source` as an object when an extension is
+        // installed or updated from a catalog; older entries keep the string.
+        let dir = tempfile::TempDir::new().unwrap();
+        let ext_dir = dir.path().join(".specify/extensions");
+        std::fs::create_dir_all(&ext_dir).unwrap();
+        std::fs::write(
+            ext_dir.join(".registry"),
+            r#"{
+                "schema_version": "1.0",
+                "extensions": {
+                    "bug": {
+                        "version": "1.0.0",
+                        "source": "local",
+                        "enabled": true,
+                        "priority": 10,
+                        "registered_commands": { "claude": ["speckit.bug.assess"] }
+                    },
+                    "assess": {
+                        "version": "1.0.1",
+                        "source": { "kind": "catalog", "catalog": "default" },
+                        "enabled": true,
+                        "priority": 10,
+                        "registered_commands": {
+                            "claude": ["speckit.assess.intake", "speckit.assess.decide"]
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let exts = load_extensions(dir.path()).unwrap();
+
+        assert_eq!(exts.len(), 2);
+        assert_eq!(exts[0].id, "assess");
+        assert!(matches!(&exts[0].source, ExtensionSource::Catalog(c) if c == "default"));
+        assert_eq!(exts[0].command_count, 2);
+        assert_eq!(exts[1].id, "bug");
+        assert!(matches!(exts[1].source, ExtensionSource::Local));
+    }
+
+    #[test]
+    fn maps_every_extension_source_shape() {
+        use serde_json::json;
+        let src = |v: serde_json::Value| extension_source(Some(&v));
+
+        assert!(matches!(src(json!("local")), ExtensionSource::Local));
+        assert!(
+            matches!(src(json!("https://x/e.zip")), ExtensionSource::Url(u) if u == "https://x/e.zip")
+        );
+        assert!(matches!(src(json!("community")), ExtensionSource::Catalog(c) if c == "community"));
+        assert!(
+            matches!(src(json!({"kind": "catalog", "catalog": "community"})), ExtensionSource::Catalog(c) if c == "community")
+        );
+        assert!(matches!(
+            src(json!({"kind": "local"})),
+            ExtensionSource::Local
+        ));
+        assert!(matches!(
+            src(json!({"kind": "catalog", "catalog": " "})),
+            ExtensionSource::Local
+        ));
+        assert!(matches!(
+            src(json!({"kind": "something-new"})),
+            ExtensionSource::Local
+        ));
+        assert!(matches!(extension_source(None), ExtensionSource::Local));
+    }
 
     #[test]
     fn parses_dialect_a_catalog_urls() {
